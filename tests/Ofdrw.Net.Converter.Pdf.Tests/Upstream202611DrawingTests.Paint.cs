@@ -105,6 +105,9 @@ public sealed partial class Upstream202611DrawingTests
     [Fact]
     public async Task ImportedStrokeFlagControlsPaintAndPreservesText()
     {
+        // Identical H on each row provides a same-glyph raster control
+        // for black stroke, independent of the changing row labels.
+        const string marker = "<TextCode X='65' Y='6'>H</TextCode>";
         const string red = "<StrokeColor Value='255 0 0'/>";
         const string blue = "<StrokeColor Value='0 0 255'/>";
         const string resources = "<DrawParams><DrawParam ID='30' LineWidth='0.26'>" + red + "</DrawParam></DrawParams>";
@@ -116,22 +119,26 @@ public sealed partial class Upstream202611DrawingTests
             var stroke = row.Flag.Length == 0 ? "" : $"Stroke='{row.Flag}'";
             var draw = row.Color == "inherited" ? "DrawParam='30'" : "LineWidth='0.26'";
             return $"<TextObject ID='{501 + i}' Boundary='10 {5 + i * 10} 75 9' Font='10' Size='5' {stroke} {draw}>" +
-                (row.Color == "local" ? blue : "") + $"<TextCode X='0' Y='6'>{row.Label}</TextCode></TextObject>";
+                (row.Color == "local" ? blue : "") + $"<TextCode X='0' Y='6'>{row.Label}</TextCode>" + marker + "</TextObject>";
         }));
         var producer = new OfdTextElement
         {
-            ObjectId = "520", FontResourceId = "10", FontName = "Noto Sans", Text = "producer-bold",
+            ObjectId = "520", FontResourceId = "10", FontName = "Noto Sans", Text = "producer-boldH",
             XMillimeters = 10, YMillimeters = 95, WidthMillimeters = 75, HeightMillimeters = 9, FontSizeMillimeters = 5,
             ProducerStrokeColor = OfdColor.Black, ProducerLineWidthMillimeters = 0.8,
-            Runs = { new OfdTextRun { Text = "producer-bold", XMillimeters = 0, YMillimeters = 6 } }
+            Runs =
+            {
+                new OfdTextRun { Text = "producer-bold", XMillimeters = 0, YMillimeters = 6 },
+                new OfdTextRun { Text = "H", XMillimeters = 65, YMillimeters = 6 }
+            }
         };
         Assert.True(OfdTextPaint.Read(producer).Stroke);
         var input = await R01PageBlockTests.Source(body, resources: resources, font: true, height: 110,
             producerText: producer);
-        var labels = rows.Select(row => row.Label).Append(producer.Text).ToArray();
+        var labels = rows.Select(row => row.Label).Append("producer-bold").ToArray();
         var package = await new OfdReader().ReadAsync(new MemoryStream(input));
         var imported = (await ReadBlock(input)).Cast<OfdTextElement>().ToArray();
-        Assert.Equal(rows.Select(row => row.Label), imported.Select(text => text.Text));
+        Assert.Equal(rows.Select(row => row.Label + "H"), imported.Select(text => text.Text));
         for (var i = 0; i < rows.Length; i++)
         {
             var paint = OfdTextPaint.Read(imported[i]);
@@ -143,45 +150,52 @@ public sealed partial class Upstream202611DrawingTests
                 _ => (0, 0, 0, 255)
             }, Channels(paint.StrokeColor));
         }
-        Assert.Equal(string.Concat(labels), string.Concat(new OfdTextExtractor().Extract(package)
+        var logical = string.Concat(labels.Select(label => label + "H"));
+        Assert.Equal(logical, string.Concat(new OfdTextExtractor().Extract(package)
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)));
         var render = await Render("text-stroke", input);
         foreach (var svg in new[] { render.Svg, render.Html })
         {
             var text = Nodes(svg, "text").ToArray();
-            Assert.Equal(labels, text.Select(node => node.Value));
+            Assert.Equal(labels.SelectMany(label => new[] { label, "H" }), text.Select(node => node.Value));
             Assert.Equal(Enumerable.Repeat("none", 6).Concat(new[] { "rgb(0,0,0)", "rgb(0,0,255)", "rgb(255,0,0)", "rgb(0,0,0)" }),
-                text.Select(node => node.Attribute("stroke")!.Value));
+                text.Select(node => node.Attribute("stroke")!.Value).Chunk(2).Select(pair => Assert.Single(pair.Distinct())));
         }
 
         using var pdf = PdfDocument.Open(render.Pdf);
         var page = pdf.GetPage(1);
-        Assert.Equal(string.Concat(labels), page.Text);
+        Assert.Equal(logical, page.Text);
         // The PDF emits outline paths alongside one searchable text run per
         // object. Only the two colored strokes may set a non-default RGB pen.
         Assert.Contains(page.Operations, operation => operation is StrokePath);
-        Assert.Equal(new (double, double, double)[] { (0, 0, 1), (1, 0, 0) },
+        Assert.Equal(new (double, double, double)[] { (0, 0, 1), (0, 0, 1), (1, 0, 0), (1, 0, 0) },
             page.Operations.OfType<SetStrokeColorDeviceRgb>().Select(color => (color.R, color.G, color.B)));
         using var raster = Image.Load<Rgb24>(render.Png);
+        var normalMarker = TextInk(raster, 5, 73, 81).Dark;
+        Assert.True(normalMarker > 25, "The regular H control must contain visible ink.");
         for (var i = 0; i < labels.Length; i++)
         {
-            var (dark, redInk, blueInk) = TextInk(raster, 5 + i * 10);
+            var top = 5 + i * 10;
+            var (dark, redInk, blueInk) = TextInk(raster, top, 9, 72);
             Assert.True(dark > 25, $"{labels[i]} has no dark fill");
             Assert.Equal(i == 8, redInk > 0);
             Assert.Equal(i == 7, blueInk > 0);
+            var markerInk = TextInk(raster, top, 73, 81).Dark;
+            if (i < 6) Assert.InRange(markerInk, normalMarker * 0.92, normalMarker * 1.08);
+            if (i is 6 or 9) Assert.True(markerInk > normalMarker * 1.15, $"{labels[i]} did not thicken H");
         }
     }
 
     private static (int Red, int Green, int Blue, int Alpha) Channels(OfdColor color) =>
         (color.Red, color.Green, color.Blue, color.Alpha);
 
-    private static (int Dark, int Red, int Blue) TextInk(Image<Rgb24> raster, int top)
+    private static (int Dark, int Red, int Blue) TextInk(Image<Rgb24> raster, int top, int left, int right)
     {
         var dark = 0;
         var red = 0;
         var blue = 0;
         for (var y = top * PixelsPerMillimeter; y < (top + 9) * PixelsPerMillimeter; y++)
-        for (var x = 9 * PixelsPerMillimeter; x < 85 * PixelsPerMillimeter; x++)
+        for (var x = left * PixelsPerMillimeter; x < right * PixelsPerMillimeter; x++)
         {
             var pixel = raster[x, y];
             if (pixel.R < 100 && pixel.G < 100 && pixel.B < 100) dark++;

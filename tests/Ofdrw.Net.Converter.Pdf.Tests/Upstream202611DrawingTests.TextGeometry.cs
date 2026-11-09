@@ -1,6 +1,9 @@
 using System.Globalization;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.Models;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
@@ -26,7 +29,7 @@ public sealed partial class Upstream202611DrawingTests
               <TextCode X='2' Y='8' DeltaX='7' DeltaY='3'>EF</TextCode>
             </TextObject>
             <TextObject ID='503' Boundary='90 10 42 35' Font='10' Size='6' CTM='1 0.25 0.5 1 100 200'>
-              <CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>36 36</Glyphs></CGTransform>
+              <CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>37 37</Glyphs></CGTransform>
               <TextCode X='2' Y='8' DeltaX='7' DeltaY='3'>AA</TextCode>
             </TextObject>
             """;
@@ -47,6 +50,16 @@ public sealed partial class Upstream202611DrawingTests
             Assert.InRange(250 - letters[i].StartBaseLine.Y * mmPerPoint, origins[i].Y - 0.03, origins[i].Y + 0.03);
         }
 
+        // In this pinned face original GID 37 is B. The PDF must paint
+        // that outline while exposing AA as searchable logical text.
+        using var embedded = PdfReader.Open(new MemoryStream(render.Pdf), PdfDocumentOpenMode.Import);
+        var glyphsForA = embedded.Internals.GetAllObjects().OfType<PdfDictionary>()
+            .Where(dictionary => dictionary.Elements.ContainsKey("/FontFile2"))
+            .Select(dictionary => new OpenTypeFace(dictionary.Elements.GetDictionary("/FontFile2").Stream.UnfilteredValue))
+            .Where(face => face.Tables.ContainsKey("cmap"))
+            .Select(face => new OpenTypeCmap(face).Glyph('A'));
+        Assert.Contains(37, glyphsForA);
+
         foreach (var svg in new[] { render.Svg, render.Html })
         {
             var texts = Nodes(svg, "text").ToArray();
@@ -64,8 +77,8 @@ public sealed partial class Upstream202611DrawingTests
             var group = Assert.Single(Nodes(svg, "g"), node => node.Attribute("data-ofd-text")?.Value == "AA");
             Assert.Equal("translate(90 10) matrix(1 0.25 0.5 1 100 200)", group.Attribute("transform")!.Value);
             var paths = Nodes(group, "path").ToArray();
-            Assert.Equal(new[] { "36", "36" }, paths.Select(node => node.Attribute("data-original-gid")!.Value));
-            // Identical A outlines. The difference of their first Move points
+            Assert.Equal(new[] { "37", "37" }, paths.Select(node => node.Attribute("data-original-gid")!.Value));
+            // Identical B outlines. The difference of their first Move points
             // must be the local delta (7,3); the group maps it to (8.5,4.75).
             var first = FirstMove(paths[0]);
             var second = FirstMove(paths[1]);
