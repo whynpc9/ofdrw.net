@@ -4,6 +4,7 @@ using System.Threading;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace Ofdrw.Net.Converter.Pdf.Converters;
 
@@ -12,6 +13,32 @@ namespace Ofdrw.Net.Converter.Pdf.Converters;
 // neighboring source pixels across the destination clip.
 internal static class PdfCropImage
 {
+    internal static (byte[] Data, double U, double V, double Width, double Height) CreatePixelAligned(
+        byte[] encoded, (double Left, double Top, double Right, double Bottom) bounds, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        using var source = Image.Load<Rgba32>(encoded);
+        var width = source.Width;
+        var height = source.Height;
+        // Keep every pixel cell touched by the clip. The caller still clips
+        // the exact rectangle, including any fractional edge cells.
+        var left = Math.Min(width - 1, (int)Math.Floor(bounds.Left * width));
+        var top = Math.Min(height - 1, (int)Math.Floor(bounds.Top * height));
+        var right = Math.Max(left + 1, (int)Math.Ceiling(bounds.Right * width));
+        var bottom = Math.Max(top + 1, (int)Math.Ceiling(bounds.Bottom * height));
+        token.ThrowIfCancellationRequested();
+        if (left == 0 && top == 0 && right == width && bottom == height)
+            return (encoded, 0, 0, 1, 1);
+
+        var crop = new Rectangle(left, top, right - left, bottom - top);
+        source.Mutate(context => context.Crop(crop));
+        using var output = new MemoryStream();
+        source.Save(output, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
+        token.ThrowIfCancellationRequested();
+        return (output.ToArray(), (double)left / width, (double)top / height,
+            (double)crop.Width / width, (double)crop.Height / height);
+    }
+
     internal static (byte[] Data, double U, double V, double Width, double Height) Create(
         byte[] encoded, (double X, double Y, double Width, double Height) crop,
         int alpha, long maximumPixels, CancellationToken token, Func<byte[], Image<Rgba32>>? decode)
