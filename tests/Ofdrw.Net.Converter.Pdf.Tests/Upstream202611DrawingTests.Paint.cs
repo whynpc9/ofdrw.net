@@ -125,7 +125,7 @@ public sealed partial class Upstream202611DrawingTests
         {
             ObjectId = "520", FontResourceId = "10", FontName = "Noto Sans", Text = "producer-boldH",
             XMillimeters = 10, YMillimeters = 95, WidthMillimeters = 75, HeightMillimeters = 9, FontSizeMillimeters = 5,
-            ProducerStrokeColor = OfdColor.Black, ProducerLineWidthMillimeters = 0.8,
+            ProducerStrokeColor = OfdColor.Black, ProducerLineWidthMillimeters = 0.4,
             Runs =
             {
                 new OfdTextRun { Text = "producer-bold", XMillimeters = 0, YMillimeters = 6 },

@@ -80,7 +80,7 @@ public sealed partial class Upstream202611DrawingTests
     private static void RetainInput(string name, byte[] ofd)
     {
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is not { Length: > 0 } output) return;
-        var dir = Path.Combine(output, "..", "fixtures");
+        var dir = Path.Combine(output, "fixtures");
         Directory.CreateDirectory(dir);
         File.WriteAllBytes(Path.Combine(dir, name + ".ofd"), ofd);
     }
