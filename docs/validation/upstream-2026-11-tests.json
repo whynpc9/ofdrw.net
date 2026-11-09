@@ -196,6 +196,62 @@
           "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.VerticalDirectionIsPreservedInXmlButRejectedByRenderers"
         }
       ]
+    },
+    "C": {
+      "fullProjects": [
+        "Converter.Pdf"
+      ],
+      "newTests": [
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "SelectedAndRepeatedPagesKeepTheirRidingSealSlices",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.SelectedAndRepeatedPagesKeepTheirRidingSealSlices(nested: False)"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "SelectedAndRepeatedPagesKeepTheirRidingSealSlices",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.SelectedAndRepeatedPagesKeepTheirRidingSealSlices(nested: True)"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "ClippedBitmapSealEmbedsOnlyItsSourcePixels",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.ClippedBitmapSealEmbedsOnlyItsSourcePixels(strict: False)"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "ClippedBitmapSealEmbedsOnlyItsSourcePixels",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.ClippedBitmapSealEmbedsOnlyItsSourcePixels(strict: True)"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "SelectedNestedSliceFitsExactPageBudgetAndExportsJpeg",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.SelectedNestedSliceFitsExactPageBudgetAndExportsJpeg"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "UnreadableNestedSealWarnsOnSelectedSourcePageAndStrictExportLeavesDestinationUntouched",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.UnreadableNestedSealWarnsOnSelectedSourcePageAndStrictExportLeavesDestinationUntouched"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M10",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests",
+          "methodName": "CancellationDuringSignedInputReadLeavesDestinationUntouched",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611StampTests.CancellationDuringSignedInputReadLeavesDestinationUntouched"
+        }
+      ]
     }
   }
 }
