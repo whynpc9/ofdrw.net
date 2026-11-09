@@ -19,6 +19,8 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
+    <Compile Include="../TestSupport/Upstream202611ArchiveFixture.cs" Link="Upstream202611ArchiveFixture.cs" />
     <Compile Include="../TestSupport/MultiDocumentFixture.cs" Link="MultiDocumentFixture.cs" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,138 @@
+{
+  "prs": {
+    "A": {
+      "fullProjects": [
+        "Packaging",
+        "Cli"
+      ],
+      "newTests": [
+        {
+          "project": "Packaging",
+          "item": "M01",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersResolveMixedCaseBranches",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersResolveMixedCaseBranches(layout: \"plain\")"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersResolveMixedCaseBranches",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersResolveMixedCaseBranches(layout: \"adjusted\")"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "PlainZipAtNonzeroPositionIsBufferedOnlyByPublicReader",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.PlainZipAtNonzeroPositionIsBufferedOnlyByPublicReader"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "PrefixLayoutsHaveDifferentPhysicalZipOffsets",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.PrefixLayoutsHaveDifferentPhysicalZipOffsets"
+        },
+        {
+          "project": "Packaging",
+          "item": "M01",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersRejectConflictingOrDamagedArchives",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersRejectConflictingOrDamagedArchives(defect: \"collision\", reason: \"duplicate entry\")"
+        },
+        {
+          "project": "Packaging",
+          "item": "M01",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersRejectConflictingOrDamagedArchives",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersRejectConflictingOrDamagedArchives(defect: \"traversal\", reason: \"unsafe path\")"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersRejectConflictingOrDamagedArchives",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersRejectConflictingOrDamagedArchives(defect: \"truncated\", reason: null)"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersRejectConflictingOrDamagedArchives",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersRejectConflictingOrDamagedArchives(defect: \"false-local-header\", reason: null)"
+        },
+        {
+          "project": "Packaging",
+          "item": "M01",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "ReadersRejectMissingMandatoryPageWithoutFallingBackToTemplate",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.ReadersRejectMissingMandatoryPageWithoutFallingBackToTemplate"
+        },
+        {
+          "project": "Packaging",
+          "item": "M02",
+          "className": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests",
+          "methodName": "AdjustedPrefixCountsTowardInputBudgetAndHonorsCancellation",
+          "displayName": "Ofdrw.Net.Packaging.Tests.Upstream202611ArchiveTests.AdjustedPrefixCountsTowardInputBudgetAndHonorsCancellation"
+        },
+        {
+          "project": "Cli",
+          "item": "M01",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "ConvertsMixedCaseBranchesFromDifferentWorkingDirectories",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.ConvertsMixedCaseBranchesFromDifferentWorkingDirectories(layout: \"plain\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M02",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "ConvertsMixedCaseBranchesFromDifferentWorkingDirectories",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.ConvertsMixedCaseBranchesFromDifferentWorkingDirectories(layout: \"adjusted\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M01",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"collision\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M01",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"missing-page\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M01",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"traversal\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M02",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"unadjusted\", defect: \"none\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M02",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"truncated\")"
+        },
+        {
+          "project": "Cli",
+          "item": "M02",
+          "className": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests",
+          "methodName": "RejectsInvalidFileWithoutPublishingPdf",
+          "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"false-local-header\")"
+        }
+      ]
+    }
+  }
+}
