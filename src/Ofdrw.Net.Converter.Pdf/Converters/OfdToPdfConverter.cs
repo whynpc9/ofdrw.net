@@ -382,6 +382,24 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             run?.Rendered();
                         }
                     }
+                    else if (appearance.Clip is { } bitmapClip)
+                    {
+                        ValidateImage(appearance.Data, maximumPixels);
+                        var crop = PdfCropImage.CreatePixelAligned(appearance.Data,
+                            (Math.Min(1, bitmapClip.X / appearance.WidthMillimeters),
+                             Math.Min(1, bitmapClip.Y / appearance.HeightMillimeters),
+                             Math.Min(1, (bitmapClip.X + bitmapClip.Width) / appearance.WidthMillimeters),
+                             Math.Min(1, (bitmapClip.Y + bitmapClip.Height) / appearance.HeightMillimeters)),
+                            cancellationToken);
+                        // Some viewers smooth even with Interpolate=false. Exclude
+                        // pixels outside the clip from the actual PDF image resource.
+                        using var image = XImage.FromImageSource(new EncodedBitmapImageSource(crop.Data,
+                            maximumPixels, cancellationToken, interpolate: false));
+                        image.Interpolate = false;
+                        graphics.DrawImage(image, target.X + target.Width * crop.U, target.Y + target.Height * crop.V,
+                            target.Width * crop.Width, target.Height * crop.Height);
+                        run?.Rendered();
+                    }
                     else if (!reusePayloads)
                     {
                         ValidateImage(appearance.Data, maximumPixels);

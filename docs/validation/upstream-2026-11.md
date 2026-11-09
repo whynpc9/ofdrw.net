@@ -1,6 +1,6 @@
 # 上游 2026-11 回归验收
 
-依据 [Plan 019](../../plans/019-upstream-2026-11-regression-and-triage.md)，关联 [issue #120](https://github.com/whynpc9/ofdrw.net/issues/120)。本记录覆盖 A 批次的 M01/M02。B、C 批次未运行。
+依据 [Plan 019](../../plans/019-upstream-2026-11-regression-and-triage.md)，关联 [issue #120](https://github.com/whynpc9/ofdrw.net/issues/120)。本记录覆盖 A、B、C 三批的功能、视觉及集成验收。
 
 ## A · M01/M02 归档和 CLI 文件入口
 
@@ -125,3 +125,61 @@ pdftoppm -f 1 -l 1 -singlefile -png -r 144 <case>/output.pdf <case>/poppler-001
 - **存档**　[PR B 页面证据](../evidence/upstream-2026-11/B/drawing-pages.tar.zst) 为 2365356 字节，SHA-256 `9492f6d9c6035ae668b87f1032929239b4d3f1f4f2bb513e02f88a2a1d62cba6`。归档包含四份 OFD、PDF、SVG、HTML、两种 PNG、仅 Preview 窗口截图，以及逐文件大小和 SHA-256、运行命令、环境、TRX 核对及视觉复查记录。证据生成命令与路径对应测试树，验收说明和归档的提交单独记录。
 - **本地复现资料**　正式根目录为 `/Users/wanghongyi/.codex/worktrees/69e8/ofdrw.net/artifacts/upstream-2026-11/B-89b2aef47016-formal.rLjasg`；未修复基线根目录为 `/Users/wanghongyi/.codex/worktrees/69e8/ofdrw.net/artifacts/upstream-2026-11/B-95c7d90d688e-baseline.QomkSZ`。各目录的 `sha256-sizes.txt` 记录该轮输入和输出，包括拒绝类 OFD。拒绝类输入由测试现场生成并留在本地。四个正式 PDF 总计 325150 字节。
 - **文档与范围**　站点构建、类型、48 个 HTML 页面链接、搜索索引生成均通过；Nimbus 跳过 47 个 Markdown 页面的 Authoring lint。B 未修改共享实现，因此全套本地回归与本地包消费门禁由各自触发条件及 C 的集成验收覆盖。
+
+## PR C · M10 印章与集成
+
+| 场景 | 入口、独立预期与实际结论 |
+|---|---|
+| 位图骑缝章 | 复用 `StampClipRenderingTests` 中的基础像素/非法 Clip 覆盖。40×20 mm 双色章贴在 100×80 mm 双页右边。默认 PDF 两页依次红、蓝，重排 `[1, 1, 0]` 后蓝、蓝、红。每页的片区为 x=80–100 mm、y=30–50 mm，片区外为白。 |
+| 嵌套 OFD 骑缝章 | 一页 40×20 mm 嵌套 OFD，两个矢量矩形代替位图。PDF 默认和重复选页结果与手算区域一致。 |
+| 分辨率 | 严格图片出口选择第 2 页，2.125 pixels/mm。按 ceil(mm × ppm) 输出 213×170。 |
+| 编码 | 既有位图骑缝章测试覆盖默认 PNG。嵌套 OFD 新用例显式 JPEG，核对 SOI 字节和解码后的蓝片区。 |
+| 页数与印章预算 | 选中一张外页，仅该页一个 StampAnnot 计数。外包两页加嵌套包一页恰好满足 `MaxPageCount=3`。设为 2 在展开前拒绝，目标流位置与内容完整保留。 |
+| 不可读载荷 | 合法 ZIP 载荷内缺 OFD 结构。容忍 PDF 返回一页、零章，警告为 `PDF_SIGNATURE_APPEARANCE_UNREADABLE`，关联所选源页索引 1 与签名 ID。严格图片导出抛 `InvalidDataException`，保持目标流。 |
+| 取消与发布边界 | 从不可 seek 的签名 OFD 读入 1 字节后取消，SDK 返回调用令牌的取消异常，保持已写入哨兵的目标流。最终流发布期间的 I/O 可留下已写入的字节。 |
+| SVG | 代码核查确认 SVG 构建器绘制 Reader 的页面、模板及适用批注，签章外观不进入该投影。SVG 签章视觉验收不适用。 |
+
+### M10a 位图裁切边缘串色
+
+- 复现位置为 `OfdToPdfConverter.DrawSignatureAppearances`，位图分支原先将全幅 Image XObject 放入 PDF，再应用 StampAnnot Clip。两色交界在红页右边与蓝页左边，桌面 Preview 可见紫边。
+- 确定性回归 `ClippedBitmapSealEmbedsOnlyItsSourcePixels` 使用同一 payload 放置普通章与骑缝章。普通章保留 40×20 样本和插值设置，骑缝章 XObject 只含其 20×20 样本。在公开默认 PDF 路径和严格图片导出所用 PDF 阶段执行。
+- 只关闭 PDF 插值的候选在 Poppler 生效，Preview 仍出现紫边。最终实现把 Clip 映射到源像素边界，仅嵌入与矩形相交的像素，并保留原始 PDF 页面 clip 约束。分数边界保留相交像素，裁切副本的像素量不超过原图。正常章、嵌套 OFD 签章沿用各自绘制路径。
+- 范围限于可解码的签章位图与现有矩形 Clip。若需要变更签名外观解析、默认预算、支持非矩形剪裁或更换 PDF 后端，停止扩容并单独立项。
+- 签名为人工构造的外观测试样例。未验证签名信任或密码学有效性。
+
+### 功能与前序复核
+
+- A 的合并 SHA 为 `3f9bf5bfdc5fd653266ad4c1c2bf635a8ffe04de`。核对其实际 main 祖先关系、最终提交的 CI、M01/M02 验收记录及四个保留 LFS 对象的摘要。[PR A](https://github.com/whynpc9/ofdrw.net/pull/121) · [CI](https://github.com/whynpc9/ofdrw.net/actions/runs/42629409860)
+- B 的合并 SHA 为 `5fcd11463424e415fd65935a2629e221a55c8082`。核对其实际 main 祖先关系、最终提交的 CI、M04–M06 验收记录及 LFS 证据归档的大小和摘要。[PR B](https://github.com/whynpc9/ofdrw.net/pull/122) · [CI](https://github.com/whynpc9/ofdrw.net/actions/runs/42632809278)
+- M10 初始实现为 `7ddc251fa30b765f7cd0d494393699bfdc7a1a91`，初始测试树 `aa0436d29131325283c8e502d2a2e2fa8aeb069e` 的 5 项通过。新增位图缺陷复现后，测试树 `eaaead850e32` 的两行裁切断言失败，公开和严格路径均嵌入了 40×20 全幅位图。修复树 `26f734528587` 的 7 项通过。修复前后使用字节相同的 OFD 样例，SHA-256 为 `e3ba7e3adae514d9c0c7cce47d701044601e06560d658136f92bee9145e05bfd`。
+- 集成测试树为 `e2cb81c652ff49e2000fc072cb9036b8e538bd96`。全套 4,982 通过、0 失败。一个已有的 `LibreOfficeFontStagingTests.ShouldRestrictPreferredCjkForWindowsFontsDirectory` 因仅适用于 Windows 字体目录而在 macOS 跳过。Converter.Pdf 完整项目 1,287/1,287，新增 7/7，两套均无跳过。A 的检查器按 [TRX 清单](upstream-2026-11-tests.json) `prs.C` 匹配完整类名、方法和数据行。可信字体 74/74，无跳过。受信字体包 SHA-256 为 `40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59`。
+- 从同一集成树打包并冻结 12 个 `0.3.1-issue120.20261109143719.ge2cb81c652ff` 本地候选包，再以包引用消费。消费前后 SHA-256 一致。从仅含候选包的私有源安装 CLI，`ofd-to-pdf` 每页包含一个 20×20 位图 XObject，`ofd-to-image --pages 2 --ppm 3 --format png --max-signature-appearances 1` 生成 300×240 PNG，蓝片及白色背景采样通过。未向 NuGet 发布候选包。
+- 文档安装、构建、类型检查、链接和搜索索引生成通过。Nimbus Authoring 跳过 47 个 Markdown 页。存储检查覆盖 materialize 的 `e2e` 和 `tests`。
+
+### 页面证据
+
+环境为 macOS 26.6.2 arm64、.NET SDK 10.0.401、Docnet.Core 2.6.0、PdfPig 0.1.15 和 Poppler 26.09.0。双色章样例无字体依赖。运行输出根目录为 `/Users/wanghongyi/.codex/worktrees/164c/ofdrw.net/artifacts/upstream-2026-11/C-e2cb81c652ff49e2000fc072cb9036b8e538bd96-OtWQP6`。
+
+- **生成和自动渲染**　设置 `OFDRW_UPSTREAM_202611_STAMP_EVIDENCE=$RUN/visual`，运行 Converter.Pdf 项目并筛选 `FullyQualifiedName~Upstream202611StampTests`。两份实际 OFD 以默认 PDF SDK 转出各两页。对每页执行 `pdftoppm -f N -l N -png -singlefile -r 144 <output.pdf> <page-stem>`，四张 PNG 的尺寸和内外部采样均通过。
+- **PNG 视觉复查**　逐页查看四张 PNG。位图和嵌套 OFD 均为第 1 页红片、第 2 页蓝片，几何和片外留白符合预期。
+- **macOS Preview**　`gpt-6.1-terra`（High）核对产物哈希后，按绝对路径打开本次两份 PDF，通过 OFD→PDF→Preview 11.0 分别复查全部四页。位图原有紫边已消失。嵌套 OFD 两页的片区和留白正常。两份窗口均已关闭，验收范围限于这两个样例。
+- **归档**　[PR C 印章证据](../evidence/upstream-2026-11/C/stamp-pages.zip) 为 307938 字节，SHA-256 为 `4f2117670311fcf53c1ba05b74b96f2a9b681ca412df19b5f3d4e36ba321fb3e`。内含输入 OFD、PDF、四页 PNG、Preview 截图、原缺陷截图及逐文件摘要。样例位图 PDF 从 2,337 字节变为 2,251 字节，嵌套 PDF 仍为 2,494 字节。
+
+## M01–M14 处置汇总
+
+| 条目 | 本期结论与后续条件 |
+|---|---|
+| M01 | A 验证大小写路径、模板与资源身份，拒绝碰撞、缺页和穿越。 |
+| M02 | A 分入口验证 ZIP 前缀和 offsets。公开、受控与 CLI 的接受范围分别记录。 |
+| M03 | 延期图片 basename 回退。需要实际失败样例，再定义当前文档唯一候选、诊断及签名边界。 |
+| M04 | B 验证绘制属性继承、显式覆盖、Relative 边界及文字描边。 |
+| M05 | B 验证裁切范围、alpha 和几何。绝对坐标启发式延期，等待明确样例和可验证坐标契约。 |
+| M06 | B 验证水平文字 Delta/CTM。真竖排延期，需单独定义排版、标点和提取顺序。 |
+| M07 | 继续复用显式真实字体引擎。遇到具体字宽或断行问题，再量化比较兼容排版。 |
+| M08 | 字体格式扩展延期，待具体格式及消费入口明确。 |
+| M09 | 原生 Pattern、渐变及 Multiply 延期，待具备可独立验证的样例和 profile。 |
+| M10 | C 验证位图与嵌套骑缝章、页选择、诊断和严格图片边界，并修复位图串色。透明 PNG 和背景色留作独立候选，旋转、BMP、DPI 元数据和流批量命名按需求另排。上游 PPM 表示每毫米像素。 |
+| M11 | 后续按具体样例调查书签、附件、交互注释及 Copy/Find。PDF 后端更换延期。 |
+| M12 | 继续复用双层、只图及 vector 路径。优化工作等待代表性样例与大小、耗时、峰值和质量基线。 |
+| M13 | MultiMedia typed 与播放延期。先界定未知 XML 保留及拒绝行为。 |
+| M14 | 沿用 D10 和计划 013 的依赖门禁，具体移植时再核对许可证。既有 ImageSharp 告警仍适用。 |

@@ -1,6 +1,6 @@
 # Plan 019：上游 2026-11 差异验证与有界能力筛选
 
-- 状态：TODO（已处理 R1–R7 评审意见，尚未执行测试或开发）
+- 状态：A/B/C 验收记录已齐备。C 在最新 head 的 CI 成功并合并至 main 后完成。见 [验收记录](../docs/validation/upstream-2026-11.md)。
 - 日期：2026-11-09
 - 基线：`7ddc251fa30b765f7cd0d494393699bfdc7a1a91`；本地 main 与读取时远端 main 一致；产品版本 0.3.0。
 - 来源：[issue #120](https://github.com/whynpc9/ofdrw.net/issues/120)，读取时 open、无评论。
