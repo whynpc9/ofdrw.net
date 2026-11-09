@@ -1,11 +1,16 @@
 using System.IO.Compression;
+using System.Text;
+using System.Xml.Linq;
 using Docnet.Core;
 using Docnet.Core.Models;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
+using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Signatures.Signing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using PdfPigDocument = UglyToad.PdfPig.PdfDocument;
 
 namespace Ofdrw.Net.Converter.Pdf.Tests;
 
@@ -34,6 +39,45 @@ public sealed class Upstream202611StampTests
         AssertPdfSlices(selectedPdf, [false, false, true]);
 
         await SaveEvidence(nested ? "riding-seal-nested" : "riding-seal-bitmap", signed, pdf);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClippedBitmapSealDisablesInterpolationWithoutChangingUnclippedSeal(bool strict)
+    {
+        var signed = await OfdToPdfResultTests.SignedTwoPageSeal(OfdToPdfResultTests.Picture(),
+            new OfdNormalStampPlacement(1, 10, 10, 40, 20));
+        signed = OfdToPdfResultTests.Rewrite(signed, entries =>
+        {
+            var path = Assert.Single(entries.Keys, name => name.EndsWith("/Signature.xml", StringComparison.Ordinal));
+            var xml = XDocument.Parse(Encoding.UTF8.GetString(entries[path]));
+            // This synthetic signature has no cryptographic validity. Freeze its
+            // date for a byte-identical before/after rendering fixture.
+            xml.Descendants().Single(node => node.Name.LocalName == "SignatureDateTime").Value = "2020-01-01T00:00:00Z";
+            entries[path] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        });
+        await SaveEvidence(strict ? "bitmap-interpolation-strict" : "bitmap-interpolation-default", signed);
+        using var input = new MemoryStream(signed);
+        using var output = new MemoryStream();
+        var converter = new OfdToPdfConverter();
+        if (strict)
+        {
+            // Inspect the same intermediate PDF that strict image export rasterizes.
+            var package = await new OfdReader().ReadAsync(input);
+            await converter.ConvertPackageAsync(package, output, [0], CancellationToken.None,
+                strictAppearanceBudgets: true, maximumSignatureAppearances: 2);
+        }
+        else
+        {
+            await converter.ConvertAsync(input, output, [0]);
+        }
+
+        using var document = PdfPigDocument.Open(output.ToArray());
+        var images = document.GetPage(1).GetImages().OrderBy(image => image.Bounds.Left).ToArray();
+        Assert.Equal(2, images.Length);
+        Assert.True(images[0].Interpolate); // Normal stamp at x=10 mm.
+        Assert.False(images[1].Interpolate); // Full bitmap placed at x=80 mm and clipped to its left half.
     }
 
     [Fact]

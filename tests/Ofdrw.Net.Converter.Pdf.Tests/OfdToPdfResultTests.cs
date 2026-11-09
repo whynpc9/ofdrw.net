@@ -237,7 +237,9 @@ public sealed class OfdToPdfResultTests
         using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
             foreach (var (name, data) in entries)
             {
-                using var stream = zip.CreateEntry(name).Open();
+                var entry = zip.CreateEntry(name);
+                entry.LastWriteTime = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
+                using var stream = entry.Open();
                 stream.Write(data);
             }
         return output.ToArray();
@@ -254,7 +256,7 @@ public sealed class OfdToPdfResultTests
         return image.ToArray();
     }
 
-    internal static async Task<byte[]> SignedTwoPageSeal(byte[] seal)
+    internal static async Task<byte[]> SignedTwoPageSeal(byte[] seal, OfdNormalStampPlacement? additionalStamp = null)
     {
         var package = new OfdDocumentPackage();
         for (var index = 0; index < 2; index++) package.Pages.Add(new OfdPage
@@ -264,6 +266,7 @@ public sealed class OfdToPdfResultTests
         unsigned.Position = 0;
         var options = new OfdSignatureOptions();
         options.StampAppearances.Add(new OfdRidingStampPlacement(OfdStampEdge.Right, 1, 2, 40, 20));
+        if (additionalStamp is not null) options.StampAppearances.Add(additionalStamp);
         using var signed = new MemoryStream();
         await new OfdSignatureService().SignAsync(unsigned, signed, new PictureProvider(seal), options);
         return signed.ToArray();
