@@ -44,7 +44,7 @@ public sealed class Upstream202611StampTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ClippedBitmapSealDisablesInterpolationWithoutChangingUnclippedSeal(bool strict)
+    public async Task ClippedBitmapSealEmbedsOnlyItsSourcePixels(bool strict)
     {
         var signed = await OfdToPdfResultTests.SignedTwoPageSeal(OfdToPdfResultTests.Picture(),
             new OfdNormalStampPlacement(1, 10, 10, 40, 20));
@@ -76,8 +76,10 @@ public sealed class Upstream202611StampTests
         using var document = PdfPigDocument.Open(output.ToArray());
         var images = document.GetPage(1).GetImages().OrderBy(image => image.BoundingBox.Left).ToArray();
         Assert.Equal(2, images.Length);
-        Assert.True(images[0].Interpolate); // Normal stamp at x=10 mm.
-        Assert.False(images[1].Interpolate); // Full bitmap placed at x=80 mm and clipped to its left half.
+        Assert.Equal((40, 20), (images[0].WidthInSamples, images[0].HeightInSamples));
+        Assert.True(images[0].Interpolate);
+        Assert.Equal((20, 20), (images[1].WidthInSamples, images[1].HeightInSamples));
+        Assert.False(images[1].Interpolate);
     }
 
     [Fact]
