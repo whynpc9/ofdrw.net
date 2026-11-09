@@ -317,11 +317,18 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         OfdToPdfRun? run = null)
     {
         var forms = new Dictionary<OfdPage, XForm>();
-        using var bitmap = new SinglePayloadResource<XImage>(data =>
+        using var bitmap = new SinglePayloadResource<XImage>(data => CreateBitmap(data, interpolate: true));
+        using var clippedBitmap = new SinglePayloadResource<XImage>(data => CreateBitmap(data, interpolate: false));
+
+        XImage CreateBitmap(byte[] data, bool interpolate)
         {
             ValidateImage(data, maximumPixels);
-            return XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken));
-        });
+            var image = XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken,
+                interpolate: interpolate));
+            image.Interpolate = interpolate;
+            return image;
+        }
+
         try
         {
             foreach (var appearance in appearances.Where(item => string.Equals(item.PageId, page.Id, StringComparison.OrdinalIgnoreCase)))
@@ -386,12 +393,15 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     {
                         ValidateImage(appearance.Data, maximumPixels);
                         using var image = XImage.FromStream(() => new MemoryStream(appearance.Data, writable: false));
+                        // Smoothing the full bitmap can sample the other side of a seal slice.
+                        image.Interpolate = appearance.Clip is null;
                         graphics.DrawImage(image, target);
                         run?.Rendered();
                     }
                     else
                     {
-                        graphics.DrawImage(bitmap.Get(appearance.Data), target);
+                        var resource = appearance.Clip is null ? bitmap : clippedBitmap;
+                        graphics.DrawImage(resource.Get(appearance.Data), target);
                         run?.Rendered();
                     }
                 }
