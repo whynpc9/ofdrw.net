@@ -100,7 +100,7 @@ class UpstreamTestResultsTests(unittest.TestCase):
         (self.root / "Cli/new/new.trx").unlink()
         result = self.check("--pr", "A")
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("Cli/new/new.trx", result.stderr)
+        self.assertIn(str(self.root / "Cli/new/new.trx"), result.stderr)
 
     def test_batch_and_manifest_selection(self):
         for args in ((), ("--pr", "D"), ("--pr", "B")):
