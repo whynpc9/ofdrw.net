@@ -133,6 +133,69 @@
           "displayName": "Ofdrw.Net.Cli.Tests.Upstream202611ArchiveCliTests.RejectsInvalidFileWithoutPublishingPdf(layout: \"plain\", defect: \"false-local-header\")"
         }
       ]
+    },
+    "B": {
+      "fullProjects": [
+        "Converter.Pdf"
+      ],
+      "newTests": [
+        {
+          "project": "Converter.Pdf",
+          "item": "M04",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "DrawParamPresenceAndRemovalPreserveLocalOverridesAndSiblingPaint",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.DrawParamPresenceAndRemovalPreserveLocalOverridesAndSiblingPaint"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M04",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "DrawParamAccepts32LinksAndRejects33OrCycle",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.DrawParamAccepts32LinksAndRejects33OrCycle"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M04",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "BitsPerComponentDefaultsToEightAndRejectsOtherDepths",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.BitsPerComponentDefaultsToEightAndRejectsOtherDepths"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M04",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "ImportedStrokeFlagControlsPaintAndPreservesText",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.ImportedStrokeFlagControlsPaintAndPreservesText"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M05",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "NestedClipIntersectionAndAlphaDoNotLeakToSiblings",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.NestedClipIntersectionAndAlphaDoNotLeakToSiblings"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M05",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "ImageQuadrantsAndPathUseAffineTransformOnce",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.ImageQuadrantsAndPathUseAffineTransformOnce"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M06",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "TextCodeOriginsTransformPointsAndDeltasIndependently",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.TextCodeOriginsTransformPointsAndDeltasIndependently"
+        },
+        {
+          "project": "Converter.Pdf",
+          "item": "M06",
+          "className": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests",
+          "methodName": "VerticalDirectionIsPreservedInXmlButRejectedByRenderers",
+          "displayName": "Ofdrw.Net.Converter.Pdf.Tests.Upstream202611DrawingTests.VerticalDirectionIsPreservedInXmlButRejectedByRenderers"
+        }
+      ]
     }
   }
 }
