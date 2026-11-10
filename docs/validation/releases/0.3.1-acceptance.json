@@ -1,0 +1,71 @@
+{
+  "status": "accepted",
+  "package_version": "0.3.1",
+  "source_fingerprint": "9275904427eb7ede7db0c5614b7e5bb62d80d424e04f10c15c04cc257987c5b3",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "d052185404b5c50e00a35063ca10b9b90ac70a4ff7795aa009ee605cee3187e5",
+  "preview_pdf_sha256": "191d776bfd064e98813eabd87a557d1546a58195080e046bc805b7534bd52aeb",
+  "default_ofd_sha256": "93505d277f81a2a308d5c49c1b4a924b2132fe975a9e9817703a244da5cabd36",
+  "default_preview_pdf_sha256": "33256a0bb4e24a58d87a3a61af2b23b38822ff9b62d5cc5f241c9710f45c1c52",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI visual reviewer)",
+  "reviewed_at": "2026-11-10T10:09+08:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Fixed generated-layout.docx, physical Regular/Bold, explicit Native and default Native, two pages per mode.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "artifacts/release-0.3.1-53d2ba12/fonts/"
+      ]
+    },
+    "outputs": {
+      "native_ofd": "profile-output/font-native.ofd",
+      "native_pdf": "profile-output/font-native.pdf",
+      "default_ofd": "profile-output/font-default.ofd",
+      "default_pdf": "profile-output/font-default.pdf"
+    },
+    "visual_environment": "macOS 26.6.2 (25G83), Preview 11.0, Poppler 26.09.0 at 144 DPI.",
+    "functional_result": "Both modes preserve all 189 non-whitespace source characters in OFD and PDF with no duplicate PDF text. Physical Regular/Bold subset outlines matched the pinned faces for the probe glyphs. Seven loaded SDK DLLs matched the exact candidate package assets."
+  },
+  "additional_visual_review": "Two nested OFD seal pages and two bitmap seal pages inspected at enlarged display in Preview. No visible opposite-color seam. Eight corresponding PNGs (Poppler and strict CLI) visually reviewed and passed full-image color checks. All reviewed Preview windows closed.",
+  "known_limitations": [
+    "Visual observations are limited to these samples and displayed zoom. Generated PNGs and the page-by-page review were retained. Separate Preview screenshots were not saved.",
+    "macOS Preview Find, raw Unicode Copy and PDF selection geometry were outside the review scope."
+  ],
+  "producer_source_sha": "07e07c1398cb261af6b391f8831a62e43f2eee5e",
+  "evidence_root": "artifacts/release-0.3.1-53d2ba12/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "57d22ca14691b956cb797538f466f60c0960551e3f6b0335a15021acc39f9402",
+    "visual-manifest.json": "87823fe91a0b0883d120f6ba7611c451412f31d5fc6fbd17a099f27d06137092",
+    "preview-review.md": "49f8458be4c8abb888f35373fbfc8ef488567323a6317af97a74e0ec095f03b0",
+    "profile-check.json": "99fd9c05f67083e379ff9b6d9c31592a194dbf8eba5385d4cb0ab0355173d9b5",
+    "consumer-identities.json": "67c4d3ad38b957e2e7bbdc62075e2370e79a7933b20c0995ca0d4d474daf9824",
+    "full-tests.log": "28f79d78b639e961056906e17b2792488bf9fdccc0f3fd864239201a00fd5269",
+    "trusted-tests/trusted-fonts.trx": "a42e75028205f2c061884bd45c67c0777c50d80149aca5eb48437793a58259ba",
+    "package-e2e.log": "5da59ab535437a95549c5d2985e6d11cfe20c24a6f998196ee83cd94717640f0",
+    "package-e2e/visual-corpus/visual-metrics.csv": "5e5e3e311dbab7f37e6cd8fd37cf7f9691c6d60b62678e058a3cf6fab178e259"
+  }
+}
