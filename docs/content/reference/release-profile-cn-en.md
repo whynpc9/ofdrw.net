@@ -12,6 +12,8 @@ sidebar:
 
 0.3.0 继续使用该固定输入与真实 Regular/Bold 字体；本版验收重新生成两模式 OFD/PDF 并逐页查看 Preview。具体源码指纹、产物哈希和范围见[0.3.0 验收记录](https://github.com/whynpc9/ofdrw.net/blob/v0.3.0/docs/validation/releases/0.3.0-acceptance.json)。
 
+0.3.1 对同一配置重新验收，显式 Native 和默认模式各两页。见[0.3.1 验收记录](https://github.com/whynpc9/ofdrw.net/blob/v0.3.1/docs/validation/releases/0.3.1-acceptance.json)。
+
 ## 固定字体配置
 
 固定输入为未修改的 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。独立运行显式 `OfdMode=Native` 与不设置 `OfdMode` 的默认 Native，两模式各两页；查看链路为 DOCX → OFD → PDF → macOS Preview。

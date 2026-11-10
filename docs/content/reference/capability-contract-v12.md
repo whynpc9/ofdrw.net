@@ -6,9 +6,9 @@ sidebar:
   label: "能力契约"
 ---
 
-`0.3.0` 的变更及候选验收范围见[0.3.0 发布说明](/releases/030/)；[0.2.0 发布说明](/releases/020/)保留固定 DOCX 和段落样例的原版本结论。Preview Find、原始 Copy 和段落 PDF 选择几何仍有独立限制。
+`0.3.1` 的骑缝章修复及验收范围见[0.3.1 发布说明](/releases/031/)。先前交付能力见[0.3.0 发布说明](/releases/030/)；[0.2.0 发布说明](/releases/020/)保留固定 DOCX 和段落样例的原版本结论。Preview Find、原始 Copy 和段落 PDF 选择几何仍有独立限制。
 
-维护基线为 `0.3.0` 产品标签源码。本页按功能说明已交付能力的输入与出口契约，并显式标注候选和未验证范围。后续工作见[现行路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)。
+维护基线为 `0.3.1` 产品标签源码。本页按功能说明已交付能力的输入与出口契约，并显式标注候选和未验证范围。后续工作见[现行路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)。
 
 ## 设计与判定
 

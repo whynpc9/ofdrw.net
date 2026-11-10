@@ -5,14 +5,14 @@ sidebar:
   order: 10
 ---
 
-当前公开版本为 **0.3.0**。普通 SDK 包面向 `netstandard2.0` / `netstandard2.1`，CLI 需要 **.NET 10**。目标框架兼容不代表所有操作系统、RID、AOT 或单文件发布方式都已验证。
+当前公开版本为 **0.3.1**。普通 SDK 包面向 `netstandard2.0` / `netstandard2.1`，CLI 需要 **.NET 10**。目标框架兼容不代表所有操作系统、RID、AOT 或单文件发布方式都已验证。
 
 ## 安装转换元包
 
 需要 DOCX、PDF 和 SVG 转换时，安装聚合包即可：
 
 ```sh
-dotnet add package Ofdrw.Net.Converter --version 0.3.0
+dotnet add package Ofdrw.Net.Converter --version 0.3.1
 ```
 
 该元包引用 `Converter.Docx`、`Converter.Pdf` 和 `Converter.Svg`，适用于[快速开始](https://whynpc9.github.io/ofdrw.net/getting-started/quickstart/)中的转换示例。
@@ -35,14 +35,14 @@ dotnet add package Ofdrw.Net.Converter --version 0.3.0
 例如，只生成和写出 OFD：
 
 ```sh
-dotnet add package Ofdrw.Net.Layout --version 0.3.0
-dotnet add package Ofdrw.Net.Packaging --version 0.3.0
+dotnet add package Ofdrw.Net.Layout --version 0.3.1
+dotnet add package Ofdrw.Net.Packaging --version 0.3.1
 ```
 
 只读取已有 OFD：
 
 ```sh
-dotnet add package Ofdrw.Net.Reader --version 0.3.0
+dotnet add package Ofdrw.Net.Reader --version 0.3.1
 ```
 
 常用类的完整命名空间见 [SDK 入口索引](https://whynpc9.github.io/ofdrw.net/reference/sdk/)。随程序集分发的 XML 文档可用于查看具体公开成员。
@@ -52,14 +52,14 @@ dotnet add package Ofdrw.Net.Reader --version 0.3.0
 先安装 .NET 10，再安装全局工具并检查帮助：
 
 ```sh
-dotnet tool install --global Ofdrw.Net.Cli --version 0.3.0
+dotnet tool install --global Ofdrw.Net.Cli --version 0.3.1
 ofdrw --help
 ```
 
-如已安装 CLI，可用以下命令更新至 0.3.0。
+如已安装 CLI，可用以下命令更新至 0.3.1。
 
 ```sh
-dotnet tool update --global Ofdrw.Net.Cli --version 0.3.0
+dotnet tool update --global Ofdrw.Net.Cli --version 0.3.1
 ```
 
 常用命令和页号规则见 [CLI 参考](https://whynpc9.github.io/ofdrw.net/reference/cli/)。

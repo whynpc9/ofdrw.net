@@ -1,13 +1,13 @@
 ---
 title: "已知问题与版本差异"
-description: "核对 0.3.0、0.2.0 与 preview.10 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
+description: "核对 0.3.1、0.3.0、0.2.0 与 preview.10 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
 sidebar:
   order: 10
 ---
 
-当前公开版本为 **0.3.0**。先核对 0.2.0 到 0.3.0 的增量；旧版差异表保留原版本含义。
+当前公开版本为 **0.3.1**。如果使用 0.3.0 导出骑缝章时在切片接缝看到相邻颜色，可用 0.3.1 重新导出。两类修复及验证边界见[0.3.1 发布说明](/releases/031/)。
 
-## 版本差异与现有限制
+## 0.2.0 到 0.3.0 的历史差异
 
 | 项目 | 0.2.0 | 0.3.0 |
 | --- | --- | --- |
@@ -32,7 +32,7 @@ sidebar:
 | ImageSharp 2.1.13 | 已披露依赖告警 | D10 评估未消除告警 |
 | Skia / Windows Audit025 偶发问题 | 历史根因未定 | 保留诊断，被动观察新自然失败 |
 
-[0.3.0 发布说明](/releases/030/)记录本版范围；[preview.10 发布说明](https://whynpc9.github.io/ofdrw.net/releases/010-preview10/)只描述原发布。后续结果以[路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)及各具名验收报告为准。
+[0.3.0 发布说明](/releases/030/)记录该版范围；[preview.10 发布说明](https://whynpc9.github.io/ofdrw.net/releases/010-preview10/)只描述原发布。后续结果以[路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)及各具名验收报告为准。
 
 ## 转换或显示异常时如何排查
 

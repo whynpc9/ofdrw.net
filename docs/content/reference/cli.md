@@ -9,7 +9,7 @@ sidebar:
 CLI 需要 **.NET 10**。安装并查看所安装版本的完整帮助：
 
 ```sh
-dotnet tool install --global Ofdrw.Net.Cli --version 0.3.0
+dotnet tool install --global Ofdrw.Net.Cli --version 0.3.1
 ofdrw --help
 ```
 

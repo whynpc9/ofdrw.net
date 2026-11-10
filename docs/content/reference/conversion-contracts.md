@@ -6,7 +6,7 @@ sidebar:
   label: "转换与资源约定"
 ---
 
-本页描述 `0.3.0` 的转换、编辑与资源行为。固定样例的发布验收范围见[0.3.0 发布说明](/releases/030/)；0.2.0 的历史结论仍见[原发布说明](/releases/020/)。
+本页描述 `0.3.1` 的转换、编辑与资源行为。固定样例的发布验收范围见[0.3.1 发布说明](/releases/031/)；0.2.0 的历史结论仍见[原发布说明](/releases/020/)。
 
 ## 原始 DOCX 文本与分页
 
@@ -111,7 +111,7 @@ var saved = await new OfdPackageWriter().WriteWithResultAsync(package, output);
 - `OfdToPdfOptions` 控制 OFD 加载和图片解码预算。渲染失败不会以丢失正文的空白后备页冒充成功。
 - 默认 OFD→PDF 仍容忍无法解析或绘制的签章外观，但会通过 `ConvertWithResultAsync().Diagnostics` 报告：`PDF_SIGNATURE_METADATA_UNREADABLE`（签名元数据不可读）、`PDF_SIGNATURE_APPEARANCE_UNREADABLE`（外观载荷或嵌套 OFD 不可读）和 `PDF_SIGNATURE_APPEARANCE_SKIPPED`（外观未绘制，含页索引和签名 ID）；指定页选择时只报告所选页面上的签章；CLI `ofd-to-pdf` 将其输出到 stderr，退出码仍为 0。诊断消息不回显文档原始内容（自 0.2.0 起）。
 - 嵌套签章 OFD 按调用方 `OfdToPdfOptions.PackageLoadOptions` 的限制读取，同一嵌套签章载荷在一次转换中只解析一次（自 0.2.0 起）。
-- main（尚未发布）在 OFD→PDF 和 OFD→图片的 PDF 中间产物中，只嵌入与位图印章 `Clip` 相交的源像素，并按原坐标裁切，避免骑缝章边缘采到相邻片区的像素。
+- 自 0.3.1 起，导出 PDF（包括图片导出的 PDF 中间产物）时，只嵌入与位图印章 `Clip` 相交的源像素，并按原坐标裁切。嵌套 OFD 印章的 PDF Form 会跳过确定完全落在切片外的无描边、无对象变换填充路径。两处处理分别避免位图插值和嵌套路径在切片接缝串色。
 - `OfdPackageWriter` 与 `OfdPackageSignatureCleaner` 向调用方流写入时如中途失败或被取消，已写出的字节刻意不构成可读 ZIP（不写中央目录），避免下游把缺页的部分包当成 OFD；调用方仍应丢弃部分输出，写文件时采用先写临时文件再重命名的方式（自 0.2.0 起）。
 - 外部进程并发消费有界诊断输出，支持超时、取消与进程树清理。原生库内的同步渲染在调用前后检查取消，不能把外部进程超时等同于强制终止任意原生调用。
 - CLI 先验证参数，再写目标目录下的临时文件；成功关闭后才替换目标。失败或取消保留原输出。Ctrl-C 返回 130。格式转换输入输出需使用不同路径；页重排支持原位更新。
