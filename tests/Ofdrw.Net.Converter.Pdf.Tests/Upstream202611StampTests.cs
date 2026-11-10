@@ -42,6 +42,36 @@ public sealed class Upstream202611StampTests
     }
 
     [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public async Task NestedSealSlicesDoNotPaintOppositeColorAtTheSeam(bool strict, int sourceScale)
+    {
+        var signed = await OfdToPdfResultTests.SignedTwoPageSeal(await NestedSeal(sourceScale));
+        if (!strict)
+        {
+            var (_, pdf) = await Convert(signed);
+            AssertPdfSlices(pdf, [true, false], verifySeams: true);
+            return;
+        }
+
+        var converter = new OfdToImageConverter(new OfdToImageOptions
+        {
+            PixelsPerMillimeter = 3,
+            MaxSignatureAppearanceCount = 1
+        });
+        for (var index = 0; index < 2; index++)
+        {
+            using var output = new MemoryStream();
+            await converter.ConvertAsync(new MemoryStream(signed), output, index);
+            using var image = Image.Load<Rgb24>(output.ToArray());
+            AssertSlice((x, y) => image[x * 3, y * 3], red: index == 0);
+            AssertNoOppositeSlice((x, y) => image[x, y], image.Width, red: index == 0);
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ClippedBitmapSealEmbedsOnlyItsSourcePixels(bool strict)
@@ -161,22 +191,23 @@ public sealed class Upstream202611StampTests
         await SaveEvidence("cancelled-signed-input", signed);
     }
 
-    private static async Task<byte[]> NestedSeal()
+    private static async Task<byte[]> NestedSeal(int sourceScale = 1)
     {
         var package = new OfdDocumentPackage();
-        var page = new OfdPage { Index = 0, WidthMillimeters = 40, HeightMillimeters = 20 };
+        var side = 20 * sourceScale;
+        var page = new OfdPage { Index = 0, WidthMillimeters = 2 * side, HeightMillimeters = side };
         package.Pages.Add(page);
         for (var half = 0; half < 2; half++)
         {
             page.Elements.Add(new OfdPathElement
             {
-                XMillimeters = half * 20,
-                WidthMillimeters = 20,
-                HeightMillimeters = 20,
+                XMillimeters = half * side,
+                WidthMillimeters = side,
+                HeightMillimeters = side,
                 Fill = true,
                 Stroke = false,
                 FillColor = half == 0 ? new OfdColor(220, 20, 20) : new OfdColor(20, 20, 220),
-                AbbreviatedData = "M 0 0 L 20 0 L 20 20 L 0 20 C"
+                AbbreviatedData = FormattableString.Invariant($"M 0 0 L {side} 0 L {side} {side} L 0 {side} C")
             });
         }
 
@@ -194,7 +225,7 @@ public sealed class Upstream202611StampTests
         return (result, output.ToArray());
     }
 
-    private static void AssertPdfSlices(byte[] pdf, bool[] redPages)
+    private static void AssertPdfSlices(byte[] pdf, bool[] redPages, bool verifySeams = false)
     {
         using var document = DocLib.Instance.GetDocReader(pdf, new PageDimensions(3d * 25.4d / 72d));
         Assert.Equal(redPages.Length, document.GetPageCount());
@@ -203,13 +234,30 @@ public sealed class Upstream202611StampTests
             using var page = document.GetPageReader(index);
             var width = page.GetPageWidth();
             var pixels = page.GetImage();
-            AssertSlice((x, y) =>
+            Rgb24 Sample(int x, int y)
             {
-                var offset = ((y * 3 * width) + x * 3) * 4;
+                var offset = (y * width + x) * 4;
                 return pixels[offset + 3] == 0
                     ? new Rgb24(255, 255, 255)
                     : new Rgb24(pixels[offset + 2], pixels[offset + 1], pixels[offset]);
-            }, redPages[index]);
+            }
+
+            AssertSlice((x, y) => Sample(x * 3, y * 3), redPages[index]);
+            if (verifySeams) AssertNoOppositeSlice(Sample, width, redPages[index]);
+        }
+    }
+
+    private static void AssertNoOppositeSlice(Func<int, int, Rgb24> sample, int width, bool red)
+    {
+        // Scan the full pixel row across both seam positions. An interior
+        // sample misses the one-pixel stripe at the edge of the slice.
+        for (var x = 0; x < width; x++)
+        {
+            var pixel = sample(x, 120);
+            var expected = red ? pixel.R : pixel.B;
+            var opposite = red ? pixel.B : pixel.R;
+            Assert.True(opposite <= expected + 30,
+                $"Opposite seal color at ({x}, 120) on the {(red ? "red" : "blue")} slice: {pixel}");
         }
     }
 

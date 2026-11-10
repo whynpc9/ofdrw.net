@@ -30,7 +30,8 @@ internal static class OfdPathRenderer
         XGraphics graphics,
         OfdPathElement element,
         double pageOriginX,
-        double pageOriginY)
+        double pageOriginY,
+        XRect? appearanceClip = null)
     {
         if (string.IsNullOrWhiteSpace(element.AbbreviatedData) ||
             (!element.Stroke && !element.Fill))
@@ -56,11 +57,19 @@ internal static class OfdPathRenderer
             // Keep path geometry local, so affine transforms affect both geometry
             // and stroke outlines. BuildClip continues to flatten its own CTM.
             var local = new OfdPathElement { AbbreviatedData = element.AbbreviatedData };
-            var state = new PathState(path, local, 0, 0);
+            var trackBounds = appearanceClip.HasValue && element.Fill && !element.Stroke && element.Transform is not { Length: 6 };
+            var state = new PathState(path, local, 0, 0, trackBounds);
             if (!state.Build(tokens))
             {
                 return false;
             }
+
+            var offsetX = element.XMillimeters - pageOriginX;
+            var offsetY = element.YMillimeters - pageOriginY;
+            // PDF viewers can paint an adjacent fill at a rasterized clip edge.
+            // A fill whose entire path is outside the slice has no visible area.
+            if (trackBounds && appearanceClip is { } clip && state.IsOutside(clip, offsetX, offsetY))
+                return true;
 
             XPen? pen = null;
             XSolidBrush? brush = null;
@@ -93,7 +102,7 @@ internal static class OfdPathRenderer
             var drawingState = graphics.Save();
             try
             {
-                graphics.TranslateTransform(MillimetersToPoints(element.XMillimeters - pageOriginX), MillimetersToPoints(element.YMillimeters - pageOriginY));
+                graphics.TranslateTransform(MillimetersToPoints(offsetX), MillimetersToPoints(offsetY));
                 if (element.Transform is { Length: 6 } matrix)
                     graphics.MultiplyTransform(new XMatrix(matrix[0], matrix[1], matrix[2], matrix[3], MillimetersToPoints(matrix[4]), MillimetersToPoints(matrix[5])));
                 if (pen is not null && brush is not null) graphics.DrawPath(pen, brush, path);
@@ -141,6 +150,11 @@ internal static class OfdPathRenderer
         private readonly OfdPathElement _element;
         private readonly double _pageOriginX;
         private readonly double _pageOriginY;
+        private readonly bool _trackBounds;
+        private double _left = double.PositiveInfinity;
+        private double _top = double.PositiveInfinity;
+        private double _right = double.NegativeInfinity;
+        private double _bottom = double.NegativeInfinity;
         private PointD _current;
         private PointD _figureStart;
         private bool _hasGeometry;
@@ -150,12 +164,26 @@ internal static class OfdPathRenderer
             XGraphicsPath path,
             OfdPathElement element,
             double pageOriginX,
-            double pageOriginY)
+            double pageOriginY,
+            bool trackBounds = false)
         {
             _path = path;
             _element = element;
             _pageOriginX = pageOriginX;
             _pageOriginY = pageOriginY;
+            _trackBounds = trackBounds;
+        }
+
+        internal bool IsOutside(XRect clip, double offsetX, double offsetY)
+        {
+            var left = _left + offsetX;
+            var right = _right + offsetX;
+            var top = _top + offsetY;
+            var bottom = _bottom + offsetY;
+            return clip.Width > 0 && clip.Height > 0 &&
+                double.NegativeInfinity < left && left <= right && right < double.PositiveInfinity &&
+                double.NegativeInfinity < top && top <= bottom && bottom < double.PositiveInfinity &&
+                (right <= clip.Left || left >= clip.Right || bottom <= clip.Top || top >= clip.Bottom);
         }
 
         public bool Build(IReadOnlyList<string> tokens)
@@ -464,9 +492,18 @@ internal static class OfdPathRenderer
                 y = transformedY;
             }
 
-            return new PointD(
-                MillimetersToPoints(_element.XMillimeters + x - _pageOriginX),
-                MillimetersToPoints(_element.YMillimeters + y - _pageOriginY));
+            x = _element.XMillimeters + x - _pageOriginX;
+            y = _element.YMillimeters + y - _pageOriginY;
+            if (_trackBounds)
+            {
+                // Line endpoints and Bézier control points conservatively bound
+                // the generated geometry, including implicit closing segments.
+                _left = Math.Min(_left, x);
+                _top = Math.Min(_top, y);
+                _right = Math.Max(_right, x);
+                _bottom = Math.Max(_bottom, y);
+            }
+            return new PointD(MillimetersToPoints(x), MillimetersToPoints(y));
         }
 
         private static PointD EllipsePoint(

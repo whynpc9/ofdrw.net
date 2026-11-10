@@ -316,7 +316,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken, bool reusePayloads = false,
         OfdToPdfRun? run = null)
     {
-        var forms = new Dictionary<OfdPage, XForm>();
+        var forms = new Dictionary<(OfdPage Page, XRect? Clip), XForm>();
         using var bitmap = new SinglePayloadResource<XImage>(data =>
         {
             ValidateImage(data, maximumPixels);
@@ -365,18 +365,25 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             run?.Add(OfdSignatureAppearanceReader.AppearanceSkipped, "form scale", appearance.PageId, appearance.SignatureId);
                             continue;
                         }
+                        var sourceClip = appearance.Clip is { } slice
+                            ? new XRect(slice.X / appearance.WidthMillimeters * appearance.OfdPage.WidthMillimeters,
+                                slice.Y / appearance.HeightMillimeters * appearance.OfdPage.HeightMillimeters,
+                                slice.Width / appearance.WidthMillimeters * appearance.OfdPage.WidthMillimeters,
+                                slice.Height / appearance.HeightMillimeters * appearance.OfdPage.HeightMillimeters)
+                            : (XRect?)null;
                         if (!reusePayloads)
                         {
-                            using var form = CreateAppearanceForm(document, appearance, maximumPixels, annotationMaterial, cancellationToken);
+                            using var form = CreateAppearanceForm(document, appearance, maximumPixels, annotationMaterial, cancellationToken, sourceClip);
                             graphics.DrawImage(form, target);
                             run?.Rendered();
                         }
                         else
                         {
-                            if (!forms.TryGetValue(appearance.OfdPage, out var form))
+                            var key = (appearance.OfdPage, sourceClip);
+                            if (!forms.TryGetValue(key, out var form))
                             {
-                                form = CreateAppearanceForm(document, appearance, maximumPixels, annotationMaterial, cancellationToken);
-                                forms.Add(appearance.OfdPage, form);
+                                form = CreateAppearanceForm(document, appearance, maximumPixels, annotationMaterial, cancellationToken, sourceClip);
+                                forms.Add(key, form);
                             }
                             graphics.DrawImage(form, target);
                             run?.Rendered();
@@ -437,14 +444,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static XForm CreateAppearanceForm(PdfDocument document, PreparedSignatureAppearance appearance,
-        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken token)
+        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken token, XRect? sourceClip)
     {
         var form = new XForm(document, XUnit.FromMillimeter(appearance.OfdPage!.WidthMillimeters),
             XUnit.FromMillimeter(appearance.OfdPage.HeightMillimeters));
         try
         {
             using var graphics = XGraphics.FromForm(form);
-            DrawPage(graphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, annotationMaterial, token);
+            DrawPage(graphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, annotationMaterial, token, sourceClip);
             return form;
         }
         catch { form.Dispose(); throw; }
@@ -460,7 +467,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawPage(XGraphics graphics, OfdPage page, DocumentFontContext fonts,
-        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
+        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken,
+        XRect? appearanceClip = null)
     {
         try
         {
@@ -566,7 +574,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
                     if (element is OfdPathElement path)
                     {
-                        if ((path.Stroke || path.Fill) && !OfdPathRenderer.TryDraw(graphics, path, page.XMillimeters, page.YMillimeters))
+                        if ((path.Stroke || path.Fill) && !OfdPathRenderer.TryDraw(graphics, path, page.XMillimeters, page.YMillimeters, appearanceClip))
                             throw new NotSupportedException("OFD path literal could not be rendered.");
                     }
                 }
