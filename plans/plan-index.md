@@ -33,6 +33,23 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | DONE |
 | [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | DONE (SDK throws for unmeasurable sources, e.g. untrusted or name-only fonts, so locate exits 1 there instead of 3) |
 | [019](019-upstream-2026-11-regression-and-triage.md) | 2026-11 upstream regression validation and bounded capability triage | P1 validation / P2 candidates | M | Reuse 001–018 | DONE (bounded A/B/C validation upon merge after current-head CI; [acceptance record](../docs/validation/upstream-2026-11.md)) |
+| [020](020-harfbuzz-face-cache.md) | Shape text without copying the font on every call | P1 | M | — | TODO |
+| [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | TODO |
+| [022](022-external-tool-lookup.md) | External tools are never picked up from the working directory | P1 | S–M | — | TODO |
+| [023](023-cff-hostile-font-hardening.md) | A hostile CFF font can only make its own font "unsupported" | P1 | M | — | TODO |
+| [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | TODO |
+| [025](025-ci-hygiene.md) | Scheduled advisory check, job timeouts and explicit workflow permissions | P2 | S | (after 024) | TODO |
+| [026](026-emergency-line-breaking.md) | Long unbreakable text lays out in linear time and within its stated budgets | P2 | M | 020 | TODO |
+| [027](027-docx-native-indent-geometry.md) | DOCX native layout survives a first-line indent that does not fit the text column | P2 | S | — | TODO |
+| [028](028-cli-argument-strictness.md) | The CLI rejects arguments it would otherwise silently ignore | P2 | S–M | (after 021) | TODO |
+| [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | TODO |
+| [030](030-cli-terminal-output-escaping.md) | The CLI escapes control characters in text that comes from input files | P2 | S–M | (after 028) | TODO |
+| [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | TODO |
+| [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | TODO |
+| [033](033-pdf-rtl-line-band-scan.md) | The PDF right-to-left import checks neighbouring lines in linear time | P3 | S | — | TODO |
+| [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | TODO |
+| [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | TODO |
+| [036](036-cli-named-areas.md) | `ofdrw areas list/fill` and a named-areas user guide | P3 feature | M | 030, (after 035) | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -60,3 +77,23 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - **Migrating PdfSharpCore / PdfPig / MigraDocCore / Docnet.** Belongs with the roadmap's deferred backend/TFM decision (D10); high visual re-acceptance cost.
 - **DOCX style resolution re-serializes XML per run; OFD→PDF re-decodes repeated images.** Real performance costs, but unmeasured; plan only after profiling a representative document.
 - **General text layout, PDF vector in the CLI.** Roadmap items that the roadmap deliberately leaves unscheduled; maintainer's call.
+
+## Second advisor run (2026-11-13, commit `427433a`)
+
+Plans 020–036 come from a second `improve` audit, focused on the code added since `09a2e7e`. The maintainer selected findings 1–15 and the three direction items; finding 16 (stale links to plans 001–018, which now live in `docs/engineering/plans/`) was set aside at the maintainer's request, so the links for 001–018 above are unchanged.
+
+Recommended order:
+
+1. **Independent, highest value first**: 020, 021, 022, 023, 024.
+2. **CLI chain (same files, `Program.cs` and `docs/content/reference/cli.md`)**: 021 → 028 → 030 → 035 → 036. The order avoids merge conflicts; only 036 → 030 is a real dependency (it calls `TerminalText.Escape`), and 035's applicability checks assume 028's structure.
+3. **Layout**: 020 → 026 (026's timings assume the face cache). 027 is independent but edits `FlowFinalTextLayout.cs`, which 026 does not touch.
+4. **Anywhere**: 025 (after 024 if both are done, because 024 renames a workflow job), 029, 031, 032, 033, 034.
+
+What was verified while planning, and what was not:
+
+- Measured or reproduced at `427433a`: 020 (shaping time and allocation), 026 (quadratic emergency breaking; 90,000 unbreakable characters fail the line budget at default limits), 027 (raw `TextLayoutException` from DOCX native layout), 028 (every row of its table), 029 (minimum-version dependencies; the exact-version pack target works with the installed SDK), 030 (raw control characters in CLI error output), 032 (verifier reports valid references with `.`/`..` as missing), 034 (PDFium raster has genuine straight alpha), 035 (fixture PDF imports its outline and attachment).
+- Derived from the code only: 021, 022, 023, 025, 031, 033. For 024 the required check-run names were confirmed on the `v0.3.1` commit; the workflow change itself can only be proven by the operator rehearsal the plan describes.
+- Plans 026, 027, 034 and 036 change or add rendered output and carry the repository's visual-check steps. macOS Preview acceptance is never claimed by a plan.
+- 028 and 029 change behaviour for existing callers on purpose (rejected command lines; exact package pins). Both must be listed under compatibility in the next release note.
+
+Rejected in this run (do not re-audit): reader copying document resources per page (a 4,000-page synthetic document reads in 1.1 s; the claimed budget cliff did not reproduce); writer and pruner quadratic scans (unmeasured, small at the 10,000-page cap); remaining culture-sensitive parses (no reachable wrong output found); unreferenced `collect-pdf-vector-r*` scripts (frozen evidence generators); DOCX ZIP budget on .NET Framework (low confidence, needs a net48 host); number-format `"R"` exponent in clip paths and a public budget-exception type (low leverage); docs gaps in the CLI reference and local verification recipe (declined by the maintainer).
