@@ -48,7 +48,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | DONE |
 | [033](033-pdf-rtl-line-band-scan.md) | The PDF right-to-left import checks neighbouring lines in linear time | P3 | S | — | DONE |
 | [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | DONE |
-| [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | TODO |
+| [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | DONE |
 | [036](036-cli-named-areas.md) | `ofdrw areas list/fill` and a named-areas user guide | P3 feature | M | 030, (after 035) | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)

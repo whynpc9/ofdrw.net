@@ -85,6 +85,8 @@ internal static partial class Cli
                 throw new ArgumentException("verify-signatures does not take an output path.");
             if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf"))
                 RejectDocxOnlyOptions(options);
+            if (command is not ("convert" or "pdf-to-ofd"))
+                RejectPdfToOfdOnlyOptions(options);
 
             if (command == "extract-text")
             {
@@ -149,6 +151,8 @@ internal static partial class Cli
                 throw new ArgumentException("--document applies only to OFD input commands.");
             if (mode is not (ConversionMode.DocxToPdf or ConversionMode.DocxToOfd))
                 RejectDocxOnlyOptions(options);
+            if (mode != ConversionMode.PdfToOfd)
+                RejectPdfToOfdOnlyOptions(options);
             var pages = ParsePages(options.Pages);
             await ConvertAsync(
                 mode,
@@ -159,7 +163,8 @@ internal static partial class Cli
                 options.DocxOfdMode,
                 options.NativeEmbeddedBoldBehavior,
                 options.LibreOfficePath,
-                options.FontDirectories, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
+                options.FontDirectories, options.DocumentIndex ?? 0,
+                options.CopyBookmarks, options.CopyAttachments, cancellationToken).ConfigureAwait(false);
             WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
         }
@@ -181,6 +186,14 @@ internal static partial class Cli
             throw new ArgumentException($"{options.DocxOnlyOptions[0]} applies only to DOCX conversion.");
     }
 
+    private static void RejectPdfToOfdOnlyOptions(CliOptions options)
+    {
+        if (options.CopyBookmarks)
+            throw new ArgumentException("--copy-bookmarks applies only to PDF to OFD conversion.");
+        if (options.CopyAttachments)
+            throw new ArgumentException("--copy-attachments applies only to PDF to OFD conversion.");
+    }
+
     private static async Task ConvertAsync(
         ConversionMode mode,
         string inputPath,
@@ -192,6 +205,8 @@ internal static partial class Cli
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories,
         int documentIndex,
+        bool copyBookmarks,
+        bool copyAttachments,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
@@ -232,7 +247,11 @@ internal static partial class Cli
         }
         else if (mode == ConversionMode.PdfToOfd)
         {
-            var converter = new PdfToOfdConverter();
+            var converter = new PdfToOfdConverter(new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions
+            {
+                CopyBookmarks = copyBookmarks,
+                CopyAttachments = copyAttachments,
+            });
             var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
             foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         }
@@ -557,6 +576,12 @@ internal static partial class Cli
                 case "--include-templates":
                     options.IncludeTemplates = true;
                     break;
+                case "--copy-bookmarks":
+                    options.CopyBookmarks = true;
+                    break;
+                case "--copy-attachments":
+                    options.CopyAttachments = true;
+                    break;
                 case "--require-signatures":
                     options.RequireSignatures = true;
                     break;
@@ -744,7 +769,7 @@ internal static partial class Cli
           ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice|built-in]
           ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
           ofdrw text-to-ofd <input.txt> <output.ofd> [--font-family NAME] [--font-size-mm NUMBER]
-          ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
+          ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5] [--copy-bookmarks] [--copy-attachments]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--document 2] [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--document 2] [--pages 1]
           ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--document 2] [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
@@ -813,6 +838,7 @@ internal static partial class Cli
           --max-pdf-bytes, --max-signature-appearances ofd-to-image: PDF bytes / selected stamp count budgets.
           --max-total-input-bytes, --max-pages, --max-entries image-to-ofd: cumulative input/page/entry budgets.
           --include-templates Include template text during extraction.
+          --copy-bookmarks, --copy-attachments Copy PDF outline destinations and embedded files, respectively, during PDF to OFD conversion. Both default to off.
           --require-signatures verify-signatures: treat a document without signature declarations as a failure (exit 4).
           --skip-unsupported  Drop unsupported raw objects during merge.
           --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
@@ -837,6 +863,8 @@ internal static partial class Cli
 
         public bool IncludeTemplates { get; set; }
         public bool RequireSignatures { get; set; }
+        public bool CopyBookmarks { get; set; }
+        public bool CopyAttachments { get; set; }
 
         public string? LibreOfficePath { get; set; }
 

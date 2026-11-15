@@ -21,6 +21,7 @@ ofdrw --help
 | DOCX → OFD | `ofdrw docx-to-ofd -i input.docx -o output.ofd --docx-ofd-mode native` |
 | DOCX → PDF | `ofdrw docx-to-pdf -i input.docx -o output.pdf` |
 | PDF → OFD | `ofdrw pdf-to-ofd -i input.pdf -o output.ofd` |
+| PDF → OFD，复制书签和附件（main，尚未发布） | `ofdrw pdf-to-ofd -i input.pdf -o output.ofd --copy-bookmarks --copy-attachments` |
 | OFD → PDF | `ofdrw ofd-to-pdf -i input.ofd -o output.pdf` |
 | OFD → 单页 SVG | `ofdrw ofd-to-svg -i input.ofd -o page.svg --pages 1` |
 | OFD → 静态 HTML | `ofdrw ofd-to-html -i input.ofd -o preview.html --pages 1-3` |
