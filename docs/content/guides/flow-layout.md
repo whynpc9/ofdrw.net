@@ -96,7 +96,7 @@ document.OnElement = (graphics, placement) =>
 
 - `OnPage` 按页序各调用一次，绘制对象位于正文下方。
 - `OnElement` 按文档顺序对每个最终片段调用一次，绘制对象紧随该片段。
-- 段落按行、表格按行、固定块与命名区域按整体提供片段。
+- 段落按行、表格按行、固定块与[命名区域](https://whynpc9.github.io/ofdrw.net/guides/named-areas/)按整体提供片段。
 - `FlowBoundary.PageIndex` 从零开始，X/Y/Width/Height 是物理页上的毫米坐标。
 
 测量失败时不运行回调；回调抛错或取消会使 `Render` 失败且不返回包。回调运行时不要修改 `Blocks` 或其内容，调用方仍需正确使用绘图上下文的变换和裁剪。
