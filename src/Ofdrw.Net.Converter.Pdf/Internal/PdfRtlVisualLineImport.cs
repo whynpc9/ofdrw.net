@@ -33,6 +33,89 @@ internal static class PdfRtlVisualLineImport
     private const double MinimumOriginStep = 0.5;
     private const double TrailingSpaceAdvance = 0.25;
 
+    /// <summary>Indexes band conflicts for baseline clusters in descending Y order, with NaNs last.</summary>
+    internal sealed class LineBands
+    {
+        private const ulong SignBit = 1UL << 63;
+        private readonly bool[] _conflicts;
+
+        internal LineBands(IReadOnlyList<double> y, IReadOnlyList<double> em, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _conflicts = new bool[y.Count];
+            Scan(y, em, fromTop: true, cancellationToken);
+            Scan(y, em, fromTop: false, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        internal bool Conflicts(int index) => _conflicts[index];
+
+        private void Scan(IReadOnlyList<double> y, IReadOnlyList<double> em, bool fromTop,
+            CancellationToken cancellationToken)
+        {
+            var nearest = double.NegativeInfinity;
+            var furthestReach = double.NegativeInfinity;
+            for (var step = 0; step < y.Count; step++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var index = fromTop ? step : y.Count - 1 - step;
+                var position = fromTop ? -y[index] : y[index];
+                var radius = NeighbourLineDistance * em[index];
+                // Non-finite baselines and NaN sizes make the original strict comparison false.
+                if (double.IsNaN(position) || double.IsInfinity(position) || double.IsNaN(radius))
+                    continue;
+
+                // Positions increase in either pass. The closest earlier cluster can enter
+                // our band, and any earlier cluster's band can reach our position.
+                _conflicts[index] |= position - nearest < radius || position <= furthestReach;
+                nearest = position;
+                furthestReach = Math.Max(furthestReach, LastPositionInBand(position, radius));
+            }
+        }
+
+        private static double LastPositionInBand(double position, double radius)
+        {
+            // The original test rounds (candidate - position) before comparing it to the
+            // radius. A rounded sum alone can misclassify the strict boundary. A candidate
+            // above this upper bound would be past the exact sum (or past MaxValue).
+            var upper = Math.Min(position + radius, double.MaxValue);
+            if (upper - position < radius)
+                return upper;
+
+            var high = OrderedBits(upper) - 1;
+            var predecessor = FromOrderedBits(high);
+            if (predecessor - position < radius)
+                return predecessor;
+
+            // Near cancellation, several representable values can round to the same
+            // distance. Find the last passing value in at most 64 predicate checks.
+            var low = OrderedBits(position);
+            while (high - low > 1)
+            {
+                var middle = low + (high - low) / 2;
+                if (FromOrderedBits(middle) - position < radius)
+                    low = middle;
+                else
+                    high = middle;
+            }
+            return FromOrderedBits(low);
+        }
+
+        // Map finite doubles to unsigned keys increasing in numeric order (both zeros
+        // are adjacent). A positive em gives a positive radius, so position always passes.
+        private static ulong OrderedBits(double value)
+        {
+            var bits = unchecked((ulong)BitConverter.DoubleToInt64Bits(value));
+            return (bits & SignBit) == 0 ? bits | SignBit : ~bits;
+        }
+
+        private static double FromOrderedBits(ulong key)
+        {
+            var bits = (key & SignBit) == 0 ? ~key : key & ~SignBit;
+            return BitConverter.Int64BitsToDouble(unchecked((long)bits));
+        }
+    }
+
     internal sealed class ImportedWord
     {
         internal ImportedWord(string text, double[] origins, double baseline, double left, double right,
@@ -129,6 +212,7 @@ internal static class PdfRtlVisualLineImport
             }
         }
 
+        LineBands? bands = null;
         PdfPaintedTextEvidence? painted = null;
         var consumed = new HashSet<Letter>(ReferenceComparer.Instance);
         var lines = new List<IReadOnlyList<ImportedWord>>();
@@ -138,13 +222,10 @@ internal static class PdfRtlVisualLineImport
             cancellationToken.ThrowIfCancellationRequested();
             if (!clusters[index].Any(item => PdfImportReadingOrder.ContainsRightToLeft(item.Letter.Value ?? string.Empty)))
                 continue;
-            for (var other = 0; other < clusters.Count; other++)
-            {
-                if (other == index) continue;
-                if (Math.Abs(clusterY[other] - clusterY[index]) < NeighbourLineDistance * Math.Max(clusterEm[other], clusterEm[index]))
-                    throw PdfImportReadingOrder.ProfileRejection(number,
-                        "right-to-left text shares its line band with glyphs on a different baseline (superscript, overlap or ruby).");
-            }
+            bands ??= new LineBands(clusterY, clusterEm, cancellationToken);
+            if (bands.Conflicts(index))
+                throw PdfImportReadingOrder.ProfileRejection(number,
+                    "right-to-left text shares its line band with glyphs on a different baseline (superscript, overlap or ruby).");
             // Only directly painted, unclipped glyphs are geometry evidence.
             painted ??= PdfPaintedTextEvidence.Scan(document, page, cancellationToken);
             foreach (var item in clusters[index])
