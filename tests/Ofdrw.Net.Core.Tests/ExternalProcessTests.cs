@@ -94,6 +94,59 @@ public sealed class ExternalProcessTests : IDisposable
     }
 
     [Fact]
+    public async Task Runner_ShouldNotResolveBareNameFromWorkingDirectory()
+    {
+        var name = "ofdrw-planted-" + Guid.NewGuid().ToString("N");
+        var working = Path.Combine(_directory, "untrusted documents");
+        var trusted = Path.Combine(_directory, "trusted tools");
+        Directory.CreateDirectory(working);
+        Directory.CreateDirectory(trusted);
+        var windows = OperatingSystem.IsWindows();
+        var fileName = windows ? name + ".exe" : name;
+        var planted = Path.Combine(working, fileName);
+        if (windows)
+        {
+            File.Copy(Path.Combine(Environment.SystemDirectory, "cmd.exe"), planted);
+        }
+        else
+        {
+            await File.WriteAllTextAsync(planted, "#!/bin/sh\nprintf 'tool started\\n'\n");
+            File.SetUnixFileMode(planted, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+
+        Task<ExternalProcessResult> Probe(string executable, string path)
+        {
+            // Only the launcher probe runs in the untrusted directory.
+            // cmd.exe parses /c as shell text, so pass a verbatim command to the probe.
+            var arguments = windows ? "/d /c echo tool started" : string.Empty;
+            var start = CreateStart("owned-tool-lookup", executable, working, arguments);
+            start.WorkingDirectory = working;
+            start.Environment["PATH"] = path;
+            return ExternalProcessRunner.RunAsync(start, TimeSpan.FromSeconds(20), default);
+        }
+
+        var explicitPath = await Probe(Path.Combine(".", fileName), trusted);
+        Assert.Equal(0, explicitPath.ExitCode);
+        Assert.Equal("tool started", explicitPath.Output.Trim());
+
+        var blockedDirectories = new List<string> { "", "." };
+        if (windows && working[1] == ':')
+        {
+            blockedDirectories.Add(working[..2] + ".");
+            blockedDirectories.Add(working[2..]);
+        }
+        blockedDirectories.Add(trusted);
+        var missing = await Probe(name, string.Join(Path.PathSeparator, blockedDirectories));
+        Assert.Equal(2, missing.ExitCode);
+        Assert.Equal("executable not found", missing.Output.Trim());
+
+        File.Move(planted, Path.Combine(trusted, fileName));
+        var found = await Probe(name, trusted);
+        Assert.Equal(0, found.ExitCode);
+        Assert.Equal("tool started", found.Output.Trim());
+    }
+
+    [Fact]
     public async Task Runner_ShouldRejectCancellationBeforeStarting()
     {
         var pidFile = Path.Combine(_directory, "must-not-start");
