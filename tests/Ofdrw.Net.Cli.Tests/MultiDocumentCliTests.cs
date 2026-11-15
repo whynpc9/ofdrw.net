@@ -5,6 +5,7 @@ using Ofdrw.Net.TestSupport;
 
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class MultiDocumentCliTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "ofd-multidoc-cli-" + Guid.NewGuid().ToString("N"));
