@@ -9,6 +9,7 @@ using Ofdrw.Net.Signatures.Verification;
 
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class DocumentToolsCliTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofd-document-tools-" + Guid.NewGuid().ToString("N"));
