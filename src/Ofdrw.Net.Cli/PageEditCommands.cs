@@ -65,7 +65,7 @@ internal static partial class Cli
         edit(package);
         await using var output = new AtomicOutput(outputPath);
         var result = await new OfdPackageWriter().WriteWithResultAsync(package, output.Stream, token).ConfigureAwait(false);
-        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         await output.CommitAsync(token).ConfigureAwait(false);
     }
 }

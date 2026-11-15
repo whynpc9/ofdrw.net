@@ -107,7 +107,8 @@ internal static partial class Cli
             Console.WriteLine($"Preflight {report.SummaryOutcome} (run {report.RunState}, profile {report.ProfileVersion})");
             foreach (var id in ruleIds) Console.WriteLine($"{id} {report.GetRuleOutcome(id)}");
             foreach (var result in report.RuleResults.Where(result => result.Outcome != PreflightOutcome.Pass))
-                Console.WriteLine($"  {result.RuleId} {result.Outcome} {result.ReasonCode} {result.Evidence.Entry} {result.Evidence.Selector}");
+                Console.WriteLine($"  {result.RuleId} {result.Outcome} {result.ReasonCode} " +
+                    $"{TerminalText.Escape(result.Evidence.Entry)} {TerminalText.Escape(result.Evidence.Selector)}");
             Console.WriteLine($"Coverage gaps: {report.CoverageGaps.Count}");
         }
 

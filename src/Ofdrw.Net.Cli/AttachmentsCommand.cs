@@ -101,7 +101,7 @@ internal static partial class Cli
         if (!json)
         {
             foreach (var attachment in package.Attachments)
-                Console.WriteLine(string.Join("\t", attachment.Id ?? string.Empty, attachment.Name, attachment.MediaType,
+                Console.WriteLine(string.Join("\t", TerminalText.Escape(attachment.Id), TerminalText.Escape(attachment.Name), TerminalText.Escape(attachment.MediaType),
                     attachment.IsExternal ? "" : attachment.Data.Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     attachment.IsExternal ? "external" : "internal"));
             return;

@@ -114,4 +114,6 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 
 （main，尚未发布）`attachments extract` 与 `preflight --output` 的输出路径不得与输入相同。在 Linux 和 macOS 上，替换已有文件时保留其 Unix 权限位，新建文件沿用进程默认权限。
 
+文本模式的状态、诊断和列表输出会把来自输入文件的控制字符和双向格式字符显示为 `\uXXXX`（例如制表符显示为 `\u0009`），因此 `attachments list` 的列数固定；`--json` 输出和 `extract-text` 提取的正文不做此替换，在终端直接查看不可信文档的正文时建议写入文件（main，尚未发布）。
+
 失败时保留完整命令、退出码和标准错误诊断。各格式的流写入、临时文件和资源预算边界见[转换约定](https://whynpc9.github.io/ofdrw.net/reference/conversion-contracts/)。
