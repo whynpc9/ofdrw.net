@@ -69,6 +69,24 @@ public sealed class PreflightCliTests : IDisposable
     }
 
     [Fact]
+    public async Task Output_OntoInput_FailsAndKeepsInput()
+    {
+        var input = await Valid();
+        var original = await File.ReadAllBytesAsync(input);
+        var alias = Path.Combine(_directory, ".", Path.GetFileName(input));
+
+        foreach (var output in new[] { input, alias })
+        {
+            var (code, _, stderr) = await Run(["preflight", input, "--json", "--output", output]);
+
+            Assert.Equal(1, code);
+            Assert.Contains("different paths", stderr);
+            Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+        }
+    }
+
+    [Fact]
     public async Task Preflight_OutputWithoutJson_IsError()
     {
         var (code, _, stderr) = await Run(["preflight", await Valid(), "--output", Path.Combine(_directory, "r.json")]);

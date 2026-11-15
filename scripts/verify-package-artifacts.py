@@ -49,9 +49,9 @@ def inspect(directory: Path, version: str):
             if license_node is None or license_node.get('type') != 'expression' or license_node.text != 'MIT':
                 raise ValueError(f'Missing or mismatched MIT license expression: {path.name}')
             for dependency in root.iter():
-                if dependency.tag.rsplit('}', 1)[-1] == 'dependency' and dependency.get('id', '').startswith('Ofdrw.Net.'):
-                    if dependency.get('version') not in (version, f'[{version}]'):
-                        raise ValueError(f'Mismatched SDK dependency in {path.name}: {dependency.attrib}')
+                if dependency.tag.rsplit('}', 1)[-1] == 'dependency' and dependency.get('id', '').lower().startswith('ofdrw.net.'):
+                    if dependency.get('version') != f'[{version}]':
+                        raise ValueError(f'SDK dependency must be the exact range [{version}] in {path.name}: {dependency.attrib}')
             required = (['tools/net10.0/any/Ofdrw.Net.Cli.dll'] if name == 'Ofdrw.Net.Cli'
                         else [] if name == 'Ofdrw.Net.Converter'
                         else [f'lib/{framework}/{name}{extension}' for framework in ('netstandard2.0', 'netstandard2.1') for extension in ('.dll', '.xml')])
