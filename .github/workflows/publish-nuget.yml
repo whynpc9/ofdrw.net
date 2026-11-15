@@ -16,8 +16,12 @@ on:
 env:
   GIT_LFS_SKIP_SMUDGE: "1"
 
+concurrency:
+  group: publish-nuget-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
@@ -26,7 +30,12 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     permissions:
       contents: read
-      id-token: write
+      actions: read
+      checks: read
+    outputs:
+      package_version: ${{ steps.release.outputs.package_version }}
+      tag: ${{ steps.release.outputs.tag }}
+      artifact_id: ${{ steps.release-packages.outputs.artifact-id }}
 
     steps:
       - name: Resolve existing release tag
@@ -65,8 +74,7 @@ jobs:
             echo "Release tag must resolve to a commit."
             exit 1
           fi
-          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
-          echo "commit=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "tag=$TAG_NAME" "package_version=$PACKAGE_VERSION" "commit=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
           echo "Resolved $TAG_NAME to $COMMIT_SHA (package $PACKAGE_VERSION)."
 
@@ -92,6 +100,33 @@ jobs:
               json.dumps({key: os.environ[key] for key in keys}, indent=2) + "\n")
           PY
 
+      - name: Require CI and SES success on the release commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        run: |
+          set -euo pipefail
+          require_check() {
+            local workflow="$1" required="$2" run suite_id status conclusion checks
+            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?branch=main&event=push&head_sha=$RELEASE_COMMIT&per_page=1" \
+              --jq '.workflow_runs[0] | [.check_suite_id, .status, .conclusion] | @tsv')"
+            IFS=$'\t' read -r suite_id status conclusion <<< "$run"
+            if [[ ! "$suite_id" =~ ^[0-9]+$ || "$status" != completed || "$conclusion" != success ]]; then
+              echo "Release commit $RELEASE_COMMIT requires a successful $workflow push run on main (found: ${run:-none})."
+              return 1
+            fi
+            checks="$(gh api "repos/$GITHUB_REPOSITORY/check-suites/$suite_id/check-runs?per_page=100&filter=latest" --paginate \
+              --jq '.check_runs[] | select(.app.slug == "github-actions") | [.name, .head_sha, .status, .conclusion] | @tsv')"
+            if ! grep -Fxq "$required"$'\t'"$RELEASE_COMMIT"$'\t'completed$'\t'success <<< "$checks"; then
+              echo "Release commit $RELEASE_COMMIT has no successful '$required' check in $workflow suite $suite_id."
+              return 1
+            fi
+            echo "Verified '$required' in $workflow suite $suite_id for $RELEASE_COMMIT."
+          }
+          require_check ci.yml "CI complete"
+          require_check ses-interop.yml ses-interop
+
       - name: Fetch test fixtures from LFS
         shell: bash
         run: git lfs pull --include="e2e/**,tests/**" --exclude=""
@@ -116,6 +151,12 @@ jobs:
 
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Reject NuGet advisories outside the allowlist
+        run: python3 scripts/check-nuget-advisories.py
+
+      - name: Test repository scripts
+        run: python3 -m unittest discover -s scripts/tests -v
 
       - name: Verify release license and resolved dependency inventory
         run: python3 scripts/verify-package-artifacts.py --notices-only
@@ -151,7 +192,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-validation
+          name: release-validation-${{ github.run_attempt }}
           path: |
             artifacts/release-validation
             artifacts/release-trusted-font-tests
@@ -163,6 +204,64 @@ jobs:
       - name: Require candidate-bound macOS Preview acceptance
         run: python3 scripts/verify-preview-record.py "${{ env.PACKAGE_VERSION }}"
 
+      - name: Verify package manifest
+        run: python3 scripts/verify-package-artifacts.py artifacts/nuget "${{ env.PACKAGE_VERSION }}" --verify-manifest
+
+      - name: Record package checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          cd artifacts/nuget
+          sha256sum -- *.nupkg *.snupkg > SHA256SUMS
+
+      - name: Upload validated packages
+        id: release-packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ github.run_attempt }}
+          compression-level: 0 # nupkg/snupkg payloads are already compressed.
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+            artifacts/nuget/SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Download validated packages
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.validate.outputs.artifact_id }}
+          path: packages
+          merge-multiple: true
+
+      - name: Verify package checksums
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          PACKAGE_VERSION: ${{ needs.validate.outputs.package_version }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          cd packages
+          # Recompute the whole inventory to reject extra packages as well as changed or missing files.
+          sha256sum -- *.nupkg *.snupkg | diff -u SHA256SUMS -
+          echo "Verified package files for $RELEASE_TAG (version $PACKAGE_VERSION)."
+
       - name: NuGet login (OIDC)
         id: nuget-login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
@@ -171,12 +270,9 @@ jobs:
 
       - name: Publish packages and symbols
         shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
-          python3 scripts/verify-package-artifacts.py artifacts/nuget "${{ env.PACKAGE_VERSION }}" --verify-manifest
-          shopt -s nullglob
-          for package in artifacts/nuget/*.nupkg; do
-            if [[ "$package" == *.snupkg ]]; then
-              continue
-            fi
-            dotnet nuget push "$package" --source "https://api.nuget.org/v3/index.json" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --skip-duplicate
+          for package in packages/*.nupkg; do
+            dotnet nuget push "$package" --source "https://api.nuget.org/v3/index.json" --api-key "$NUGET_API_KEY" --skip-duplicate
           done
