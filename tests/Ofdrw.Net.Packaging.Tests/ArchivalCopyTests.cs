@@ -447,7 +447,23 @@ public class ArchivalCopyTests
         finally { Directory.Delete(folder, true); }
     }
 
-    [Fact]
+    public sealed class CaseSensitiveVolumeFactAttribute : FactAttribute
+    {
+        public CaseSensitiveVolumeFactAttribute()
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "ofdrw-case-probe-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            try
+            {
+                File.WriteAllText(Path.Combine(directory, "probe"), "probe");
+                if (File.Exists(Path.Combine(directory, "PROBE")))
+                    Skip = "The temporary volume is case-insensitive; case-distinct file names are one file here.";
+            }
+            finally { Directory.Delete(directory, recursive: true); }
+        }
+    }
+
+    [CaseSensitiveVolumeFact]
     public async Task CaseDistinctDestinationWorksOnCaseSensitiveVolume()
     {
         var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
@@ -455,7 +471,7 @@ public class ArchivalCopyTests
         {
             var source = Path.Combine(folder, "archive.ofd"); var destination = Path.Combine(folder, "Archive.ofd");
             File.WriteAllBytes(source, Zip(Seed("<Permissions><Edit>false</Edit></Permissions>")));
-            if (File.Exists(destination)) return; // This volume treats the two names as one file.
+            Assert.False(File.Exists(destination));
             var inputHash = Hash(File.ReadAllBytes(source));
             var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, new());
             Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
