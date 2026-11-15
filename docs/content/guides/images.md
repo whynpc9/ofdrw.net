@@ -26,7 +26,9 @@ await new OfdToImageConverter(options).ConvertAsync(input, output, pageIndex: 0)
 ```
 
 - 默认输出 PNG、144 DPI；`PixelsPerMillimeter` 表示每毫米像素数，144 DPI 约为 `5.67`。
-- API 页索引从 **0** 开始。每次调用导出所选的一个页面，背景合成到白色。
+- API 页索引从 **0** 开始。每次调用导出所选的一个页面，默认合成到白色背景。
+- SDK 的 `OfdToImageOptions.Background` 支持 `OfdImageBackground.White`（默认）、`OfdImageBackground.Opaque(r, g, b)`（指定 RGB 底色）和 `OfdImageBackground.Transparent`（保留页面透明度）。此选项在 main 可用，尚未发布。
+- 透明背景仅支持带 alpha 通道的 PNG。JPEG 必须使用不透明背景，指定透明背景时构造转换器会抛出 `ArgumentException`。CLI 的 `ofd-to-image` 使用白底。
 - JPEG 通过 `Format=OfdImageFormat.Jpeg` 和 `JpegQuality` 配置；它是有损格式，验证文字、线框和边缘时优先使用 PNG。
 - 输出经 OFD→PDF→PDFium 链路渲染，继承 PDF 出口的字体、图元和原生依赖边界。
 
