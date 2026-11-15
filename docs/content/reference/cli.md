@@ -110,4 +110,6 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 
+（main，尚未发布）`attachments extract` 与 `preflight --output` 的输出路径不得与输入相同。在 Linux 和 macOS 上，替换已有文件时保留其 Unix 权限位，新建文件沿用进程默认权限。
+
 失败时保留完整命令、退出码和标准错误诊断。各格式的流写入、临时文件和资源预算边界见[转换约定](https://whynpc9.github.io/ofdrw.net/reference/conversion-contracts/)。

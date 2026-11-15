@@ -54,6 +54,24 @@ public sealed class AttachmentsCliTests : IDisposable
     }
 
     [Fact]
+    public async Task Extract_OntoInput_FailsAndKeepsInput()
+    {
+        var input = await Seeded();
+        var original = await File.ReadAllBytesAsync(input);
+        var alias = PathFor(Path.Combine(".", Path.GetFileName(input)));
+
+        foreach (var output in new[] { input, alias })
+        {
+            var (code, _, stderr) = await Run("attachments", "extract", input, "--id", "7", "--output", output);
+
+            Assert.Equal(1, code);
+            Assert.Contains("different paths", stderr);
+            Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+        }
+    }
+
+    [Fact]
     public async Task Extract_External_Fails()
     {
         var output = PathFor("x.bin");

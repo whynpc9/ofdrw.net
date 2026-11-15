@@ -64,6 +64,7 @@ internal static partial class Cli
             // Never derive the destination from the stored attachment name.
             var outputPath = values.TryGetValue("--output", out var output) && output.Length > 0
                 ? output : throw new ArgumentException("--output is required for attachments extract.");
+            ConversionPathIdentity.RequireDifferentPaths(input, outputPath);
             var package = await ReadToolInputAsync(input, token, documentIndex, allowMultiple: true).ConfigureAwait(false);
             var attachment = SelectAttachment(package, id);
             if (attachment.IsExternal) throw new InvalidOperationException("External attachments have no embedded payload.");
