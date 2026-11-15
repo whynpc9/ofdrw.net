@@ -34,20 +34,20 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | DONE (SDK throws for unmeasurable sources, e.g. untrusted or name-only fonts, so locate exits 1 there instead of 3) |
 | [019](019-upstream-2026-11-regression-and-triage.md) | 2026-11 upstream regression validation and bounded capability triage | P1 validation / P2 candidates | M | Reuse 001–018 | DONE (bounded A/B/C validation upon merge after current-head CI; [acceptance record](../docs/validation/upstream-2026-11.md)) |
 | [020](020-harfbuzz-face-cache.md) | Shape text without copying the font on every call | P1 | M | — | TODO |
-| [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | TODO |
+| [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | DONE |
 | [022](022-external-tool-lookup.md) | External tools are never picked up from the working directory | P1 | S–M | — | TODO |
 | [023](023-cff-hostile-font-hardening.md) | A hostile CFF font can only make its own font "unsupported" | P1 | M | — | TODO |
-| [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | TODO |
+| [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | DONE |
 | [025](025-ci-hygiene.md) | Scheduled advisory check, job timeouts and explicit workflow permissions | P2 | S | (after 024) | TODO |
 | [026](026-emergency-line-breaking.md) | Long unbreakable text lays out in linear time and within its stated budgets | P2 | M | 020 | TODO |
 | [027](027-docx-native-indent-geometry.md) | DOCX native layout survives a first-line indent that does not fit the text column | P2 | S | — | TODO |
 | [028](028-cli-argument-strictness.md) | The CLI rejects arguments it would otherwise silently ignore | P2 | S–M | (after 021) | TODO |
-| [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | TODO |
+| [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | DONE |
 | [030](030-cli-terminal-output-escaping.md) | The CLI escapes control characters in text that comes from input files | P2 | S–M | (after 028) | TODO |
-| [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | TODO |
+| [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | DONE |
 | [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | TODO |
 | [033](033-pdf-rtl-line-band-scan.md) | The PDF right-to-left import checks neighbouring lines in linear time | P3 | S | — | TODO |
-| [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | TODO |
+| [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | DONE |
 | [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | TODO |
 | [036](036-cli-named-areas.md) | `ofdrw areas list/fill` and a named-areas user guide | P3 feature | M | 030, (after 035) | TODO |
 

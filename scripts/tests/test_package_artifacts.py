@@ -58,13 +58,29 @@ class PackageArtifactsTests(unittest.TestCase):
         self.assertNotEqual(before, packages.inspect(self.root, self.version))
 
     def test_wrong_sdk_dependency_is_rejected(self):
+        self._with_core_dependency('0.0.0')
+        with self.assertRaises(ValueError):
+            packages.inspect(self.root, self.version)
+
+    def test_minimum_version_sdk_dependency_is_rejected(self):
+        self._with_core_dependency(self.version)
+        with self.assertRaises(ValueError):
+            packages.inspect(self.root, self.version)
+
+    def test_exact_version_sdk_dependency_is_accepted(self):
+        self._with_core_dependency(f'[{self.version}]')
+        self.assertEqual(12, len(packages.inspect(self.root, self.version)['packages']))
+
+    def _with_core_dependency(self, version_text):
         path = self.root / f'Ofdrw.Net.Core.{self.version}.nupkg'
         with zipfile.ZipFile(path) as archive:
             contents = {name: archive.read(name) for name in archive.namelist()}
-        contents['Ofdrw.Net.Core.nuspec'] = f'<package><metadata><id>Ofdrw.Net.Core</id><version>{self.version}</version><license type="expression">MIT</license><dependencies><dependency id="Ofdrw.Net.Reader" version="0.0.0" /></dependencies></metadata></package>'.encode()
+        contents['Ofdrw.Net.Core.nuspec'] = contents['Ofdrw.Net.Core.nuspec'].replace(
+            b'</metadata>',
+            f'<dependencies><dependency id="Ofdrw.Net.Reader" version="{version_text}" /></dependencies></metadata>'.encode(),
+        )
         with zipfile.ZipFile(path, 'w') as archive:
             for name, data in contents.items(): archive.writestr(name, data)
-        with self.assertRaises(ValueError): packages.inspect(self.root, self.version)
 
     def test_missing_license_expression_is_rejected(self):
         path = self.root / f'Ofdrw.Net.Core.{self.version}.nupkg'

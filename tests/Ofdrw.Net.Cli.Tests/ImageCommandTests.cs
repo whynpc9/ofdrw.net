@@ -6,6 +6,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class ImageCommandTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofdrw-image-cli-" + Guid.NewGuid().ToString("N"));

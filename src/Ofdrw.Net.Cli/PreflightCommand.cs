@@ -60,6 +60,7 @@ internal static partial class Cli
         if (string.IsNullOrWhiteSpace(input)) throw new ArgumentException("An input OFD path is required.");
         if (outputPath is not null && !json) throw new ArgumentException("--output requires --json.");
         if (!File.Exists(input)) throw new FileNotFoundException("Input file does not exist.", input);
+        if (outputPath is not null) ConversionPathIdentity.RequireDifferentPaths(input, outputPath);
 
         long length;
         string? sha256 = null;

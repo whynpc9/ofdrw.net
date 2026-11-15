@@ -50,11 +50,13 @@
 
 `docs/engineering/baselines/third-party-dependencies.json` 当前固定 40 个直接/传递包的版本、nuspec 许可类型与值、项目 URL，以及以文件声明许可的内容哈希。旧版仅提供 `licenseUrl` 的条目保留原 URL，不把它自动推断为 SPDX 结论。依赖图变化会阻断检查；审核新增包的真实许可和分发影响后，才运行 `python3 scripts/verify-package-artifacts.py --update-dependency-baseline` 并审查清单差异。CI 安装的字体与外部 LibreOffice/Word 不在 NuGet 发布载荷内，其授权与来源按 `THIRD-PARTY-NOTICES.md` 分别说明。
 
+`Directory.Build.targets` 将同系列 `Ofdrw.Net.*` 包依赖打包为精确版本范围 `[x.y.z]`；`scripts/verify-package-artifacts.py` 拒绝默认发布包中任何未精确锁定到本批版本的同系列依赖。
+
 ## 发布候选顺序
 
 1. 从固定提交运行 Python 检查、.NET 全套测试和同批包消费 E2E。保存包 manifest、OFD、PDF、PNG、日志。
 2. 使用 macOS Preview 分别打开**本次**显式 Native 与默认模式的 PDF，两种模式各逐页核对源 DOCX。既有消费目录通常命名为 `generated-docx-native.pdf` / `generated-docx-default.pdf`；preview.10 必须选择来自上述严格物理 profile 的实际产物并记录准确路径/哈希，不能因沿用文件名而误签 Regular-only 对照。检查后填写 `artifacts/<candidate>/preview-acceptance.md`，记录问题和体积变化。直接 `generated-docx.pdf` 不属于 Native 链路。
 3. 只有明确 release profile 内两种模式均无遗留视觉问题且各两页均已检查，才把 `docs/validation/releases/<package-version>-acceptance.json` 更新为 `accepted`（保留 preview.10 的历史文件），并填写候选 `package_version`；preview.10 必须同时附上上述 `release_profile`、`known_limitations`，而不是隐藏范围外失败或未完成的语义验收。`source_fingerprint` 用 `python3 scripts/verify-preview-record.py --print-fingerprint <package-version>` 获取；五个 SHA256 分别来自样例 DOCX、显式 Native 与默认模式的 OFD 和各自导出的 PDF。指纹仅排除当前版本自己的验收 JSON；其余跟踪文件（含历史验收记录）先冻结，再构建和验收；改动其他跟踪文件或改用新版本后必须重做候选绑定及必要验证，不能沿用旧 fingerprint。PDF/OFD 哈希是本机实际查看的证据；因生成文件可含时间元数据，不要求另一台 CI runner 的重建 ZIP/PDF 与本机逐字节相同。
-4. 对该记录提交打 tag。发布工作流先复测、打包、消费原包并核对哈希，再校验记录，最后推 NuGet。产品修复后使用新提交、新版本重新验收，不覆盖同版本包。preview.10 的首次凭据失败确认零上传后，经 PR96/PR97 的 main 手动恢复入口，对原不可变 tag 源码重新执行全部门禁并使用 Trusted Publishing；原 tag 未移动，控制器与产品提交分别记录。此恢复不豁免门禁，也不授权覆盖已有包。公开源安装回读与下游生产环境签收仍需另行记录。
+4. 对该记录提交打 tag。发布工作流先要求该提交在 `main` 推送运行中的 `CI complete` 和 `ses-interop` 检查通过，再复测、打包、消费原包、核对哈希并校验验收记录。独立的发布任务下载已验证的包，重新核对清单和哈希后推送 NuGet。产品修复后使用新提交、新版本重新验收，不覆盖同版本包。preview.10 的首次凭据失败确认零上传后，经 PR96/PR97 的 main 手动恢复入口，对原不可变 tag 源码重新执行全部门禁并使用 Trusted Publishing；原 tag 未移动，控制器与产品提交分别记录。此恢复不豁免门禁，也不授权覆盖已有包。公开源安装回读与下游生产环境签收仍需另行记录。
 
 `.NET` 命令遵守根 `AGENTS.md` 的 `DOTNET_CLI_HOME`、首次体验/遥测变量与单节点 flags。preview.10 的限定 Preview 验收和公开消费页面检查已完成；功能绿测、Q05、公开发布、下游生产签收仍是不同结论，不能相互替代。
