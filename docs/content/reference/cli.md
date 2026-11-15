@@ -110,6 +110,8 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 
+下一版本兼容性（main，尚未发布）：使用通用解析器的转换、页面和查询命令会拒绝重复的单值选项（例如 `-i` 与 `--input` 算同一选项）、多余的位置参数及不适用的选项，并返回 `1`。例如 `extract-text` 不接受 `--pages`，`verify-signatures` 不接收输出路径，非 DOCX 转换不接受 DOCX 选项。位置参数按输入、输出的顺序填入未由选项指定的路径；DOCX 转换仍可重复传入 `--font-directory`。使用共用编号解析的页码和 `--document` 文档号须为不带正负号的正整数。对 `merge`，未知的 `-` 开头参数会报错；如文件名以 `-` 开头，可用 `./-name.ofd` 指定路径。
+
 （main，尚未发布）`attachments extract` 与 `preflight --output` 的输出路径不得与输入相同。在 Linux 和 macOS 上，替换已有文件时保留其 Unix 权限位，新建文件沿用进程默认权限。
 
 失败时保留完整命令、退出码和标准错误诊断。各格式的流写入、临时文件和资源预算边界见[转换约定](https://whynpc9.github.io/ofdrw.net/reference/conversion-contracts/)。

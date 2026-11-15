@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ofdrw.Net.Converter.Docx;
 using Ofdrw.Net.Converter.Docx.Converters;
 using Ofdrw.Net.Converter.Pdf.Converters;
@@ -76,6 +77,14 @@ internal static partial class Cli
                 throw new ArgumentException("--require-signatures applies only to verify-signatures.");
             if (options.Box is not null && command != "crop")
                 throw new ArgumentException("--box applies only to crop.");
+            if (options.IncludeTemplates && command != "extract-text")
+                throw new ArgumentException("--include-templates applies only to extract-text.");
+            if (options.Pages is not null && command is ("extract-text" or "verify-signatures"))
+                throw new ArgumentException($"--pages does not apply to {command}.");
+            if (command == "verify-signatures" && options.OutputPath is not null)
+                throw new ArgumentException("verify-signatures does not take an output path.");
+            if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf"))
+                RejectDocxOnlyOptions(options);
 
             if (command == "extract-text")
             {
@@ -138,6 +147,8 @@ internal static partial class Cli
             var mode = ResolveMode(command, options.InputPath, options.OutputPath);
             if (options.DocumentIndex.HasValue && mode != ConversionMode.OfdToPdf)
                 throw new ArgumentException("--document applies only to OFD input commands.");
+            if (mode is not (ConversionMode.DocxToPdf or ConversionMode.DocxToOfd))
+                RejectDocxOnlyOptions(options);
             var pages = ParsePages(options.Pages);
             await ConvertAsync(
                 mode,
@@ -162,6 +173,12 @@ internal static partial class Cli
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
         }
+    }
+
+    private static void RejectDocxOnlyOptions(CliOptions options)
+    {
+        if (options.DocxOnlyOptions.Count > 0)
+            throw new ArgumentException($"{options.DocxOnlyOptions[0]} applies only to DOCX conversion.");
     }
 
     private static async Task ConvertAsync(
@@ -412,6 +429,7 @@ internal static partial class Cli
         {
             if (arg is "-h" or "--help") { PrintHelp(); return 0; }
             if (arg == "--skip-unsupported") skipUnsupported = true;
+            else if (arg.StartsWith("-", StringComparison.Ordinal)) throw new ArgumentException($"Unknown option: {arg}");
             else paths.Add(arg);
         }
         if (paths.Count < 3)
@@ -497,6 +515,12 @@ internal static partial class Cli
     {
         var options = new CliOptions();
         var positionals = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        void Once(string name)
+        {
+            if (!seen.Add(name)) throw new ArgumentException($"Duplicate {name}.");
+        }
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -509,14 +533,17 @@ internal static partial class Cli
                     break;
                 case "-i":
                 case "--input":
+                    Once("--input");
                     options.InputPath = ReadValue(args, ref i, arg);
                     break;
                 case "-o":
                 case "--output":
+                    Once("--output");
                     options.OutputPath = ReadValue(args, ref i, arg);
                     break;
                 case "-p":
                 case "--pages":
+                    Once("--pages");
                     options.Pages = ReadValue(args, ref i, arg);
                     break;
                 case "--box":
@@ -534,18 +561,27 @@ internal static partial class Cli
                     options.RequireSignatures = true;
                     break;
                 case "--libreoffice":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
                     options.LibreOfficePath = ReadValue(args, ref i, arg);
                     break;
                 case "--docx-engine":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
                     options.DocxEngine = ParseDocxEngine(ReadValue(args, ref i, arg));
                     break;
                 case "--docx-ofd-mode":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
                     options.DocxOfdMode = ParseDocxToOfdMode(ReadValue(args, ref i, arg));
                     break;
                 case "--native-embedded-bold-behavior":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
                     options.NativeEmbeddedBoldBehavior = ParseNativeEmbeddedBoldBehavior(ReadValue(args, ref i, arg));
                     break;
                 case "--font-directory":
+                    options.DocxOnlyOptions.Add(arg);
                     options.FontDirectories.Add(ReadValue(args, ref i, arg));
                     break;
                 default:
@@ -559,17 +595,18 @@ internal static partial class Cli
             }
         }
 
-        if (options.InputPath is null && positionals.Count > 0)
+        var next = 0;
+        if (options.InputPath is null && next < positionals.Count)
         {
-            options.InputPath = positionals[0];
+            options.InputPath = positionals[next++];
         }
 
-        if (options.OutputPath is null && positionals.Count > 1)
+        if (options.OutputPath is null && next < positionals.Count)
         {
-            options.OutputPath = positionals[1];
+            options.OutputPath = positionals[next++];
         }
 
-        if (positionals.Count > 2)
+        if (next < positionals.Count)
         {
             throw new ArgumentException("Too many positional arguments.");
         }
@@ -644,7 +681,7 @@ internal static partial class Cli
 
     private static int ParseOneBasedPage(string value)
     {
-        if (!int.TryParse(value, out var page) || page <= 0)
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var page) || page <= 0)
         {
             throw new ArgumentException($"Invalid page number: {value}");
         }
@@ -810,6 +847,8 @@ internal static partial class Cli
         public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
 
         public List<string> FontDirectories { get; } = new();
+
+        public List<string> DocxOnlyOptions { get; } = new();
 
         public bool Help { get; set; }
     }
