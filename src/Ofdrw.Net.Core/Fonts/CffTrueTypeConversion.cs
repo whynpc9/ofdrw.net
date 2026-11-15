@@ -14,13 +14,20 @@ internal static class CffTrueTypeConversion
 {
     private const double Tolerance = 1.0;
     private const int MaximumPieces = 16;
+    private const long DefaultMaximumOperations = 256_000_000;
+    private const long DefaultMaximumGlyfBytes = 64L * 1024 * 1024;
     private static readonly string[] DroppedTables = ["CFF ", "VORG", "DSIG", "hdmx", "LTSH", "VDMX"];
 
-    internal static byte[] Convert(byte[] faceBytes, CancellationToken cancellationToken = default)
+    internal static byte[] Convert(byte[] faceBytes, CancellationToken cancellationToken = default) =>
+        Convert(faceBytes, cancellationToken, DefaultMaximumOperations, DefaultMaximumGlyfBytes);
+
+    internal static byte[] Convert(byte[] faceBytes, CancellationToken cancellationToken, long maximumOperations,
+        long maximumGlyfBytes)
     {
         var face = new OpenTypeFace(faceBytes);
         var outlines = new CffCharStringOutlines(faceBytes);
         var count = outlines.GlyphCount;
+        var budget = new CffWorkBudget(maximumOperations);
         using var glyf = new MemoryStream();
         var loca = new byte[(count + 1) * 4];
         int maxPoints = 0, maxContours = 0;
@@ -29,13 +36,16 @@ internal static class CffTrueTypeConversion
             if ((gid & 255) == 0) cancellationToken.ThrowIfCancellationRequested();
             OpenTypeFace.Put32(loca, gid * 4, (uint)glyf.Length);
             if (gid == 0) continue; // .notdef stays empty; it is never drawn.
-            var outline = outlines.Read(gid, cancellationToken);
+            var outline = outlines.Read(gid, budget, cancellationToken);
             var contours = Quadratic(outline);
             if (contours.Count == 0) continue;
             var points = contours.Sum(contour => contour.Count);
             if (points > 65535 || contours.Count > 32767) throw new NotSupportedException("A CFF glyph is too complex for TrueType.");
             maxPoints = Math.Max(maxPoints, points); maxContours = Math.Max(maxContours, contours.Count);
             var bytes = Encode(contours);
+            var paddedLength = (bytes.Length + 3L) & ~3L;
+            if (glyf.Length + paddedLength > maximumGlyfBytes)
+                throw new InvalidDataException("CFF TrueType rendition exceeds its size budget.");
             glyf.Write(bytes, 0, bytes.Length);
             while (glyf.Length % 4 != 0) glyf.WriteByte(0);
         }

@@ -201,7 +201,9 @@ internal readonly struct CffIndex
                 throw new InvalidDataException("Invalid CFF INDEX offsets.");
             offsets[i] = (int)value;
         }
-        var end = checked(dataStart + offsets[count] - 1);
+        var endLong = (long)dataStart + offsets[count] - 1;
+        if (endLong > cff.Length) throw new InvalidDataException("CFF INDEX data exceeds the font program.");
+        var end = (int)endLong;
         OpenTypeFace.Require(cff, dataStart, end - dataStart);
         return new CffIndex(start, dataStart, end, offsets);
     }
@@ -283,6 +285,18 @@ internal static class CffDict
     }
 }
 
+/// <summary>Tracks shared CharString operations within one font rendition.</summary>
+internal sealed class CffWorkBudget(long maximumOperations)
+{
+    internal long Remaining { get; private set; } = maximumOperations;
+
+    internal void Spend(long work)
+    {
+        if (work > Remaining) throw new InvalidDataException("CFF font exceeded its total interpretation budget.");
+        Remaining -= work;
+    }
+}
+
 /// <summary>Managed Type 2 CharString interpreter producing original-GID cubic outlines in design units.</summary>
 /// <remarks>Hints are parsed and ignored. seac-style accented endchar, CFF2 blending and the
 /// random operator are rejected. Budgets bound subroutine depth, operators and points.</remarks>
@@ -346,11 +360,14 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
         _ = interpreter.Finish(1);
     }
 
-    public TrueTypeGlyphOutline Read(int glyphId, CancellationToken cancellationToken = default)
+    public TrueTypeGlyphOutline Read(int glyphId, CancellationToken cancellationToken = default) =>
+        Read(glyphId, null, cancellationToken);
+
+    internal TrueTypeGlyphOutline Read(int glyphId, CffWorkBudget? budget, CancellationToken cancellationToken)
     {
         if (glyphId <= 0 || glyphId >= GlyphCount)
             throw new NotSupportedException("The requested original GID is outside the admitted font.");
-        var interpreter = new Interpreter(_program, _program.LocalSubrs(glyphId), cancellationToken);
+        var interpreter = new Interpreter(_program, _program.LocalSubrs(glyphId), cancellationToken, budget: budget);
         var charStrings = _program.CharStrings;
         interpreter.Run(charStrings.ItemStart(glyphId), charStrings.ItemEnd(glyphId));
         var contours = interpreter.Finish(_program.Scale);
@@ -365,6 +382,7 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
         private readonly CffIndex _global, _local;
         private readonly int _globalBias, _localBias;
         private readonly CancellationToken _token;
+        private readonly CffWorkBudget? _budget;
         private readonly double[] _stack = new double[48];
         private readonly double[] _transient = new double[32];
         private readonly List<List<TrueTypeOutlinePoint>> _contours = new();
@@ -375,11 +393,12 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
         private readonly HashSet<int>? _globalUsed, _localUsed;
 
         internal Interpreter(CffFontProgram program, CffIndex local, CancellationToken token,
-            HashSet<int>? globalUsed = null, HashSet<int>? localUsed = null)
+            HashSet<int>? globalUsed = null, HashSet<int>? localUsed = null, CffWorkBudget? budget = null)
         {
             _data = program.Bytes; _global = program.GlobalSubrs; _local = local; _token = token;
             _globalBias = Bias(_global.Count); _localBias = Bias(_local.Count);
             _globalUsed = globalUsed; _localUsed = localUsed;
+            _budget = budget;
         }
 
         private static int Bias(int count) => count < 1240 ? 107 : count < 33900 ? 1131 : 32768;
@@ -397,6 +416,8 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
 
         private void Push(double value)
         {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+                throw new InvalidDataException("CFF CharString produced a non-finite operand.");
             if (_sp >= _stack.Length) throw new InvalidDataException("CFF CharString operand stack overflow.");
             _stack[_sp++] = value;
         }
@@ -424,6 +445,7 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
             while (cursor < end)
             {
                 if (++_operations > MaximumOperations) throw new InvalidDataException("CFF CharString exceeded its operation budget.");
+                _budget?.Spend(1);
                 if ((_operations & 1023) == 0) _token.ThrowIfCancellationRequested();
                 var b0 = _data[cursor++];
                 if (b0 >= 32)
@@ -704,7 +726,7 @@ internal sealed class CffCharStringOutlines : IGlyphOutlineSource
         private TrueTypeOutlinePoint Point(double x, double y, bool onCurve)
         {
             if (++_points > MaximumPoints) throw new InvalidDataException("CFF outline point budget exceeded.");
-            if (Math.Abs(x) > 1_000_000 || Math.Abs(y) > 1_000_000)
+            if (!(Math.Abs(x) <= 1_000_000) || !(Math.Abs(y) <= 1_000_000))
                 throw new InvalidDataException("CFF point exceeds bounded design coordinates.");
             return new TrueTypeOutlinePoint(x, y, onCurve);
         }
