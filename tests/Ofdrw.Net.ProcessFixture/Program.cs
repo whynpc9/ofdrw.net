@@ -4,6 +4,22 @@ using System.Diagnostics;
 
 switch (args[0])
 {
+    case "owned-tool-lookup":
+    {
+        var target = new ProcessStartInfo(args[1], args[3]) { WorkingDirectory = args[2] };
+        try
+        {
+            var result = await ExternalProcessRunner.RunAsync(target, TimeSpan.FromSeconds(10), default);
+            Console.Out.Write(result.Output);
+            Console.Error.Write(result.Error);
+            return result.ExitCode;
+        }
+        catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == 2)
+        {
+            Console.WriteLine("executable not found");
+            return 2;
+        }
+    }
     case "owned-launch-window-probe":
         return await UnixLaunchOwnershipProbe.RunAsync(args[1]);
     case "owned-signal-probe":

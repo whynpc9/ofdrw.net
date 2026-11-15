@@ -482,18 +482,10 @@ internal abstract class OwnedProcessGroup : IDisposable
             }
             return pair;
         }
-        private static string ResolveExecutable(string name)
-        {
-            if (Path.IsPathRooted(name)) return name;
-            if (name.IndexOf(Path.DirectorySeparatorChar) >= 0) return Path.GetFullPath(name);
-            foreach (var root in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() }
-                .Concat((Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator)))
-            {
-                var candidate = Path.GetFullPath(Path.Combine(root, name));
-                if (File.Exists(candidate) && access(candidate, 1) == 0) return candidate;
-            }
-            throw new Win32Exception(2, "Executable not found: " + name);
-        }
+        private static string ResolveExecutable(string name) =>
+            ExecutableSearch.Find(name, AppContext.BaseDirectory, Environment.GetEnvironmentVariable("PATH"),
+                windows: false, candidate => File.Exists(candidate) && access(candidate, 1) == 0)
+            ?? throw new Win32Exception(2, "Executable not found: " + name);
         private static void Check(int error, string operation) { if (error != 0) throw new Win32Exception(error, operation); }
         [StructLayout(LayoutKind.Sequential)] private struct PollDescriptor { internal int Descriptor; internal short Events; internal short ReturnedEvents; }
         [DllImport("libc", SetLastError = true)] private static extern int pipe(int[] descriptors);
@@ -569,7 +561,10 @@ internal abstract class OwnedProcessGroup : IDisposable
                 startup.Startup.Size = Marshal.SizeOf<StartupInfoEx>();
                 startup.Startup.Flags = 0x100; // STARTF_USESTDHANDLES
                 startup.Startup.Input = input; startup.Startup.Output = output[1]; startup.Startup.Error = error[1];
-                var command = new StringBuilder(Quote(info.FileName));
+                var executable = ExecutableSearch.Find(info.FileName, AppContext.BaseDirectory,
+                    Environment.GetEnvironmentVariable("PATH"), windows: true, File.Exists)
+                    ?? throw new Win32Exception(2, "Executable not found: " + info.FileName);
+                var command = new StringBuilder(Quote(executable));
                 // Windows Process.Start sends Arguments verbatim to the target.
                 if (!string.IsNullOrEmpty(info.Arguments)) command.Append(' ').Append(info.Arguments);
                 else foreach (var argument in arguments) command.Append(' ').Append(Quote(argument));
