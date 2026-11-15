@@ -11,6 +11,8 @@ public sealed class OfdToImageOptions
     public OfdImageFormat Format { get; set; } = OfdImageFormat.Png;
     /// <summary>JPEG quality from 1 to 100, default 90.</summary>
     public int JpegQuality { get; set; } = 90;
+    /// <summary>Page background. Defaults to opaque white. <see cref="OfdImageBackground.Transparent"/> requires PNG.</summary>
+    public OfdImageBackground Background { get; set; } = OfdImageBackground.White;
     /// <summary>Archive entry, compressed input and expansion budgets; copied at construction.</summary>
     public OfdPackageLoadOptions PackageLoadOptions { get; set; } = new();
     /// <summary>Maximum selected signature placements; repeated payloads share one decoded nested package.</summary>

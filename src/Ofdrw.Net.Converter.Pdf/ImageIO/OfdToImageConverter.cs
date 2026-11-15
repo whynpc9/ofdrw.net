@@ -16,13 +16,14 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Ofdrw.Net.Converter.Pdf.Converters;
 
-/// <summary>Exports one zero-based OFD page through the existing PDF renderer and PDFium, composited onto white.</summary>
+/// <summary>Exports one zero-based OFD page through the existing PDF renderer and PDFium.
+/// Composites onto the configured background (white by default) or keeps the page's transparency in PNG.</summary>
 public sealed class OfdToImageConverter
 {
     private readonly OfdToImageOptions _options;
     /// <summary>Creates a PNG exporter at 144 DPI with default budgets.</summary>
     public OfdToImageConverter() : this(new OfdToImageOptions()) { }
-    /// <summary>Copies and validates resolution, encoding and budgets.</summary>
+    /// <summary>Copies and validates resolution, encoding, background and budgets.</summary>
     public OfdToImageConverter(OfdToImageOptions options)
     {
         if (options is null) throw new ArgumentNullException(nameof(options));
@@ -30,6 +31,9 @@ public sealed class OfdToImageConverter
         if (!Enum.IsDefined(typeof(OfdImageFormat), options.Format) || options.JpegQuality < 1 || options.JpegQuality > 100 ||
             options.MaxSignatureAppearanceCount <= 0 || options.MaxPixels <= 0 || options.MaxRasterWorkingBytes <= 0 || options.MaxIntermediatePdfBytes <= 0 || options.MaxOutputBytes <= 0)
             throw new ArgumentException("Encoding, quality and positive image budgets are required.", nameof(options));
+        var background = options.Background ?? throw new ArgumentException("An image background is required.", nameof(options));
+        if (background.IsTransparent && options.Format != OfdImageFormat.Png)
+            throw new ArgumentException("JPEG cannot store transparency. Use PNG or an opaque background.", nameof(options));
         var load = options.PackageLoadOptions ?? throw new ArgumentException("Package load budgets are required.", nameof(options));
         if (load.DocumentIndex < 0 || load.MaxInputBytes <= 0 || load.MaxEntryCount <= 0 || load.MaxPageCount <= 0 || load.MaxEntryUncompressedBytes <= 0 ||
             load.MaxAnnotationObjectCount <= 0 || load.MaxAnnotationXmlBytes <= 0 ||
@@ -38,6 +42,7 @@ public sealed class OfdToImageConverter
         _options = new OfdToImageOptions
         {
             PixelsPerMillimeter = options.PixelsPerMillimeter, Format = options.Format, JpegQuality = options.JpegQuality,
+            Background = background,
             MaxSignatureAppearanceCount = options.MaxSignatureAppearanceCount,
             MaxPixels = options.MaxPixels, MaxRasterWorkingBytes = options.MaxRasterWorkingBytes,
             MaxIntermediatePdfBytes = options.MaxIntermediatePdfBytes, MaxOutputBytes = options.MaxOutputBytes,
@@ -95,15 +100,32 @@ public sealed class OfdToImageConverter
         var raw = raster.GetImage();
         cancellationToken.ThrowIfCancellationRequested();
         using var source = Image.LoadPixelData<Bgra32>(raw, actualWidth, actualHeight);
-        using var canvas = new Image<Rgb24>(actualWidth, actualHeight, Color.White);
-        canvas.Mutate(context => context.DrawImage(source, 1f));
-        // PDFium rounds physical sizes to integer pixels. Normalize the at-most-one-pixel difference to the documented ceil grid.
-        if (actualWidth != width || actualHeight != height) canvas.Mutate(context => context.Resize(width, height));
+        // Normalize PDFium's integer raster (including the minimum native sampling above) to the requested ceil grid.
+        var needsResize = actualWidth != width || actualHeight != height;
         using var encoded = new ImageIoStagingStream(_options.MaxOutputBytes);
-        if (_options.Format == OfdImageFormat.Png)
-            await canvas.SaveAsync(encoded, new PngEncoder { ColorType = PngColorType.Rgb }, cancellationToken).ConfigureAwait(false);
+        var background = _options.Background;
+        if (background.IsTransparent)
+        {
+            // PDFium supplies straight BGRA. Weight the colors by alpha during resize to avoid fringes.
+            if (needsResize)
+                source.Mutate(context => context.Resize(new ResizeOptions
+                {
+                    Size = new Size(width, height),
+                    Mode = ResizeMode.Stretch,
+                    PremultiplyAlpha = true
+                }));
+            await source.SaveAsync(encoded, new PngEncoder { ColorType = PngColorType.RgbWithAlpha }, cancellationToken).ConfigureAwait(false);
+        }
         else
-            await canvas.SaveAsync(encoded, new JpegEncoder { Quality = _options.JpegQuality }, cancellationToken).ConfigureAwait(false);
+        {
+            using var canvas = new Image<Rgb24>(actualWidth, actualHeight, Color.FromRgb(background.Red, background.Green, background.Blue));
+            canvas.Mutate(context => context.DrawImage(source, 1f));
+            if (needsResize) canvas.Mutate(context => context.Resize(width, height));
+            if (_options.Format == OfdImageFormat.Png)
+                await canvas.SaveAsync(encoded, new PngEncoder { ColorType = PngColorType.Rgb }, cancellationToken).ConfigureAwait(false);
+            else
+                await canvas.SaveAsync(encoded, new JpegEncoder { Quality = _options.JpegQuality }, cancellationToken).ConfigureAwait(false);
+        }
         await encoded.PublishAsync(imageOutput, cancellationToken).ConfigureAwait(false);
     }
 
