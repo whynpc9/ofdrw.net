@@ -37,7 +37,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | TODO |
 | [022](022-external-tool-lookup.md) | External tools are never picked up from the working directory | P1 | S–M | — | TODO |
 | [023](023-cff-hostile-font-hardening.md) | A hostile CFF font can only make its own font "unsupported" | P1 | M | — | DONE |
-| [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | TODO |
+| [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | DONE |
 | [025](025-ci-hygiene.md) | Scheduled advisory check, job timeouts and explicit workflow permissions | P2 | S | (after 024) | TODO |
 | [026](026-emergency-line-breaking.md) | Long unbreakable text lays out in linear time and within its stated budgets | P2 | M | 020 | TODO |
 | [027](027-docx-native-indent-geometry.md) | DOCX native layout survives a first-line indent that does not fit the text column | P2 | S | — | TODO |
@@ -47,7 +47,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | DONE |
 | [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | TODO |
 | [033](033-pdf-rtl-line-band-scan.md) | The PDF right-to-left import checks neighbouring lines in linear time | P3 | S | — | TODO |
-| [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | TODO |
+| [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | DONE |
 | [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | TODO |
 | [036](036-cli-named-areas.md) | `ofdrw areas list/fill` and a named-areas user guide | P3 feature | M | 030, (after 035) | TODO |
 
