@@ -170,7 +170,7 @@ internal static partial class Cli
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
+            Console.Error.WriteLine($"Error: {TerminalText.Escape(ex.Message)}");
             return 1;
         }
     }
@@ -234,7 +234,7 @@ internal static partial class Cli
         {
             var converter = new PdfToOfdConverter();
             var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
-            foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+            foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         }
         else
         {
@@ -242,7 +242,7 @@ internal static partial class Cli
             { PackageLoadOptions = new OfdPackageLoadOptions { DocumentIndex = documentIndex } });
             var result = await ofdToPdf.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
             foreach (var diagnostic in result.Diagnostics)
-                Console.Error.WriteLine($"{diagnostic.Severity}: {diagnostic.Code}: {diagnostic.Message}");
+                Console.Error.WriteLine($"{diagnostic.Severity}: {TerminalText.Escape(diagnostic.Code)}: {TerminalText.Escape(diagnostic.Message)}");
         }
 
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -273,7 +273,7 @@ internal static partial class Cli
     private static void PrintDocxDiagnostics(IReadOnlyList<DocxConversionDiagnostic> diagnostics)
     {
         foreach (var diagnostic in diagnostics)
-            Console.Error.WriteLine($"{diagnostic.Severity}: {diagnostic.Code}: {diagnostic.Message}");
+            Console.Error.WriteLine($"{diagnostic.Severity}: {TerminalText.Escape(diagnostic.Code)}: {TerminalText.Escape(diagnostic.Message)}");
     }
 
     private static async Task ExtractTextAsync(
@@ -339,7 +339,7 @@ internal static partial class Cli
             .ConfigureAwait(false);
         foreach (var issue in report.Issues)
         {
-            Console.WriteLine($"Issue: {issue}");
+            Console.WriteLine($"Issue: {TerminalText.Escape(issue)}");
         }
 
         foreach (var signature in report.Signatures)
@@ -349,13 +349,13 @@ internal static partial class Cli
                 reference.DigestAlgorithmSupported &&
                 reference.DigestMatches);
             Console.WriteLine(
-                $"Signature {signature.Id}: references " +
+                $"Signature {TerminalText.Escape(signature.Id)}: references " +
                 $"{matchingReferences}/{signature.References.Count}, " +
                 $"signed-value {signature.CryptographicStatus}, " +
-                $"method {signature.SignatureMethod}");
+                $"method {TerminalText.Escape(signature.SignatureMethod)}");
             if (!string.IsNullOrWhiteSpace(signature.CryptographicMessage))
             {
-                Console.WriteLine($"  {signature.CryptographicMessage}");
+                Console.WriteLine($"  {TerminalText.Escape(signature.CryptographicMessage)}");
             }
         }
 
@@ -411,7 +411,7 @@ internal static partial class Cli
         OfdDocumentEditor.ReorderPages(package, pageOrder);
         await using var output = new AtomicOutput(outputPath);
         var result = await new OfdPackageWriter().WriteWithResultAsync(package, output.Stream, cancellationToken).ConfigureAwait(false);
-        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -459,9 +459,9 @@ internal static partial class Cli
             },
             cancellationToken);
         await using var output = new AtomicOutput(outputPath);
-        foreach (var diagnostic in merged.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        foreach (var diagnostic in merged.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         var writeResult = await new OfdPackageWriter().WriteWithResultAsync(merged.Package, output.Stream, cancellationToken).ConfigureAwait(false);
-        foreach (var diagnostic in writeResult.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        foreach (var diagnostic in writeResult.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
         WriteSuccessNotification($"Merged {sources.Count} OFD files -> {outputPath}");
         return 0;

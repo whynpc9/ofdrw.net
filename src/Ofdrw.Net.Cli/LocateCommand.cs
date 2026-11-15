@@ -70,10 +70,11 @@ internal static partial class Cli
                 var box = hit.BoundsMillimeters is { } b
                     ? string.Join(",", new[] { b.Left, b.Top, b.Right, b.Bottom }.Select(v => v.ToString("0.000", CultureInfo.InvariantCulture)))
                     : "-";
-                Console.WriteLine($"page {hit.PageIndex + 1} \"{hit.MatchedText}\" box {box} replaceable={(hit.CanReplace ? "true" : "false")}");
+                Console.WriteLine($"page {hit.PageIndex + 1} \"{TerminalText.Escape(hit.MatchedText)}\" box {box} replaceable={(hit.CanReplace ? "true" : "false")}");
             }
             foreach (var diagnostic in result.Diagnostics)
-                Console.WriteLine($"diagnostic {diagnostic.Code} page {(diagnostic.PageIndex is int page ? (page + 1).ToString(CultureInfo.InvariantCulture) : "-")} {diagnostic.SourcePath ?? "-"}");
+                Console.WriteLine($"diagnostic {TerminalText.Escape(diagnostic.Code)} page " +
+                    $"{(diagnostic.PageIndex is int page ? (page + 1).ToString(CultureInfo.InvariantCulture) : "-")} {TerminalText.Escape(diagnostic.SourcePath ?? "-")}");
             Console.WriteLine($"Complete: {(result.IsComplete ? "true" : "false")}");
         }
 

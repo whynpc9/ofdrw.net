@@ -43,7 +43,7 @@ internal static partial class Cli
             // Close input before publishing to support atomic in-place cleanup.
             await using (var input = File.OpenRead(args[0]))
                 result = await OfdSignatureCleaner.CleanAsync(input, output.Stream, cancellationToken: token);
-            foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+            foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
             await output.CommitAsync(token);
             return 0;
         }
@@ -109,7 +109,7 @@ internal static partial class Cli
     {
         await using var output = new AtomicOutput(path);
         var result = await new OfdPackageWriter().WriteWithResultAsync(package, output.Stream, token);
-        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {TerminalText.Escape(diagnostic)}");
         await output.CommitAsync(token);
     }
 }
