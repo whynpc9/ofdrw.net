@@ -72,6 +72,8 @@ dotnet add package Ofdrw.Net.Layout --version 0.3.1
 dotnet add package Ofdrw.Net.Packaging --version 0.3.1
 ```
 
+请将项目中的所有 `Ofdrw.Net.*` 包一起升级到同一版本；从下一版本起，同系列包依赖采用精确版本范围，混用版本会在 NuGet 还原时触发错误或警告（例如直接引用较高版本时的 `NU1608`；main，尚未发布）。
+
 使用以下代码生成 `hello.ofd`：
 
 ```csharp

@@ -50,6 +50,8 @@
 
 `docs/engineering/baselines/third-party-dependencies.json` 当前固定 40 个直接/传递包的版本、nuspec 许可类型与值、项目 URL，以及以文件声明许可的内容哈希。旧版仅提供 `licenseUrl` 的条目保留原 URL，不把它自动推断为 SPDX 结论。依赖图变化会阻断检查；审核新增包的真实许可和分发影响后，才运行 `python3 scripts/verify-package-artifacts.py --update-dependency-baseline` 并审查清单差异。CI 安装的字体与外部 LibreOffice/Word 不在 NuGet 发布载荷内，其授权与来源按 `THIRD-PARTY-NOTICES.md` 分别说明。
 
+`Directory.Build.targets` 将同系列 `Ofdrw.Net.*` 包依赖打包为精确版本范围 `[x.y.z]`；`scripts/verify-package-artifacts.py` 拒绝默认发布包中任何未精确锁定到本批版本的同系列依赖。
+
 ## 发布候选顺序
 
 1. 从固定提交运行 Python 检查、.NET 全套测试和同批包消费 E2E。保存包 manifest、OFD、PDF、PNG、日志。

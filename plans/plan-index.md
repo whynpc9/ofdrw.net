@@ -42,7 +42,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [026](026-emergency-line-breaking.md) | Long unbreakable text lays out in linear time and within its stated budgets | P2 | M | 020 | TODO |
 | [027](027-docx-native-indent-geometry.md) | DOCX native layout survives a first-line indent that does not fit the text column | P2 | S | — | TODO |
 | [028](028-cli-argument-strictness.md) | The CLI rejects arguments it would otherwise silently ignore | P2 | S–M | (after 021) | TODO |
-| [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | TODO |
+| [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | DONE |
 | [030](030-cli-terminal-output-escaping.md) | The CLI escapes control characters in text that comes from input files | P2 | S–M | (after 028) | TODO |
 | [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | TODO |
 | [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | TODO |

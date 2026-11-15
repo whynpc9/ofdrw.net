@@ -1,0 +1,16 @@
+<Project>
+  <!-- Ofdrw.Net packages use each other's internals (InternalsVisibleTo), so a package only works
+       with siblings of the same build. Pack sibling ProjectReferences as exact ranges [x.y.z].
+       _GetProjectReferenceVersions/_ProjectReferencesWithVersions are NuGet pack internals;
+       scripts/verify-package-artifacts.py fails if they ever stop producing exact ranges. -->
+  <Target Name="OfdrwExactSiblingPackageVersions" AfterTargets="_GetProjectReferenceVersions"
+          Condition="'$(IsPackable)' != 'false'">
+    <ItemGroup>
+      <_OfdrwExactReference Include="@(_ProjectReferencesWithVersions)">
+        <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+      </_OfdrwExactReference>
+      <_ProjectReferencesWithVersions Remove="@(_ProjectReferencesWithVersions)" />
+      <_ProjectReferencesWithVersions Include="@(_OfdrwExactReference)" />
+    </ItemGroup>
+  </Target>
+</Project>
