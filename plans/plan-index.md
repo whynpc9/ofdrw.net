@@ -45,7 +45,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [029](029-exact-sibling-package-versions.md) | Ofdrw.Net packages depend on the exact same version of each other | P2 | S | — | TODO |
 | [030](030-cli-terminal-output-escaping.md) | The CLI escapes control characters in text that comes from input files | P2 | S–M | (after 028) | TODO |
 | [031](031-test-suite-honesty.md) | Tests that cannot run say "skipped"; CLI tests stop sharing the console | P3 | S | — | TODO |
-| [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | TODO |
+| [032](032-signature-reference-resolution.md) | Signature verification resolves package references like the rest of the SDK | P2 | M | — | DONE |
 | [033](033-pdf-rtl-line-band-scan.md) | The PDF right-to-left import checks neighbouring lines in linear time | P3 | S | — | TODO |
 | [034](034-image-export-background.md) | OFD → image export can keep transparency or use a chosen background (SDK) | P3 feature | M | — | TODO |
 | [035](035-cli-pdf-import-navigation.md) | `ofdrw pdf-to-ofd --copy-bookmarks/--copy-attachments`; design note for outline export to PDF | P3 feature | S + S | (after 028, 030) | TODO |

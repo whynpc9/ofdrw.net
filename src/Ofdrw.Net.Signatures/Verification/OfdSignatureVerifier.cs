@@ -5,9 +5,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Signatures.Crypto;
-using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Signatures.Verification;
 
@@ -180,7 +181,12 @@ public sealed class OfdSignatureVerifier
                 continue;
             }
 
-            var signaturePath = ResolvePath(listPath, baseLocation!);
+            if (!TryResolveSignatureLocation(archive, listPath, baseLocation!,
+                    "Signature BaseLoc", result, out var signaturePath))
+            {
+                continue;
+            }
+
             result.SignaturePath = signaturePath;
             if (!archive.TryGetBytes(signaturePath, out var signatureBytes))
             {
@@ -287,9 +293,16 @@ public sealed class OfdSignatureVerifier
                     OfdDigestAlgorithms.IsSupported(result.CheckMethod)
             };
             result.References.Add(referenceResult);
-            if (!TryNormalizePath(fileReference, out var entryName))
+            if (!TryNormalizePath(fileReference, out var literalEntryName) ||
+                !OfdPackagePath.TryResolve(string.Empty, fileReference, out var entryName))
             {
                 referenceResult.Error = "The reference path is unsafe.";
+                continue;
+            }
+
+            if (HasConflictingEntry(archive, literalEntryName, entryName))
+            {
+                referenceResult.Error = "The reference path is ambiguous.";
                 continue;
             }
 
@@ -356,7 +369,12 @@ public sealed class OfdSignatureVerifier
             return;
         }
 
-        var signedValuePath = ResolvePath(signaturePath, signedValueLocation!);
+        if (!TryResolveSignatureLocation(archive, signaturePath, signedValueLocation!,
+                "SignedValue location", result, out var signedValuePath))
+        {
+            return;
+        }
+
         result.SignedValuePath = signedValuePath;
         if (!archive.TryGetBytes(signedValuePath, out var signedValue))
         {
@@ -420,16 +438,40 @@ public sealed class OfdSignatureVerifier
         return difference == 0;
     }
 
-    private static string ResolvePath(string containingPath, string reference)
+    private static bool TryResolveSignatureLocation(
+        OfdPackageArchive archive,
+        string containingPath,
+        string reference,
+        string field,
+        OfdSignatureVerificationResult result,
+        out string resolved)
     {
-        if (reference.StartsWith("/", StringComparison.Ordinal))
+        if (!OfdPackagePath.TryResolve(containingPath, reference, out resolved))
         {
-            return NormalizePath(reference);
+            result.CryptographicStatus = OfdCryptographicVerificationStatus.Error;
+            result.CryptographicMessage = $"{field} leaves the package root.";
+            return false;
         }
 
-        var slash = containingPath.LastIndexOf('/');
-        var directory = slash < 0 ? string.Empty : containingPath.Substring(0, slash + 1);
-        return NormalizePath(directory + reference);
+        // ZIP keys retain literal dot and empty segments. Check the former
+        // lookup spelling so canonicalization cannot switch between two entries.
+        var literalPath = NormalizePath(reference.StartsWith("/", StringComparison.Ordinal)
+            ? reference
+            : OfdPackagePath.GetDirectory(containingPath) + "/" + reference);
+        if (HasConflictingEntry(archive, literalPath, resolved))
+        {
+            result.CryptographicStatus = OfdCryptographicVerificationStatus.Error;
+            result.CryptographicMessage = $"{field} is ambiguous.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool HasConflictingEntry(OfdPackageArchive archive, string literalPath, string resolvedPath)
+    {
+        return !string.Equals(literalPath, resolvedPath, StringComparison.OrdinalIgnoreCase) &&
+            archive.Contains(literalPath) && archive.Contains(resolvedPath);
     }
 
     private static string NormalizePath(string path)
