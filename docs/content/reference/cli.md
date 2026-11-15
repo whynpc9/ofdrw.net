@@ -38,6 +38,8 @@ ofdrw --help
 | 按 ID 导出附件（自 0.2.0 起） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
 | 只读定位关键字（自 0.2.0 起） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
 | 按 ID 移除附件（自 0.2.0 起） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
+| 列出命名区域（main，尚未发布） | `ofdrw areas list input.ofd --json` |
+| 填充命名区域（main，尚未发布） | `ofdrw areas fill input.ofd filled.ofd --name name --text "Alice 中文"` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
@@ -48,6 +50,12 @@ ofdrw --help
 ## 附件
 
 `attachments list` 每行输出 `ID、名称、媒体类型、字节数、internal|external`（制表符分隔），`--json` 时标准输出只有 `ofdrw-cli-attachments/1` JSON；没有附件时也返回 `0`。`attachments extract` 只按 ID 精确匹配，必须用 `--output` 指定目标路径，**从不**用附件内存储的名称作为路径；外部附件没有内嵌载荷，导出会失败。`attachments remove` 默认逻辑移除：从当前附件列表删除引用，保留历史 ZIP 条目；`--physical` 物理移除：在证明来源独占和引用闭合后才删除内部载荷，否则失败且不写输出。`list` 与 `extract` 可配合 `--document N` 读取多 `DocBody` 文档，`remove` 要求单 `DocBody` 文档。以上命令自 0.2.0 起可用。
+
+## 命名区域
+
+`areas list` 每行按顺序输出名称、从 1 开始的页码、左上角 X、左上角 Y、宽度、高度和状态（`blank` 或 `filled`），列间用制表符分隔，坐标和尺寸均以毫米为单位。使用 `--json` 时，标准输出仅包含 `ofdrw-cli-areas/1` JSON，区域位于 `areas` 数组。没有区域时仍返回 `0`。
+
+`areas fill` 用 `--text` 或 `--image` 填充单文档 OFD 中的一个空白区域。两个子命令在成功、失败和取消时分别返回 `0`、`1` 和 `130`。模板创建、字体参数和图片限制见[填充命名区域](https://whynpc9.github.io/ofdrw.net/guides/named-areas/)。
 
 ## 页号和文档号
 
