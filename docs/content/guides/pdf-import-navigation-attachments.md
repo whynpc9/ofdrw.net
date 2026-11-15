@@ -29,6 +29,12 @@ await new PdfToOfdConverter(options).ConvertAsync(input, output);
 
 可选 `Ofdrw.Net.Converter.Pdf.Vector` 通过 `PdfVectorToOfdOptions.Compatibility` 暴露同一组配置。矢量扩展在确定原生页面或整页回退后，只对最终包应用一次元数据，不会因回退重复导入附件。
 
+CLI（main，尚未发布）可单独启用 `--copy-bookmarks` 或 `--copy-attachments`，分别对应 SDK 的 `CopyBookmarks` 和 `CopyAttachments`。两项开关默认关闭，计数、深度和大小预算沿用 SDK 默认值。通过 `convert input.pdf output.ofd` 推断为 PDF → OFD 时也可使用这两项开关。
+
+```sh
+ofdrw pdf-to-ofd -i input.pdf -o output.ofd --copy-bookmarks --copy-attachments
+```
+
 ## 书签映射
 
 启用 `CopyBookmarks` 后，PDF 大纲的层次和标题复制到 OFD `Outlines`。本地页目标映射到该源页在输出中第一次保留的出现位置。
