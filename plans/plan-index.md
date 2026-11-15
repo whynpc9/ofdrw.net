@@ -34,7 +34,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | DONE (SDK throws for unmeasurable sources, e.g. untrusted or name-only fonts, so locate exits 1 there instead of 3) |
 | [019](019-upstream-2026-11-regression-and-triage.md) | 2026-11 upstream regression validation and bounded capability triage | P1 validation / P2 candidates | M | Reuse 001–018 | DONE (bounded A/B/C validation upon merge after current-head CI; [acceptance record](../docs/validation/upstream-2026-11.md)) |
 | [020](020-harfbuzz-face-cache.md) | Shape text without copying the font on every call | P1 | M | — | TODO |
-| [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | TODO |
+| [021](021-cli-output-safety.md) | CLI output files never destroy the input or widen its permissions | P1 | S | — | DONE |
 | [022](022-external-tool-lookup.md) | External tools are never picked up from the working directory | P1 | S–M | — | TODO |
 | [023](023-cff-hostile-font-hardening.md) | A hostile CFF font can only make its own font "unsupported" | P1 | M | — | TODO |
 | [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | TODO |
