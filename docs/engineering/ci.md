@@ -29,7 +29,9 @@ The shell script's default build-and-consume behavior remains available for stan
 
 ## NuGet advisory gate
 
-Right after restore, `build-test` runs `scripts/check-nuget-advisories.py`, which lists every top-level and transitive package with known advisories (`dotnet list Ofdrw.Net.sln package --vulnerable --include-transitive --format json`) and fails on any (package, version, advisory) not in `docs/engineering/baselines/nuget-advisory-allowlist.json`. Allowlist entries that no longer occur are printed as stale warnings so fixed advisories get removed. An entry may only be added with a recorded decision and reference; the five ImageSharp 2.1.13 entries cite [D10](../validation/d10-imagesharp-security-assessment.md). The gate runs only when CI runs; a separate small scheduled workflow would also catch advisories published between pushes.
+Right after restore, `build-test` runs `scripts/check-nuget-advisories.py`, which lists every top-level and transitive package with known advisories (`dotnet list Ofdrw.Net.sln package --vulnerable --include-transitive --format json`) and fails on any (package, version, advisory) not in `docs/engineering/baselines/nuget-advisory-allowlist.json`. Allowlist entries that no longer occur are printed as stale warnings so fixed advisories get removed. An entry may only be added with a recorded decision and reference; the five ImageSharp 2.1.13 entries cite [D10](../validation/d10-imagesharp-security-assessment.md).
+
+`nuget-advisories.yml` runs the same gate every Monday at 03:17 UTC and on manual dispatch. If a scheduled run fails, check the logs; for a new advisory, fix the dependency or record the decision before adding an allowlist entry. Every workflow job sets `timeout-minutes`, with limits several times the measured medians where timings are available.
 
 ## Release workflow gates
 

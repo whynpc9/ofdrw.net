@@ -38,7 +38,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [022](022-external-tool-lookup.md) | External tools are never picked up from the working directory | P1 | S–M | — | TODO |
 | [023](023-cff-hostile-font-hardening.md) | A hostile CFF font can only make its own font "unsupported" | P1 | M | — | TODO |
 | [024](024-release-workflow-gates.md) | A release tag cannot publish unless CI and SES passed on that commit | P1 | S–M | — | DONE |
-| [025](025-ci-hygiene.md) | Scheduled advisory check, job timeouts and explicit workflow permissions | P2 | S | (after 024) | TODO |
+| [025](025-ci-hygiene.md) | Scheduled advisory check, job timeouts and explicit workflow permissions | P2 | S | (after 024) | DONE |
 | [026](026-emergency-line-breaking.md) | Long unbreakable text lays out in linear time and within its stated budgets | P2 | M | 020 | TODO |
 | [027](027-docx-native-indent-geometry.md) | DOCX native layout survives a first-line indent that does not fit the text column | P2 | S | — | TODO |
 | [028](028-cli-argument-strictness.md) | The CLI rejects arguments it would otherwise silently ignore | P2 | S–M | (after 021) | TODO |
