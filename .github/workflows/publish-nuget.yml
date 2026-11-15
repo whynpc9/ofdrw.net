@@ -23,6 +23,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
       NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
@@ -230,6 +231,7 @@ jobs:
   publish:
     needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
