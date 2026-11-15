@@ -157,6 +157,49 @@ public sealed class DocxNativeParagraphLayoutTests
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
     }
 
+    [Theory]
+    [InlineData("<w:ind w:firstLine=\"10000\"/>", 32, "large-glyph")]
+    [InlineData("<w:ind w:left=\"10000\" w:firstLine=\"400\"/>", 21, "narrow-column")]
+    public async Task PositiveIndentLimitRetriesWhenFirstClusterNeedsTheFullColumn(string indent, int size, string sample)
+    {
+        var body = $$"""
+            <w:p><w:pPr>{{indent}}</w:pPr><w:r><w:rPr><w:sz w:val="{{size}}"/></w:rPr><w:t>缩进</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Next 下一段</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var artifact = "indent-retry-" + sample;
+        var (package, result) = await Convert(source, Options(fonts, engine: true), artifact);
+        Assert.Equal("缩进Next 下一段", RawText(package));
+        Assert.Equal(0, Assert.Single(result.SourcePages));
+        Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+        var firstRun = Assert.Single(package.Pages).Elements.OfType<OfdTextElement>().First();
+        // Removing the limited first-line offset leaves the paragraph's own left indent in place.
+        Assert.InRange(firstRun.XMillimeters, sample == "large-glyph" ? 25.39 : 201.77,
+            sample == "large-glyph" ? 25.41 : 201.80);
+    }
+
+    [Theory]
+    [InlineData(400, 32)] // Wider than the entire 5 mm text column.
+    [InlineData(200, 21)] // Valid first-line indent; its overflow behavior is unchanged.
+    public async Task FirstClusterOverflowStillUsesNativeFailureContract(int indent, int size)
+    {
+        var body = $$"""
+            <w:p><w:pPr><w:ind w:left="10000" w:firstLine="{{indent}}"/></w:pPr>
+              <w:r><w:rPr><w:sz w:val="{{size}}"/></w:rPr><w:t>缩进</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new DocxToOfdConverter(Options(fonts, engine: true)).ConvertAsync(source, output));
+        var cause = Assert.IsType<Ofdrw.Net.Layout.Text.TextLayoutException>(
+            Assert.IsType<InvalidOperationException>(error.InnerException).InnerException);
+        Assert.Equal(Ofdrw.Net.Layout.Text.TextLayoutError.LayoutOverflow, cause.Error);
+        Assert.Equal(0, cause.SourceStart);
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task IndentLimitIsReportedOnceAcrossParagraphsAndPaginationPasses()
     {

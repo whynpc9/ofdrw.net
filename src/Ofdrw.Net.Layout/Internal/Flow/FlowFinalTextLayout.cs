@@ -177,7 +177,19 @@ internal sealed class FlowFinalTextLayout
         // the compatibility layout; the following text keeps its own style.
         var indent = first ? format.FirstLineIndentMillimeters : 0;
         var limitedIndent = LimitFirstLineIndent(indent, width);
-        var layout = Run(text, ClusterAlignedSpans(text, spans), format, width, limitedIndent, token);
+        var alignedSpans = ClusterAlignedSpans(text, spans);
+        ParagraphLayoutResult layout;
+        try
+        {
+            layout = Run(text, alignedSpans, format, width, limitedIndent, token);
+        }
+        catch (InvalidOperationException exception) when (limitedIndent > 0 && limitedIndent < indent &&
+            exception.InnerException is TextLayoutException { Error: TextLayoutError.LayoutOverflow, SourceStart: 0 })
+        {
+            // A capped first line may still be too narrow for the first grapheme. Retry once with
+            // the full column; if it still does not fit, keep the normal layout failure contract.
+            layout = Run(text, alignedSpans, format, width, 0, token);
+        }
         if (limitedIndent != indent) _indentLimited?.Invoke();
         foreach (var line in layout.Lines)
             result.Add(new FlowLine(new List<FlowGlyph>(), line.HeightMillimeters, 0, FlowAlignment.Left) { Final = line });
