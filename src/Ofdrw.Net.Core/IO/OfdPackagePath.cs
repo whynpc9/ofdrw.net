@@ -7,7 +7,12 @@ namespace Ofdrw.Net.Core.IO;
 
 internal static class OfdPackagePath
 {
-    internal static string Resolve(string containingEntry, string reference)
+    internal static string Resolve(string containingEntry, string reference) =>
+        TryResolve(containingEntry, reference, out var resolved)
+            ? resolved
+            : throw new InvalidDataException("Package reference escapes the OFD root.");
+
+    internal static bool TryResolve(string containingEntry, string reference, out string resolved)
     {
         var value = reference.Replace('\\', '/');
         var combined = value.StartsWith("/", StringComparison.Ordinal)
@@ -18,13 +23,18 @@ internal static class OfdPackagePath
             if (part.Length == 0 || part == ".") continue;
             if (part == "..")
             {
-                if (parts.Count == 0) throw new InvalidDataException("Package reference escapes the OFD root.");
+                if (parts.Count == 0)
+                {
+                    resolved = string.Empty;
+                    return false;
+                }
                 parts.RemoveAt(parts.Count - 1);
             }
             else parts.Add(part);
         }
 
-        return string.Join("/", parts);
+        resolved = string.Join("/", parts);
+        return true;
     }
 
     internal static string GetDirectory(string entry)
