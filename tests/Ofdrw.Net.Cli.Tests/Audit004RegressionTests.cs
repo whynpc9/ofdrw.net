@@ -4,6 +4,7 @@ using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class Audit004RegressionTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofdrw-audit004-" + Guid.NewGuid().ToString("N"));

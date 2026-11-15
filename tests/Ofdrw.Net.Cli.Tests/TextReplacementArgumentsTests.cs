@@ -1,5 +1,6 @@
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class TextReplacementArgumentsTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "ofdrw-replace-args-" + Guid.NewGuid().ToString("N"));
