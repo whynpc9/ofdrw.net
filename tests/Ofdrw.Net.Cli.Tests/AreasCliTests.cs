@@ -271,10 +271,10 @@ public sealed class AreasCliTests : IDisposable
         Assert.True(machine.Code == 0, machine.Stderr);
         using var json = JsonDocument.Parse(machine.Stdout);
         Assert.Equal(name, json.RootElement.GetProperty("areas")[0].GetProperty("name").GetString());
-        var output = PathFor("out.ofd");
+        var output = PathFor("out-\u202e.ofd");
         var fill = await Run("areas", "fill", path, output, "--name", name, "--text", FillText);
         Assert.True(fill.Code == 0, fill.Stderr);
-        Assert.Equal($@"Filled area 中\u202E文 -> {output}" + Environment.NewLine, fill.Stdout);
+        Assert.Equal($@"Filled area 中\u202E文 -> {PathFor(@"out-\u202E.ofd")}" + Environment.NewLine, fill.Stdout);
         var filled = await Run("areas", "list", output);
         Assert.True(filled.Code == 0, filled.Stderr);
         Assert.EndsWith("\tfilled", filled.Stdout.Split(Environment.NewLine)[0]);

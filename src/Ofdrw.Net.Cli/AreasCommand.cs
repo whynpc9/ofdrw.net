@@ -142,6 +142,6 @@ internal static partial class Cli
         }
 
         await WriteToolOutputAsync(package, output, token).ConfigureAwait(false);
-        WriteSuccessNotification($"Filled area {TerminalText.Escape(name)} -> {output}");
+        WriteSuccessNotification($"Filled area {TerminalText.Escape(name)} -> {TerminalText.Escape(output)}");
     }
 }
