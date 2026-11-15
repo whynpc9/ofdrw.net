@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using HarfBuzzSharp;
@@ -15,6 +16,8 @@ public sealed class HarfBuzzTextShaper : IContextualTextShaper
     /// <summary>Managed and native assets are pinned together in the adapter package.</summary>
     public const string PackageVersion = "14.2.1.301";
     private const string ExpectedNativeVersion = "14.2.1";
+    private static readonly ConditionalWeakTable<TextFontFace, NativeFace> Faces = new();
+    private static readonly object FaceCreationLock = new();
 
     [DllImport("libHarfBuzzSharp", CallingConvention = CallingConvention.Cdecl, EntryPoint = "hb_version_string")]
     private static extern IntPtr NativeVersionString();
@@ -53,11 +56,7 @@ public sealed class HarfBuzzTextShaper : IContextualTextShaper
             var engineIdentity = "HarfBuzzSharp/" + PackageVersion + ";libHarfBuzzSharp/" + nativeVersion;
             if (request.Text.Length == 0)
                 return new TextShapedRun(request, Array.Empty<TextShapedGlyph>(), engineIdentity);
-            using var blob = CreateOwnedBlob(request.Face.GetFaceBytes());
-            using var face = new Face(blob, 0);
-            if (face.UnitsPerEm != request.Face.UnitsPerEm)
-                throw new TextLayoutException(TextLayoutError.InvalidFont, "HarfBuzz and the managed reader disagree about font units.");
-            using var font = new Font(face);
+            using var font = CreateFont(request);
             font.SetFunctionsOpenType();
             font.SetScale(request.Face.UnitsPerEm, request.Face.UnitsPerEm);
             using var buffer = new HarfBuzzSharp.Buffer
@@ -133,6 +132,113 @@ public sealed class HarfBuzzTextShaper : IContextualTextShaper
         catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException || exception is IOException)
         {
             throw new TextLayoutException(TextLayoutError.InvalidFont, "HarfBuzz rejected the selected face or run.", exception);
+        }
+    }
+
+    private static Font CreateFont(TextShapeRequest request)
+    {
+        var nativeFace = GetNativeFace(request.Face);
+        try
+        {
+            if (nativeFace.CanUseSharedFace(request))
+                return new Font(nativeFace.Face);
+
+            // The temporary face retains the existing blob. The new font takes
+            // its own native face reference before the wrapper is disposed.
+            using var temporaryFace = new Face(nativeFace.Blob, 0);
+            return new Font(temporaryFace);
+        }
+        finally
+        {
+            // The owner can release its wrappers once the font has acquired its reference.
+            GC.KeepAlive(nativeFace);
+        }
+    }
+
+    private static NativeFace GetNativeFace(TextFontFace textFace)
+    {
+        if (Faces.TryGetValue(textFace, out var cached)) return cached;
+        lock (FaceCreationLock)
+        {
+            if (Faces.TryGetValue(textFace, out cached)) return cached;
+
+            var created = new NativeFace(textFace);
+            try
+            {
+                Faces.Add(textFace, created);
+                return created;
+            }
+            catch
+            {
+                created.Dispose();
+                throw;
+            }
+        }
+    }
+
+    private sealed class NativeFace : IDisposable
+    {
+        private const int MaximumCachedSegments = 32;
+        private readonly HashSet<(TextDirection Direction, string Script, string Language)> _cachedSegments = new();
+
+        public NativeFace(TextFontFace textFace)
+        {
+            try
+            {
+                Blob = CreateOwnedBlob(textFace.GetFaceBytes());
+                Face = new Face(Blob, 0);
+                if (Face.UnitsPerEm != textFace.UnitsPerEm)
+                    throw new TextLayoutException(TextLayoutError.InvalidFont, "HarfBuzz and the managed reader disagree about font units.");
+                Face.MakeImmutable();
+
+                // The pinned wrappers mark themselves disposed during finalization
+                // without freeing their handles. This owner must finalize them.
+                GC.SuppressFinalize(Blob);
+                GC.SuppressFinalize(Face);
+            }
+            catch
+            {
+                Dispose();
+                throw;
+            }
+        }
+
+        public Blob Blob { get; }
+        public Face Face { get; }
+
+        public bool CanUseSharedFace(TextShapeRequest request)
+        {
+            // HarfBuzz retains a plan for each combination of segment properties
+            // and features until the face is destroyed. Bound that retained cache.
+            if (request.Features.Count != 0) return false;
+            var segment = (request.Direction, request.Script, request.Language);
+            lock (_cachedSegments)
+            {
+                if (_cachedSegments.Count == MaximumCachedSegments)
+                    return _cachedSegments.Contains(segment);
+                _cachedSegments.Add(segment);
+                return true;
+            }
+        }
+
+        ~NativeFace() => Release();
+
+        public void Dispose()
+        {
+            Release();
+            GC.SuppressFinalize(this);
+        }
+
+        private void Release()
+        {
+            try
+            {
+                Face?.Dispose();
+            }
+            finally
+            {
+                Blob?.Dispose();
+            }
         }
     }
 
