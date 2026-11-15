@@ -24,14 +24,15 @@ internal sealed class FlowFinalTextLayout
     private readonly Dictionary<TextStyle, double> _emptyHeights = new(ReferenceComparer<TextStyle>.Instance);
 
     private readonly double _minimumTabAdvanceEm;
+    private readonly Action? _indentLimited;
 
     // DOCX keeps Word's tab rule (minimum 0); Flow and plain text skip a stop that would leave less than
     // half an em, so columns stay distinguishable (Issue #115, CSS tab-size precedent).
     internal const double FlowMinimumTabAdvanceEm = 0.5;
 
     internal FlowFinalTextLayout(ParagraphLayoutEngine engine, Func<FlowTextStyle, TextStyle> map,
-        TextSyntheticStylePolicy synthetic, double minimumTabAdvanceEm = 0)
-    { _engine = engine; _map = map; _synthetic = synthetic; _minimumTabAdvanceEm = minimumTabAdvanceEm; }
+        TextSyntheticStylePolicy synthetic, double minimumTabAdvanceEm = 0, Action? indentLimited = null)
+    { _engine = engine; _map = map; _synthetic = synthetic; _minimumTabAdvanceEm = minimumTabAdvanceEm; _indentLimited = indentLimited; }
 
     internal static FlowFinalTextLayout? Create(FlowTextEngine? engine, Func<FlowTextStyle, TextColor> color)
     {
@@ -130,6 +131,15 @@ internal sealed class FlowFinalTextLayout
         return result;
     }
 
+    // Preserve in-range indents. A capped positive indent leaves up to 5 mm for first-line text;
+    // a capped hanging indent stays strictly above -width, as required by the engine.
+    private static double LimitFirstLineIndent(double indent, double width)
+    {
+        if (double.IsNaN(indent) || double.IsInfinity(indent)) return 0;
+        if (indent > -width && indent < width) return indent;
+        return indent > 0 ? width - Math.Min(5, width / 2) : -width * 0.999;
+    }
+
     private ParagraphLayoutOptions Options(FlowParagraphFormat format, double width, double indent, int length)
     {
         var alignment = format.Alignment switch
@@ -165,16 +175,34 @@ internal sealed class FlowFinalTextLayout
         }
         // A style change inside an extended grapheme cluster: that cluster takes its leading style, as in
         // the compatibility layout; the following text keeps its own style.
-        var layout = Run(text, ClusterAlignedSpans(text, spans),
-            Options(format, width, first ? format.FirstLineIndentMillimeters : 0, text.Length), token);
+        var indent = first ? format.FirstLineIndentMillimeters : 0;
+        var limitedIndent = LimitFirstLineIndent(indent, width);
+        var alignedSpans = ClusterAlignedSpans(text, spans);
+        ParagraphLayoutResult layout;
+        try
+        {
+            layout = Run(text, alignedSpans, format, width, limitedIndent, token);
+        }
+        catch (InvalidOperationException exception) when (limitedIndent > 0 && limitedIndent < indent &&
+            exception.InnerException is TextLayoutException { Error: TextLayoutError.LayoutOverflow, SourceStart: 0 })
+        {
+            // A capped first line may still be too narrow for the first grapheme. Retry once with
+            // the full column; if it still does not fit, keep the normal layout failure contract.
+            layout = Run(text, alignedSpans, format, width, 0, token);
+        }
+        if (limitedIndent != indent) _indentLimited?.Invoke();
         foreach (var line in layout.Lines)
             result.Add(new FlowLine(new List<FlowGlyph>(), line.HeightMillimeters, 0, FlowAlignment.Left) { Final = line });
     }
 
-    private ParagraphLayoutResult Run(string text, IReadOnlyList<TextStyleSpan> spans, ParagraphLayoutOptions options,
-        CancellationToken token)
+    private ParagraphLayoutResult Run(string text, IReadOnlyList<TextStyleSpan> spans, FlowParagraphFormat format,
+        double width, double indent, CancellationToken token)
     {
-        try { return _engine.Layout(new ParagraphLayoutRequest(text, spans, options), token); }
+        try
+        {
+            var options = Options(format, width, indent, text.Length);
+            return _engine.Layout(new ParagraphLayoutRequest(text, spans, options), token);
+        }
         catch (TextLayoutException exception)
         {
             throw new InvalidOperationException("Final text layout failed (" + exception.Error + "): " + exception.Message, exception);
@@ -210,7 +238,7 @@ internal sealed class FlowFinalTextLayout
     private double EmptyHeight(TextStyle style, FlowParagraphFormat format)
     {
         if (_emptyHeights.TryGetValue(style, out var height) && format.MinimumLineHeightMillimeters <= 0) return height;
-        var layout = Run(string.Empty, new[] { new TextStyleSpan(0, 0, style) }, Options(format, 1000, 0, 1), CancellationToken.None);
+        var layout = Run(string.Empty, new[] { new TextStyleSpan(0, 0, style) }, format, 1000, 0, CancellationToken.None);
         height = layout.Lines[0].HeightMillimeters;
         if (format.MinimumLineHeightMillimeters <= 0) _emptyHeights[style] = height;
         return height;

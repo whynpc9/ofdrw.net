@@ -4,43 +4,61 @@ using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.TestSupport;
 using Ofdrw.Net.Text.HarfBuzz;
+using W = DocumentFormat.OpenXml.Wordprocessing;
 
 namespace Ofdrw.Net.Converter.Docx.Tests;
 
 // Issue #109: DOCX Native OFD opts into the final paragraph layout engine.
 public sealed class DocxNativeParagraphLayoutTests
 {
-    private static DocxConversionOptions Options(PinnedCjkFontDirectory fonts, bool engine)
+    private static DocxConversionOptions Options(PinnedCjkFontDirectory fonts, bool engine, bool explicitNative = true)
     {
-        var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false, OfdMode = DocxToOfdMode.Native };
+        var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
+        if (explicitNative) options.OfdMode = DocxToOfdMode.Native;
         options.FontDirectories.Add(fonts.Path);
         if (engine) options.NativeParagraphLayoutEngine = HarfBuzzTextPrelayout.CreateParagraphLayout();
         return options;
     }
 
-    private static async Task<(OfdDocumentPackage Package, DocxToOfdConversionResult Result)> Convert(Stream source, DocxConversionOptions options)
+    private static async Task<(OfdDocumentPackage Package, DocxToOfdConversionResult Result)> Convert(
+        Stream source, DocxConversionOptions options, string? artifact = null)
     {
         using var output = new MemoryStream();
         var result = await new DocxToOfdConverter(options).ConvertWithResultAsync(source, output);
+        if (artifact is not null && Environment.GetEnvironmentVariable("OFDRW_PARAGRAPH_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            source.Position = 0;
+            using var inputCopy = File.Create(Path.Combine(directory, artifact + ".docx"));
+            await source.CopyToAsync(inputCopy);
+            await File.WriteAllBytesAsync(Path.Combine(directory, artifact + ".ofd"), output.ToArray());
+        }
         output.Position = 0;
         return (await new OfdReader().ReadAsync(output), result);
     }
 
-    private static string Text(OfdDocumentPackage package) =>
-        string.Concat(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.Text)).Replace(" ", "");
+    private static string RawText(OfdDocumentPackage package) =>
+        string.Concat(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.Text));
+
+    private static string Text(OfdDocumentPackage package) => RawText(package).Replace(" ", "");
 
     [Fact]
     public async Task GeneratedLayoutSampleKeepsItsTextAndUsesClusterMappedFinalLayout()
     {
         using var fonts = new PinnedCjkFontDirectory();
         using var legacySource = File.OpenRead(Sample());
-        var (legacy, _) = await Convert(legacySource, Options(fonts, engine: false));
+        var (legacy, defaultResult) = await Convert(legacySource, Options(fonts, engine: false, explicitNative: false), "generated-layout-default");
         using var finalSource = File.OpenRead(Sample());
-        var (final, result) = await Convert(finalSource, Options(fonts, engine: true));
+        var (final, result) = await Convert(finalSource, Options(fonts, engine: true), "generated-layout-native");
+        Assert.Equal(DocxToOfdMode.Native, defaultResult.Mode);
+        Assert.True(defaultResult.OriginalTextPreserved);
+        Assert.True(result.OriginalTextPreserved);
+        Assert.Equal(Enumerable.Range(0, defaultResult.SourcePageCount), defaultResult.SourcePages);
+        Assert.Equal(Enumerable.Range(0, result.SourcePageCount), result.SourcePages);
         Assert.Equal("ParagraphLayout", final.CustomTags["docx-native-text-engine"]);
         Assert.False(legacy.CustomTags.ContainsKey("docx-native-text-engine"));
         // The same logical text, in the same order; only geometry and font binding change.
-        Assert.Equal(Text(legacy), Text(final));
+        Assert.Equal(RawText(legacy), RawText(final));
         var texts = final.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToArray();
         Assert.All(texts, text => Assert.Equal("true", XElement.Parse(text.SourceXml!).Attributes()
             .Single(attribute => attribute.Name.LocalName == "ClusterMapV1").Value));
@@ -66,7 +84,8 @@ public sealed class DocxNativeParagraphLayoutTests
             """;
         using var fonts = new PinnedCjkFontDirectory();
         using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
-        var (package, _) = await Convert(source, Options(fonts, engine: true));
+        var (package, result) = await Convert(source, Options(fonts, engine: true));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
         var page = package.Pages.Single();
         var texts = page.Elements.OfType<OfdTextElement>().ToArray();
         Assert.Equal(3, texts.Count(text => text.Text == "\t"));
@@ -89,6 +108,154 @@ public sealed class DocxNativeParagraphLayoutTests
         // strikethrough over "struck 删除" is one more.
         Assert.Single(paths, path => path.Fill && path.FillColor is { Red: 255, Green: 255, Blue: 0 });
         Assert.True(paths.Count(path => path.Fill) >= 2);
+    }
+
+    [Theory]
+    [InlineData("<w:ind w:left=\"10000\" w:hanging=\"720\"/>")]
+    [InlineData("<w:ind w:left=\"4000\" w:right=\"4000\" w:firstLine=\"2000\"/>")]
+    public async Task IndentThatDoesNotFitTheColumnIsLimitedNotFatal(string indent)
+    {
+        var body = "<w:p><w:pPr>" + indent + "</w:pPr><w:r><w:t>Indented 缩进 text</w:t></w:r></w:p>" +
+                   "<w:p><w:r><w:t>Next 下一段</w:t></w:r></w:p>";
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var artifact = "indent-limited-" + (indent.Contains("hanging", StringComparison.Ordinal) ? "hanging" : "first-line");
+        var (package, result) = await Convert(source, Options(fonts, engine: true), artifact);
+        source.Position = 0;
+        var (stock, stockResult) = await Convert(source, Options(fonts, engine: false, explicitNative: false), artifact + "-default");
+        Assert.Equal("Indented 缩进 textNext 下一段", RawText(package));
+        Assert.Equal(RawText(package), RawText(stock));
+        Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+        Assert.DoesNotContain(stockResult.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+        Assert.Equal(DocxToOfdMode.Native, stockResult.Mode);
+        Assert.True(result.OriginalTextPreserved);
+        Assert.Equal(0, Assert.Single(result.SourcePages));
+        Assert.Equal(0, Assert.Single(stockResult.SourcePages));
+        var page = Assert.Single(package.Pages);
+        Assert.All(page.Elements.OfType<OfdTextElement>(), text =>
+        {
+            Assert.InRange(text.XMillimeters, 0, page.WidthMillimeters);
+            Assert.InRange(text.XMillimeters + text.WidthMillimeters, 0, page.WidthMillimeters);
+        });
+        Assert.Equal(Assert.Single(Assert.Single(stock.Pages).Elements.OfType<OfdTextElement>(),
+                text => text.Text.StartsWith("Next", StringComparison.Ordinal)).XMillimeters,
+            Assert.Single(page.Elements.OfType<OfdTextElement>(),
+                text => text.Text.StartsWith("Next", StringComparison.Ordinal)).XMillimeters, precision: 3);
+    }
+
+    [Fact]
+    public async Task LeadingBreakDoesNotReportAnUnusedIndent()
+    {
+        const string body = """
+            <w:p><w:pPr><w:ind w:left="4000" w:right="4000" w:firstLine="2000"/></w:pPr>
+              <w:r><w:br/><w:t>After break</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var (package, result) = await Convert(source, Options(fonts, engine: true));
+        Assert.Equal("Afterbreak", Text(package));
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+    }
+
+    [Theory]
+    [InlineData("<w:ind w:firstLine=\"10000\"/>", 32, "large-glyph")]
+    [InlineData("<w:ind w:left=\"10000\" w:firstLine=\"400\"/>", 21, "narrow-column")]
+    public async Task PositiveIndentLimitRetriesWhenFirstClusterNeedsTheFullColumn(string indent, int size, string sample)
+    {
+        var body = $$"""
+            <w:p><w:pPr>{{indent}}</w:pPr><w:r><w:rPr><w:sz w:val="{{size}}"/></w:rPr><w:t>缩进</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Next 下一段</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var artifact = "indent-retry-" + sample;
+        var (package, result) = await Convert(source, Options(fonts, engine: true), artifact);
+        Assert.Equal("缩进Next 下一段", RawText(package));
+        Assert.Equal(0, Assert.Single(result.SourcePages));
+        Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+        var firstRun = Assert.Single(package.Pages).Elements.OfType<OfdTextElement>().First();
+        // Removing the limited first-line offset leaves the paragraph's own left indent in place.
+        Assert.InRange(firstRun.XMillimeters, sample == "large-glyph" ? 25.39 : 201.77,
+            sample == "large-glyph" ? 25.41 : 201.80);
+    }
+
+    [Theory]
+    [InlineData(400, 32)] // Wider than the entire 5 mm text column.
+    [InlineData(200, 21)] // Valid first-line indent; its overflow behavior is unchanged.
+    public async Task FirstClusterOverflowStillUsesNativeFailureContract(int indent, int size)
+    {
+        var body = $$"""
+            <w:p><w:pPr><w:ind w:left="10000" w:firstLine="{{indent}}"/></w:pPr>
+              <w:r><w:rPr><w:sz w:val="{{size}}"/></w:rPr><w:t>缩进</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new DocxToOfdConverter(Options(fonts, engine: true)).ConvertAsync(source, output));
+        var cause = Assert.IsType<Ofdrw.Net.Layout.Text.TextLayoutException>(
+            Assert.IsType<InvalidOperationException>(error.InnerException).InnerException);
+        Assert.Equal(Ofdrw.Net.Layout.Text.TextLayoutError.LayoutOverflow, cause.Error);
+        Assert.Equal(0, cause.SourceStart);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task IndentLimitIsReportedOnceAcrossParagraphsAndPaginationPasses()
+    {
+        const string body = """
+            <w:p><w:pPr><w:ind w:left="10000" w:hanging="720"/></w:pPr><w:r><w:t>Hanging</w:t></w:r></w:p>
+            <w:p><w:pPr><w:pageBreakBefore/><w:ind w:left="4000" w:right="4000" w:firstLine="2000"/></w:pPr>
+              <w:r><w:t>First line</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var (package, result) = await Convert(source, Options(fonts, engine: true));
+        Assert.Equal(2, result.SourcePageCount);
+        Assert.Equal(new[] { 0, 1 }, result.SourcePages);
+        Assert.Equal("HangingFirstline", Text(package));
+        Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+    }
+
+    [Fact]
+    public async Task InlineImageFallbackDoesNotReportAnUnusedIndent()
+    {
+        const string label = "Native image";
+        var (docx, _) = DocxReleaseFixtures.CreateInlineJpegDocx(label);
+        using var source = docx;
+        using (var document = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(source, true))
+        {
+            var body = Assert.IsType<W.Body>(document.MainDocumentPart?.Document?.Body);
+            var paragraph = Assert.Single(body.Elements<W.Paragraph>(), value => value.Descendants<W.Drawing>().Any());
+            paragraph.ParagraphProperties = new(new W.Indentation
+            {
+                Left = "4000", Right = "4000", FirstLine = "2000"
+            });
+        }
+        source.Position = 0;
+        using var fonts = new PinnedCjkFontDirectory();
+        var (package, result) = await Convert(source, Options(fonts, engine: true));
+        Assert.Equal(label.Replace(" ", ""), Text(package));
+        Assert.Single(Assert.Single(package.Pages).Elements.OfType<OfdImageElement>());
+        Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_TEXT_ENGINE_FALLBACK");
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_NATIVE_INDENT_LIMITED");
+    }
+
+    [Fact]
+    public async Task InvalidTabOriginUsesNativeFailureContract()
+    {
+        const string body = """
+            <w:p><w:pPr><w:ind w:left="60000000"/></w:pPr><w:r><w:t>Text</w:t></w:r></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new DocxToOfdConverter(Options(fonts, engine: true)).ConvertAsync(source, output));
+        Assert.Equal("DOCX native paragraph layout failed: Invalid default tab origin.", error.Message);
+        Assert.IsType<Ofdrw.Net.Layout.Text.TextLayoutException>(
+            Assert.IsType<InvalidOperationException>(error.InnerException).InnerException);
+        Assert.Equal(0, output.Length);
     }
 
     [Fact]
