@@ -45,6 +45,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private FlowFinalTextWriter? _finalWriter;
     private double? _defaultTabPoints;
     private bool _imageFallbackReported;
+    private bool _indentLimitReported;
     private readonly Dictionary<BuiltInTextFormat, TextStyle> _finalStyles = new();
     private readonly Dictionary<string, TextFontFamily?> _finalFamilies = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<byte[], TextFontFace?> _finalFaces = new();
@@ -71,7 +72,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         if (_options.NativeParagraphLayoutEngine is { } engine)
             _final = new FlowFinalTextLayout(engine, style => FinalStyle((BuiltInTextFormat)style.Source!),
                 _options.NativeEmbeddedBoldBehavior == DocxEmbeddedBoldBehavior.Throw
-                    ? TextSyntheticStylePolicy.Reject : TextSyntheticStylePolicy.Synthesize);
+                    ? TextSyntheticStylePolicy.Reject : TextSyntheticStylePolicy.Synthesize,
+                indentLimited: ReportLimitedIndent);
         OfdDocumentPackage? result = null;
         FinalizePagination(() =>
         {
@@ -90,6 +92,14 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             return stable;
         });
         return result!;
+    }
+
+    private void ReportLimitedIndent()
+    {
+        if (_indentLimitReported) return;
+        _indentLimitReported = true;
+        _diagnostics.Add(new DocxConversionDiagnostic("DOCX_NATIVE_INDENT_LIMITED",
+            "A first-line or hanging indent did not fit its text column and was limited to the column."));
     }
 
     // A pass is committed only when every measured field context matches the actual
