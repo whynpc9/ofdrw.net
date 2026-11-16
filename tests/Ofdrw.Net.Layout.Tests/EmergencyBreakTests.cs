@@ -144,6 +144,24 @@ public sealed class EmergencyBreakTests
         Assert.Contains("MaximumShapeCalls", error.Message);
     }
 
+    [Fact]
+    public void RtlSpacingKeepsTheFirstOverlappingClusterAndItsLastGlyph()
+    {
+        var shaper = new FixtureShaper(request =>
+        {
+            TextShapedGlyph Glyph(int start, int length) => new((uint)request.Face.NominalGlyph(request.Text[start]),
+                request.SourceStart + start, length, request.Face.UnitsPerEm, 0, 0, 0, null, false);
+            // The successor at 2 lies in both [1,4) and [2,4). Cluster 1 comes first,
+            // and it receives spacing on its last glyph, not its first glyph.
+            return new[] { Glyph(1, 3), Glyph(2, 2), Glyph(0, 2), Glyph(1, 3) };
+        });
+        var result = new ParagraphLayoutEngine(shaper).Layout(new ParagraphLayoutRequest("אבגד",
+            DejaVu.Value.WithLetterSpacing(0.5), new ParagraphLayoutOptions(80)));
+        var run = Assert.Single(Assert.Single(result.Lines).Runs);
+        Assert.Equal(TextDirection.RightToLeft, run.Direction);
+        Assert.Equal(new[] { 4.0, 4.5, 4.5, 5.5 }, run.Glyphs.Select(glyph => glyph.AdvanceXMillimeters));
+    }
+
     private sealed class FixtureShaper(Func<TextShapeRequest, IReadOnlyList<TextShapedGlyph>> shape) : ITextShaper
     {
         public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default) =>

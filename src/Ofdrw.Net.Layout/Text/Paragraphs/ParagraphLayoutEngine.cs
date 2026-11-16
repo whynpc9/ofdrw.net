@@ -866,11 +866,16 @@ public sealed class ParagraphLayoutEngine
                     var end = _text.IndexOfOffset(glyph.ClusterStart + glyph.ClusterLength) - paragraph.Start;
                     clusters[start] = (end, index);
                 }
-                int? ClusterOf(int codePoint)
+                int[]? lastGlyphAt = null;
+                if (rtl)
                 {
+                    // Store glyph index + 1 so zero denotes an uncovered code point.
+                    // A custom shaper can return overlapping clusters; keep the first match.
+                    lastGlyphAt = new int[run.End - run.Start];
                     foreach (var pair in clusters)
-                        if (codePoint >= pair.Key && codePoint < pair.Value.End) return pair.Key;
-                    return null;
+                        for (var index = Math.Max(pair.Key, run.Start); index < pair.Value.End && index < run.End; index++)
+                            if (lastGlyphAt[index - run.Start] == 0)
+                                lastGlyphAt[index - run.Start] = pair.Value.LastGlyph + 1;
                 }
                 foreach (var pair in clusters)
                 {
@@ -878,9 +883,10 @@ public sealed class ParagraphLayoutEngine
                     {
                         if (!paragraph.GraphemeStart[grapheme] || !HasSpacingAfter(paragraph, grapheme, trimEnd)) continue;
                         var target = pair.Value.LastGlyph;
-                        if (rtl && NextCluster(paragraph, grapheme) is var successor && successor >= pair.Value.End &&
-                            ClusterOf(successor) is { } next)
-                            target = clusters[next].LastGlyph;
+                        if (lastGlyphAt is not null && NextCluster(paragraph, grapheme) is var successor &&
+                            successor >= pair.Value.End && successor >= run.Start && successor < run.End &&
+                            lastGlyphAt[successor - run.Start] is var glyph && glyph != 0)
+                            target = glyph - 1;
                         run.Extra[target] += spacing;
                     }
                 }
