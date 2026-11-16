@@ -1,0 +1,72 @@
+{
+  "status": "accepted",
+  "package_version": "0.4.0",
+  "source_fingerprint": "6dc0a6ed203fa284400de0bd3f2e504762ec847e567d0df4fd0625138a36ae48",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "8599f1706552ea1ae2a0d2fb69b9559975b746e7632392a3f403d0cfa2f473d9",
+  "preview_pdf_sha256": "d0a2a18ffa45be4c118d7bac768d9df48181b4f06732472131bcd87d1c46f1ce",
+  "default_ofd_sha256": "0783caf60ba624ce07b0f40f73f1ee0ec51e9d7828db07b2599e83b1c999f567",
+  "default_preview_pdf_sha256": "45e8a88a3ed9a4c76a542e8f001972c389c863d0daf4cbfb03b29f62fffd1d39",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI visual reviewer)",
+  "reviewed_at": "2026-11-16T10:03+08:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Fixed generated-layout.docx, physical Regular/Bold, explicit Native and default Native, two pages per mode.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "artifacts/release-0.4.0/fonts/"
+      ]
+    },
+    "outputs": {
+      "native_ofd": "profile-output/font-native.ofd",
+      "native_pdf": "profile-output/font-native.pdf",
+      "default_ofd": "profile-output/font-default.ofd",
+      "default_pdf": "profile-output/font-default.pdf"
+    },
+    "visual_environment": "macOS 26.6.2 (25G83), Preview 11.0, Poppler 26.09.0 at 144 DPI.",
+    "functional_result": "Both modes preserve all 189 non-whitespace source characters in OFD and PDF. Physical Regular/Bold subset outlines matched the pinned faces for the checked glyphs. Seven selected SDK DLLs matched the exact local candidate package assets."
+  },
+  "additional_visual_review": "Preview review covered 13 PDF pages (four Q05, one paragraph, two indent, two named-area, and four seal pages) and four background PNGs. Thirteen page PNGs were independently inspected. All candidate evidence hashes matched. No blocking visual defect observed within these samples.",
+  "known_limitations": [
+    "Page observations are limited to the recorded samples and display settings.",
+    "macOS Preview Find, raw Unicode Copy and PDF selection geometry were outside the review scope."
+  ],
+  "producer_source_sha": "773393c00a161b6a92eea4a9b6fab4ebe3e6a507",
+  "evidence_root": "artifacts/release-0.4.0/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "750b420583e0d16235d4a0ac19e0a66a728b19ef8a67eb45240c0bf0d75798ff",
+    "visual-sha256.txt": "a19c5e578d60b4679c7cf232131bd4782a45bc8d8e794d6d10bfe22e33e4d1fb",
+    "preview-review.md": "575e678b8e31adad50e4d614c1d2503fea018cb89a34398e4caf907679f94b44",
+    "profile-check.json": "b5697e6597d6d59df997389fd8834326f9385c7f410b68d44dce213481fde632",
+    "consumer-identities.json": "d5535223c75d8e0ceaf211608802bedbf42eb54ae759a82c453c5dad462648b5",
+    "full-tests.log": "68946f91d8b3dd960f1e5ea5350ae34718223e6ea553ac693489797b696b7541",
+    "trusted-tests/trusted-fonts.trx": "d9880c3601100ca0c21aaa00f2826bf9f66aa84b3d064044f78373cdff200aa7",
+    "package-e2e.log": "ea770b376c79b2c9b360bb2f516ab02f8a7db0c1b177640ed00260c4e400d36b",
+    "package-e2e/visual-corpus/visual-metrics.csv": "5e5e3e311dbab7f37e6cd8fd37cf7f9691c6d60b62678e058a3cf6fab178e259",
+    "docx-viewer-local.log": "d9229df41527dfaa095f34f166e39ea928616f75a337ab5bf6f71e3701a921e3"
+  }
+}
