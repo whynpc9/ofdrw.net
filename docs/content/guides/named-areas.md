@@ -48,7 +48,7 @@ await using var output = File.Create("filled.ofd");
 await new OfdPackageWriter().WriteAsync(package, output);
 ```
 
-## 用 CLI 填充（main，尚未发布）
+## 用 CLI 填充（自 0.4.0 起）
 
 ```sh
 ofdrw areas list template.ofd

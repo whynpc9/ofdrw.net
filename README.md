@@ -6,7 +6,7 @@ Ofdrw.Net 是 .NET OFD SDK 与 CLI，提供文档生成、读取、编辑、转�
 
 ## 安装
 
-以下命令适用于 0.4.0。当前公开版本见上方安装指南。
+当前稳定版为 **0.4.0**。
 
 ```sh
 dotnet add package Ofdrw.Net.Converter --version 0.4.0

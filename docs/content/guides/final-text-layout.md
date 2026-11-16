@@ -56,7 +56,7 @@ await new DocxToOfdConverter(options).ConvertAsync(input, output);
 - 读取 `w:tabs`（左/居中/右/小数，`clear` 合并样式链）和 `settings.xml` 的 `w:defaultTabStop`；制表位按 Word 从文本栏起始处量起，悬挂缩进的位置本身也是首行的制表位。与 Word 一致，紧邻制表位的文本后制表符可以几乎没有步进。
 - 读取 `w:strike`/`w:dstrike`（一条删除线）、`w:highlight` 和字符底纹 `w:shd`（高亮矩形）。
 - `NativeEmbeddedBoldBehavior = Throw` 时不合成粗体（缺少粗体字面即失败）；默认 `TextStroke` 合成，写为填充色描边而不是 `Weight`。
-- 含内嵌图片的段落使用兼容排版，并报告一次 `DOCX_NATIVE_TEXT_ENGINE_FALLBACK`。不受支持的字面报告 `DOCX_FONT_TEXT_ENGINE_UNSUPPORTED` 并被跳过。首行缩进或悬挂缩进超出文本栏宽度时，段落排版引擎会限制缩进（限制后若仍放不下首个字素簇，则取消正向首行缩进），并在每次转换中报告一次 `DOCX_NATIVE_INDENT_LIMITED`（main，尚未发布）。
+- 含内嵌图片的段落使用兼容排版，并报告一次 `DOCX_NATIVE_TEXT_ENGINE_FALLBACK`。不受支持的字面报告 `DOCX_FONT_TEXT_ENGINE_UNSUPPORTED` 并被跳过。首行缩进或悬挂缩进超出文本栏宽度时，段落排版引擎会限制缩进（限制后若仍放不下首个字素簇，则取消正向首行缩进），并在每次转换中报告一次 `DOCX_NATIVE_INDENT_LIMITED`（自 0.4.0 起）。
 - OFD 包带自定义标签 `docx-native-text-engine = ParagraphLayout`。
 
 ## 与兼容排版的差异

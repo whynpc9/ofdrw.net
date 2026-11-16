@@ -9,7 +9,7 @@ sidebar:
 CLI 需要 **.NET 10**。安装并查看所安装版本的完整帮助：
 
 ```sh
-dotnet tool install --global Ofdrw.Net.Cli --version 0.3.1
+dotnet tool install --global Ofdrw.Net.Cli --version 0.4.0
 ofdrw --help
 ```
 
@@ -21,7 +21,7 @@ ofdrw --help
 | DOCX → OFD | `ofdrw docx-to-ofd -i input.docx -o output.ofd --docx-ofd-mode native` |
 | DOCX → PDF | `ofdrw docx-to-pdf -i input.docx -o output.pdf` |
 | PDF → OFD | `ofdrw pdf-to-ofd -i input.pdf -o output.ofd` |
-| PDF → OFD，复制书签和附件（main，尚未发布） | `ofdrw pdf-to-ofd -i input.pdf -o output.ofd --copy-bookmarks --copy-attachments` |
+| PDF → OFD，复制书签和附件（自 0.4.0 起） | `ofdrw pdf-to-ofd -i input.pdf -o output.ofd --copy-bookmarks --copy-attachments` |
 | OFD → PDF | `ofdrw ofd-to-pdf -i input.ofd -o output.pdf` |
 | OFD → 单页 SVG | `ofdrw ofd-to-svg -i input.ofd -o page.svg --pages 1` |
 | OFD → 静态 HTML | `ofdrw ofd-to-html -i input.ofd -o preview.html --pages 1-3` |
@@ -38,8 +38,8 @@ ofdrw --help
 | 按 ID 导出附件（自 0.2.0 起） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
 | 只读定位关键字（自 0.2.0 起） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
 | 按 ID 移除附件（自 0.2.0 起） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
-| 列出命名区域（main，尚未发布） | `ofdrw areas list input.ofd --json` |
-| 填充命名区域（main，尚未发布） | `ofdrw areas fill input.ofd filled.ofd --name name --text "Alice 中文"` |
+| 列出命名区域（自 0.4.0 起） | `ofdrw areas list input.ofd --json` |
+| 填充命名区域（自 0.4.0 起） | `ofdrw areas fill input.ofd filled.ofd --name name --text "Alice 中文"` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
@@ -119,10 +119,10 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 
-下一版本兼容性（main，尚未发布）：使用通用解析器的转换、页面和查询命令会拒绝重复的单值选项（例如 `-i` 与 `--input` 算同一选项）、多余的位置参数及不适用的选项，并返回 `1`。例如 `extract-text` 不接受 `--pages`，`verify-signatures` 不接收输出路径，非 DOCX 转换不接受 DOCX 选项。位置参数按输入、输出的顺序填入未由选项指定的路径；DOCX 转换仍可重复传入 `--font-directory`。使用共用编号解析的页码和 `--document` 文档号须为不带正负号的正整数。对 `merge`，未知的 `-` 开头参数会报错；如文件名以 `-` 开头，可用 `./-name.ofd` 指定路径。
+0.4.0 升级兼容性：使用通用解析器的转换、页面和查询命令会拒绝重复的单值选项（例如 `-i` 与 `--input` 算同一选项）、多余的位置参数及不适用的选项，并返回 `1`。例如 `extract-text` 不接受 `--pages`，`verify-signatures` 不接收输出路径，非 DOCX 转换不接受 DOCX 选项。位置参数按输入、输出的顺序填入未由选项指定的路径；DOCX 转换仍可重复传入 `--font-directory`。使用共用编号解析的页码和 `--document` 文档号须为不带正负号的正整数。对 `merge`，未知的 `-` 开头参数会报错；如文件名以 `-` 开头，可用 `./-name.ofd` 指定路径。
 
-（main，尚未发布）`attachments extract` 与 `preflight --output` 的输出路径不得与输入相同。在 Linux 和 macOS 上，替换已有文件时保留其 Unix 权限位，新建文件沿用进程默认权限。
+（自 0.4.0 起）`attachments extract` 与 `preflight --output` 的输出路径不得与输入相同。在 Linux 和 macOS 上，替换已有文件时保留其 Unix 权限位，新建文件沿用进程默认权限。
 
-文本模式的状态、诊断和列表输出会把来自输入文件的控制字符和双向格式字符显示为 `\uXXXX`（例如制表符显示为 `\u0009`），因此 `attachments list` 的列数固定；`--json` 输出和 `extract-text` 提取的正文不做此替换，在终端直接查看不可信文档的正文时建议写入文件（main，尚未发布）。
+文本模式的状态、诊断和列表输出会把来自输入文件的控制字符和双向格式字符显示为 `\uXXXX`（例如制表符显示为 `\u0009`），因此 `attachments list` 的列数固定；`--json` 输出和 `extract-text` 提取的正文不做此替换，在终端直接查看不可信文档的正文时建议写入文件（自 0.4.0 起）。
 
 失败时保留完整命令、退出码和标准错误诊断。各格式的流写入、临时文件和资源预算边界见[转换约定](https://whynpc9.github.io/ofdrw.net/reference/conversion-contracts/)。

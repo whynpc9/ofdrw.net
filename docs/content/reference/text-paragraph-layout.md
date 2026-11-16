@@ -88,7 +88,7 @@ PDF 导出只嵌入 TrueType 程序（FontFile2）：静态 CFF1 字面在导出
 
 ## 限制与不承诺的范围
 
-- 预算：`MaximumTextLength`（262,144 个 UTF-16 代码单元）、`MaximumLines`（10,000）、`MaximumShapeCalls`（100,000）、每个塑形游程 4,096 个 UTF-16 代码单元、坐标范围 ±1,000,000 mm。
+- 预算：`MaximumTextLength`（262,144 个 UTF-16 代码单元）、`MaximumLines`（10,000）、`MaximumShapeCalls`（100,000）、每个塑形游程 4,096 个 UTF-16 代码单元、坐标范围 ±1,000,000 mm。自 0.4.0 起，`MaximumLines` 在接受草稿行时计数，试排的构建次数单独受限。紧急断行保留完整候选，长串仍可能产生长距离试排。
 - 已验证的输出文字体系以验证报告为准：使用所列字体的拉丁文、汉字、希伯来文、阿拉伯文和泰米尔文。其他文字体系经过相同流程排版，但不作通过承诺。
 - 字面：静态 TrueType（glyf）和 OpenType/CFF1（`TextFontFace.OutlineFormat`），含 CID-keyed CFF（如 Source Han Sans、Noto Sans CJK OTF）。可变字体（fvar/gvar）、CFF2、彩色字体（COLR/SVG/CBDT/sbix）、seac 风格的 CFF 重音 endchar 仍拒绝。
 - 此配置不包括：垂直文本、kashida 两端对齐、断字、语言定制、制表符前导符（leader）、制表位上的双向分段重排之外的复杂制表语义、显式双向格式字符、彩色 emoji 字体。ZWJ emoji 序列只在提供单色字形的字面中按塑形结果输出，未单独验收。

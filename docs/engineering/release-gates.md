@@ -2,6 +2,8 @@
 
 本文件描述可重复执行的检查及其边界。
 
+**0.4.0 已发布。** [本版 Q05 记录](../validation/releases/0.4.0-acceptance.json)绑定 `v0.4.0` 的物理字体 DOCX 验收树。公开包、签名和独立消费见[发布记录](../validation/0.4.0-publication-2026-11-16.md)。
+
 **0.3.1 已发布。** [本版 Q05 记录](../validation/releases/0.3.1-acceptance.json)绑定标签 `v0.3.1` 的固定 DOCX 验收树。公开包签名及独立消费结果见[0.3.1 发布记录](../validation/0.3.1-publication-2026-11-10.md)。
 
 **0.3.0 已发布。** [该版本的 Q05 记录](../validation/releases/0.3.0-acceptance.json)绑定固定物理 Regular/Bold DOCX、显式 Native 与默认模式各两页的 macOS Preview 验收；[0.3.0 发布记录](../validation/0.3.0-publication-2026-11-07.md)记录标签、公开包和消费回读。标签 `v0.3.0` 指向 `daf8b852d9ad670dccff09f1b910526f53728995`。发布后文档提交改变 main 的当前指纹，历史 Q05 只对该不可变发布标签成立。
