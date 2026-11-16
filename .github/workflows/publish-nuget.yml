@@ -126,8 +126,14 @@ jobs:
             echo "Verified '$required' in $workflow suite $suite_id for $RELEASE_COMMIT."
           }
           require_check ci.yml "CI complete"
-          require_check ses-interop.yml ses-interop
+          # SES interop now runs inside "CI complete" (Linux package-e2e). Release commits
+          # that predate that change still carry the separate workflow and need its check.
+          if [[ -f .github/workflows/ses-interop.yml ]]; then
+            require_check ses-interop.yml ses-interop
+          fi
 
+      # Plain pull, not ./.github/actions/lfs-fixtures: local actions resolve from the
+      # checked-out release commit, and older tags used by manual recovery lack it.
       - name: Fetch test fixtures from LFS
         shell: bash
         run: git lfs pull --include="e2e/**,tests/**" --exclude=""
