@@ -1,0 +1,103 @@
+name: Git LFS test fixtures
+description: >-
+  Restore the fixture LFS objects from one cross-OS cache keyed by the pointer set, re-hash them,
+  then let git lfs fetch only missing objects and materialize the fixtures (or only warm the cache).
+inputs:
+  include:
+    description: Comma-separated git lfs include patterns
+    default: e2e/**,tests/**
+  warm-only:
+    description: "'true' fills and saves the cache without materializing files in the working tree"
+    default: 'false'
+outputs:
+  cache-hit:
+    description: "'true' only when the exact pointer-set cache entry already existed"
+    value: ${{ steps.probe.outputs.cache-hit == 'true' || steps.restore.outputs.cache-hit == 'true' }}
+  key:
+    description: Cache key derived from the LFS object IDs selected by include
+    value: ${{ steps.key.outputs.key }}
+runs:
+  using: composite
+  steps:
+    # The key covers object IDs only (sorted, deduplicated): it is identical on every OS,
+    # independent of whether the working tree is smudged, and unchanged by renames.
+    - id: key
+      shell: bash
+      env:
+        LFS_INCLUDE: ${{ inputs.include }}
+      run: |
+        set -euo pipefail
+        sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+        list=.git/lfs-fixture-oids.txt
+        git lfs ls-files --long --include="$LFS_INCLUDE" --exclude="" | tr -d '\r' | cut -d' ' -f1 | LC_ALL=C sort -u > "$list"
+        count="$(wc -l < "$list" | tr -d ' ')"
+        if [[ "$count" -eq 0 ]] || grep -qvE '^[0-9a-f]{64}$' "$list"; then
+          echo "No valid LFS object IDs match include=$LFS_INCLUDE" >&2; exit 1
+        fi
+        # Partial restores only reuse entries of the same include set (prefix), never another set.
+        prefix="lfs-fixtures-v1-$(printf '%s' "$LFS_INCLUDE" | sha256 | cut -c1-16)-"
+        digest="$(sha256 < "$list" | cut -d' ' -f1)"
+        echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+        echo "key=$prefix$digest" >> "$GITHUB_OUTPUT"
+        echo "LFS fixture set: $count objects, key $prefix$digest"
+    - id: probe
+      if: inputs.warm-only == 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: .git/lfs/objects
+        key: ${{ steps.key.outputs.key }}
+        enableCrossOsArchive: true
+        lookup-only: true
+    - id: restore
+      if: steps.probe.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: .git/lfs/objects
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: ${{ steps.key.outputs.prefix }}
+        enableCrossOsArchive: true
+    # Cached bytes are never trusted: drop objects outside the current set or whose content
+    # does not hash to their object ID, so git lfs downloads them again. Pruning also removes
+    # objects of other include sets from .git/lfs/objects; already materialized files are unaffected.
+    - if: steps.probe.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        LFS_INCLUDE: ${{ inputs.include }}
+        WARM_ONLY: ${{ inputs.warm-only }}
+      run: |
+        set -euo pipefail
+        sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+        list=.git/lfs-fixture-oids.txt
+        objects=.git/lfs/objects
+        kept=0; dropped=0
+        if [[ -d "$objects" ]]; then
+          while IFS= read -r -d '' file; do
+            oid="${file##*/}"
+            if grep -qxF "$oid" "$list" && [[ "$(sha256 "$file" | cut -d' ' -f1)" == "$oid" ]]; then
+              kept=$((kept + 1))
+            else
+              rm -f "$file"; dropped=$((dropped + 1))
+            fi
+          done < <(find "$objects" -type f -print0)
+        fi
+        echo "Verified $kept cached LFS objects; dropped $dropped stale or corrupt files."
+        if [[ "$WARM_ONLY" == 'true' ]]; then
+          git lfs fetch --include="$LFS_INCLUDE" --exclude=""
+        else
+          git lfs pull --include="$LFS_INCLUDE" --exclude=""
+        fi
+        missing=0
+        while IFS= read -r oid; do
+          if [[ ! -f "$objects/${oid:0:2}/${oid:2:2}/$oid" ]]; then echo "Missing LFS object $oid" >&2; missing=$((missing + 1)); fi
+        done < "$list"
+        if [[ "$missing" -ne 0 ]]; then exit 1; fi
+        if [[ "$WARM_ONLY" != 'true' ]]; then
+          pointers="$(git lfs ls-files --long --include="$LFS_INCLUDE" --exclude="" | tr -d '\r' | grep -E '^[0-9a-f]{64} - ' || true)"
+          if [[ -n "$pointers" ]]; then echo "LFS fixtures still unsmudged:" >&2; echo "$pointers" >&2; exit 1; fi
+        fi
+    - if: steps.probe.outputs.cache-hit != 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .git/lfs/objects
+        key: ${{ steps.key.outputs.key }}
+        enableCrossOsArchive: true
