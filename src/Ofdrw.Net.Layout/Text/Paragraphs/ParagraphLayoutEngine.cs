@@ -25,6 +25,8 @@ public sealed class ParagraphLayoutEngine
     private const int MaximumFitAttempts = 32;
     private const int MaximumEmergencyMisses = 4;
     private const int MaximumNearMisses = 3;
+    // Near misses, legal fits, then the total budget of the emergency search.
+    private const int MaximumBuildsPerLine = MaximumNearMisses + 3 * MaximumFitAttempts;
     private readonly ITextShaper _shaper;
 
     /// <summary>Creates an engine around a run shaper (for example HarfBuzz).</summary>
@@ -119,6 +121,7 @@ public sealed class ParagraphLayoutEngine
         internal BidiAlgorithm Bidi = null!;
         internal LineBreakKind[] Breaks = Array.Empty<LineBreakKind>();
         internal bool[] GraphemeStart = Array.Empty<bool>();
+        internal List<int>? EmergencyBoundaries;          // ordered grapheme boundaries, only built if needed
         internal byte[] ClusterLevel = Array.Empty<byte>();
         internal int[] ItemOf = Array.Empty<int>();
         internal TextStyle[] StyleOf = Array.Empty<TextStyle>();
@@ -164,7 +167,7 @@ public sealed class ParagraphLayoutEngine
         private readonly TextStyle[] _styleByCodePoint;
         private int _shapeCalls;
         private string _engineVersion = string.Empty;
-        private int _lineCount;
+        private long _lineBuilds;
 
         internal Session(ParagraphLayoutEngine engine, ParagraphLayoutRequest request, CancellationToken token)
         {
@@ -191,7 +194,12 @@ public sealed class ParagraphLayoutEngine
             {
                 _token.ThrowIfCancellationRequested();
                 Analyze(paragraph);
-                drafts.AddRange(BreakLines(paragraph));
+                foreach (var line in BreakLines(paragraph))
+                {
+                    if (drafts.Count >= _options.MaximumLines)
+                        throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded MaximumLines.");
+                    drafts.Add(line);
+                }
             }
             var pages = Paginate(drafts);
             return new ParagraphLayoutResult(_request, pages, _shapeCalls, _engineVersion);
@@ -735,16 +743,33 @@ public sealed class ParagraphLayoutEngine
 
         private DraftLine EmergencyBreak(Paragraph paragraph, int start, int limit, double available, bool first)
         {
-            var boundaries = new List<int>();
-            for (var index = start + 1; index <= limit; index++)
-                if (paragraph.GraphemeStart[index]) boundaries.Add(index);
+            var boundaries = paragraph.EmergencyBoundaries;
+            if (boundaries is null)
+            {
+                boundaries = new List<int>();
+                for (var index = 1; index <= paragraph.Length; index++)
+                {
+                    if ((index & 1023) == 0) _token.ThrowIfCancellationRequested();
+                    if (paragraph.GraphemeStart[index]) boundaries.Add(index);
+                }
+                paragraph.EmergencyBoundaries = boundaries;
+            }
+            static int After(List<int> indexes, int position)
+            {
+                var index = indexes.BinarySearch(position);
+                return index >= 0 ? index + 1 : ~index;
+            }
+            // Use the full (start, limit] slice with the original relative trial indices.
+            // Truncating the slice would change which nonmonotonic widths the search sees.
+            var firstBoundary = After(boundaries, start);
+            var boundaryCount = After(boundaries, limit) - firstBoundary;
             // Largest grapheme boundary whose rebuilt (reshaped) line fits. The measured prefix is only a
             // heuristic (a ligature's whole advance sits on its first code point), and rebuilt widths are
             // not monotonic either: an Arabic lam-alef ligature makes "لا" narrower than "ل". So a binary
             // search on rebuilt widths only proposes a start; a bounded upward scan then tests later cuts
             // and stops after MaximumEmergencyMisses consecutive overflows (or the build budget).
             var low = 0;
-            var high = boundaries.Count - 1;
+            var high = boundaryCount - 1;
             DraftLine? best = null;
             var bestIndex = -1;
             var builds = 0;
@@ -752,16 +777,18 @@ public sealed class ParagraphLayoutEngine
             {
                 builds++;
                 var middle = (low + high) / 2;
-                var draft = BuildLine(paragraph, start, boundaries[middle], first, boundaries[middle] == paragraph.Length);
+                var end = boundaries[firstBoundary + middle];
+                var draft = BuildLine(paragraph, start, end, first, end == paragraph.Length);
                 if (draft.ContentWidth <= available + 1e-7) { best = draft; bestIndex = middle; low = middle + 1; }
                 else high = middle - 1;
             }
             var misses = 0;
-            for (var index = bestIndex + 1; index < boundaries.Count && misses < MaximumEmergencyMisses &&
+            for (var index = bestIndex + 1; index < boundaryCount && misses < MaximumEmergencyMisses &&
                      builds < 2 * MaximumFitAttempts; index++)
             {
                 builds++;
-                var draft = BuildLine(paragraph, start, boundaries[index], first, boundaries[index] == paragraph.Length);
+                var end = boundaries[firstBoundary + index];
+                var draft = BuildLine(paragraph, start, end, first, end == paragraph.Length);
                 if (draft.ContentWidth <= available + 1e-7) { best = draft; misses = 0; }
                 else misses++;
             }
@@ -769,14 +796,15 @@ public sealed class ParagraphLayoutEngine
             throw new TextLayoutException(TextLayoutError.LayoutOverflow,
                 "A single extended grapheme cluster exceeds the line width.",
                 sourceStart: Offset(paragraph, start),
-                sourceLength: Offset(paragraph, boundaries.Count > 0 ? boundaries[0] : limit) - Offset(paragraph, start));
+                sourceLength: Offset(paragraph, boundaryCount > 0 ? boundaries[firstBoundary] : limit) - Offset(paragraph, start));
         }
 
         private DraftLine BuildLine(Paragraph paragraph, int start, int end, bool firstOfParagraph, bool endsParagraph)
         {
             _token.ThrowIfCancellationRequested();
-            if (++_lineCount > _options.MaximumLines * 4L + 64)
-                throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded its line budget.");
+            // Allow the trials for the next line that may fail the accepted-line limit.
+            if (++_lineBuilds > (_options.MaximumLines + 1L) * MaximumBuildsPerLine)
+                throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded its trial line-building budget.");
             var line = new DraftLine
             {
                 Paragraph = paragraph, Start = start, End = end, FirstOfParagraph = firstOfParagraph,
@@ -858,11 +886,16 @@ public sealed class ParagraphLayoutEngine
                     var end = _text.IndexOfOffset(glyph.ClusterStart + glyph.ClusterLength) - paragraph.Start;
                     clusters[start] = (end, index);
                 }
-                int? ClusterOf(int codePoint)
+                int[]? lastGlyphAt = null;
+                if (rtl)
                 {
+                    // Store glyph index + 1 so zero denotes an uncovered code point.
+                    // A custom shaper can return overlapping clusters; keep the first match.
+                    lastGlyphAt = new int[run.End - run.Start];
                     foreach (var pair in clusters)
-                        if (codePoint >= pair.Key && codePoint < pair.Value.End) return pair.Key;
-                    return null;
+                        for (var index = Math.Max(pair.Key, run.Start); index < pair.Value.End && index < run.End; index++)
+                            if (lastGlyphAt[index - run.Start] == 0)
+                                lastGlyphAt[index - run.Start] = pair.Value.LastGlyph + 1;
                 }
                 foreach (var pair in clusters)
                 {
@@ -870,9 +903,10 @@ public sealed class ParagraphLayoutEngine
                     {
                         if (!paragraph.GraphemeStart[grapheme] || !HasSpacingAfter(paragraph, grapheme, trimEnd)) continue;
                         var target = pair.Value.LastGlyph;
-                        if (rtl && NextCluster(paragraph, grapheme) is var successor && successor >= pair.Value.End &&
-                            ClusterOf(successor) is { } next)
-                            target = clusters[next].LastGlyph;
+                        if (lastGlyphAt is not null && NextCluster(paragraph, grapheme) is var successor &&
+                            successor >= pair.Value.End && successor >= run.Start && successor < run.End &&
+                            lastGlyphAt[successor - run.Start] is var glyph && glyph != 0)
+                            target = glyph - 1;
                         run.Extra[target] += spacing;
                     }
                 }
@@ -1075,12 +1109,9 @@ public sealed class ParagraphLayoutEngine
             var height = _options.PageHeightMillimeters;
             double cursor = 0;
             var pageIndex = 0;
-            var lines = 0;
             foreach (var draft in drafts)
             {
                 _token.ThrowIfCancellationRequested();
-                if (++lines > _options.MaximumLines)
-                    throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded MaximumLines.");
                 if (draft.FirstOfParagraph && draft.Paragraph.Index > 0 && current.Count > 0)
                     cursor += _options.ParagraphSpacingMillimeters;
                 if (height is { } limit)
