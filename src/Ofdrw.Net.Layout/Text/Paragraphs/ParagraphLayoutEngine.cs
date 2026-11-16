@@ -25,6 +25,8 @@ public sealed class ParagraphLayoutEngine
     private const int MaximumFitAttempts = 32;
     private const int MaximumEmergencyMisses = 4;
     private const int MaximumNearMisses = 3;
+    // Near misses, legal fits, then the total budget of the emergency search.
+    private const int MaximumBuildsPerLine = MaximumNearMisses + 3 * MaximumFitAttempts;
     private readonly ITextShaper _shaper;
 
     /// <summary>Creates an engine around a run shaper (for example HarfBuzz).</summary>
@@ -164,7 +166,7 @@ public sealed class ParagraphLayoutEngine
         private readonly TextStyle[] _styleByCodePoint;
         private int _shapeCalls;
         private string _engineVersion = string.Empty;
-        private int _lineCount;
+        private long _lineBuilds;
 
         internal Session(ParagraphLayoutEngine engine, ParagraphLayoutRequest request, CancellationToken token)
         {
@@ -191,7 +193,12 @@ public sealed class ParagraphLayoutEngine
             {
                 _token.ThrowIfCancellationRequested();
                 Analyze(paragraph);
-                drafts.AddRange(BreakLines(paragraph));
+                foreach (var line in BreakLines(paragraph))
+                {
+                    if (drafts.Count >= _options.MaximumLines)
+                        throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded MaximumLines.");
+                    drafts.Add(line);
+                }
             }
             var pages = Paginate(drafts);
             return new ParagraphLayoutResult(_request, pages, _shapeCalls, _engineVersion);
@@ -775,8 +782,9 @@ public sealed class ParagraphLayoutEngine
         private DraftLine BuildLine(Paragraph paragraph, int start, int end, bool firstOfParagraph, bool endsParagraph)
         {
             _token.ThrowIfCancellationRequested();
-            if (++_lineCount > _options.MaximumLines * 4L + 64)
-                throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded its line budget.");
+            // Allow the trials for the next line that may fail the accepted-line limit.
+            if (++_lineBuilds > (_options.MaximumLines + 1L) * MaximumBuildsPerLine)
+                throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded its trial line-building budget.");
             var line = new DraftLine
             {
                 Paragraph = paragraph, Start = start, End = end, FirstOfParagraph = firstOfParagraph,
@@ -1075,12 +1083,9 @@ public sealed class ParagraphLayoutEngine
             var height = _options.PageHeightMillimeters;
             double cursor = 0;
             var pageIndex = 0;
-            var lines = 0;
             foreach (var draft in drafts)
             {
                 _token.ThrowIfCancellationRequested();
-                if (++lines > _options.MaximumLines)
-                    throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded MaximumLines.");
                 if (draft.FirstOfParagraph && draft.Paragraph.Index > 0 && current.Count > 0)
                     cursor += _options.ParagraphSpacingMillimeters;
                 if (height is { } limit)

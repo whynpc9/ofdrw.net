@@ -81,6 +81,69 @@ public sealed class EmergencyBreakTests
         Assert.Equal(new[] { 80, 40, 20, 30, 25, 22, 21, 21, 22, 23, 24 }, firstLineLengths);
     }
 
+    [Fact]
+    public void DefaultBudgetsAdmitALongUnbreakableString()
+    {
+        var text = new string('a', 90000);
+        var result = Layout(text, Noto.Value, 80);
+        Assert.InRange(result.Lines.Count, 2000, 3500);
+        var cursor = 0;
+        foreach (var line in result.Lines)
+        {
+            Assert.Equal(cursor, line.SourceStart);
+            Assert.True(line.SourceLength > 0);
+            cursor += line.SourceLength;
+        }
+        Assert.Equal(text.Length, cursor);
+    }
+
+    [Fact]
+    public void MaximumLinesStillLimitsAcceptedEmergencyLines()
+    {
+        var text = new string('a', 2000);
+        var request = new ParagraphLayoutRequest(text, Noto.Value,
+            new ParagraphLayoutOptions(30, overflow: TextOverflowPolicy.BreakGraphemes, maximumLines: 5));
+        var error = Assert.Throws<TextLayoutException>(() => HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(request));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
+        Assert.Contains("MaximumLines", error.Message);
+    }
+
+    [Fact]
+    public void EmptyParagraphsUseTheSameAcceptedLineBudget()
+    {
+        var options = new ParagraphLayoutOptions(30, maximumLines: 5);
+        var engine = HarfBuzzTextPrelayout.CreateParagraphLayout();
+        var atLimit = engine.Layout(new ParagraphLayoutRequest(new string('\n', 5), Noto.Value, options));
+        Assert.Equal("0:1,1:1,2:1,3:1,4:1", LineRanges(atLimit));
+
+        var error = Assert.Throws<TextLayoutException>(() =>
+            engine.Layout(new ParagraphLayoutRequest(new string('\n', 1000), Noto.Value, options)));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
+        Assert.Contains("MaximumLines", error.Message);
+    }
+
+    [Fact]
+    public void AcceptedLineOverflowStopsBeforeLaterParagraphsAreShaped()
+    {
+        var engine = new ParagraphLayoutEngine(new FixtureShaper(_ =>
+            throw new InvalidOperationException("Layout should never reach the nonempty paragraph.")));
+        var request = new ParagraphLayoutRequest(new string('\n', 6) + "a", Noto.Value,
+            new ParagraphLayoutOptions(30, maximumLines: 5));
+        var error = Assert.Throws<TextLayoutException>(() => engine.Layout(request));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
+        Assert.Contains("MaximumLines", error.Message);
+    }
+
+    [Fact]
+    public void ShapeCallsRetainTheirOwnLimit()
+    {
+        var request = new ParagraphLayoutRequest(new string('a', 100), Noto.Value,
+            new ParagraphLayoutOptions(30, overflow: TextOverflowPolicy.BreakGraphemes, maximumShapeCalls: 1));
+        var error = Assert.Throws<TextLayoutException>(() => HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(request));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
+        Assert.Contains("MaximumShapeCalls", error.Message);
+    }
+
     private sealed class FixtureShaper(Func<TextShapeRequest, IReadOnlyList<TextShapedGlyph>> shape) : ITextShaper
     {
         public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default) =>
