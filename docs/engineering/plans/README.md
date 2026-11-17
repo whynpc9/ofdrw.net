@@ -37,7 +37,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 
 ## Follow-up roadmaps
 
-- [OFD 通用输出与 OFD-A 归档能力分阶段计划](ofd-archival-roadmap.md) — 2026-11-17，关联 [#145](https://github.com/whynpc9/ofdrw.net/issues/145)。D0 默认 OFD 已按本地直接集成方式完成，随本次提交推送；NuGet 发布另行安排。可选归档包的只读评估及后续转换、编辑保护和复杂场景待执行，详见[验收摘要](../../validation/standard-doctype-d0-20261117.md)。
+- [OFD 通用输出与 OFD-A 归档能力分阶段计划](ofd-archival-roadmap.md) — 2026-11-17，关联 [#145](https://github.com/whynpc9/ofdrw.net/issues/145)。D0 默认 OFD 已集成并推送 main（`826d9cef`），NuGet 发布另行安排，详见[验收摘要](../../validation/standard-doctype-d0-20261117.md)。计划已纳入[上游 DocType 对照](../upstream-doctype-comparison-20261117.md)，明确最终 ZIP 后检和内容保留用例；A1–A5 待执行。
 
 ## Dependency notes
 
