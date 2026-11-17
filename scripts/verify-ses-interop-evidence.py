@@ -56,6 +56,9 @@ with zipfile.ZipFile(cli_package) as z:
   if package.name==f'Ofdrw.Net.Archival.{version}.nupkg':
    assert prefix+'Ofdrw.Net.Archival.dll' not in z.namelist(), 'CLI must not bundle the opt-in Archival package'
    continue
+  if package.name==f'Ofdrw.Net.Medical.{version}.nupkg':
+   assert prefix+'Ofdrw.Net.Medical.dll' not in z.namelist(), 'CLI must not bundle the opt-in Medical package'
+   continue
   with zipfile.ZipFile(package) as sdk:
    names=[n for n in sdk.namelist() if n.startswith('lib/netstandard2.1/') and n.endswith('.dll')]
    for name in names:

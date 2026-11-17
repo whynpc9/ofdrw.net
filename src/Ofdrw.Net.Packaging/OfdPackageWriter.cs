@@ -57,7 +57,7 @@ public sealed partial class OfdPackageWriter
         FreezeEntryBuffers(entries, material, cancellationToken);
         await FailClosedOutputStream.WriteZipAsync(destination, async zip =>
         {
-            foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            foreach (var entry in OrderEntries(entries, plan))
             {
                 var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
                 using var stream = zipEntry.Open();
@@ -165,7 +165,7 @@ public sealed partial class OfdPackageWriter
         try
         {
             zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
-            foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            foreach (var entry in OrderEntries(entries, plan))
             {
                 token.ThrowIfCancellationRequested(); context.AssertActive();
                 var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
@@ -258,7 +258,7 @@ public sealed partial class OfdPackageWriter
             guard.AssertUnchanged(candidate.Package, context, token);
             await FailClosedOutputStream.WriteZipAsync(destination, async zip =>
             {
-                foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+                foreach (var entry in OrderEntries(entries, plan))
                 {
                     token.ThrowIfCancellationRequested();
                     var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
@@ -347,7 +347,37 @@ public sealed partial class OfdPackageWriter
         internal string? DocumentLocation;
         internal XNamespace Namespace = XNamespace.None;
         internal bool Compression;
+        // Linearized entry order: entries ranked ahead of the ordinal remainder (see OrderEntries).
+        internal bool Linearized;
+        internal Dictionary<string, int> LeadingRanks = new(StringComparer.OrdinalIgnoreCase);
+        internal List<string> PageDirectories = new();
+        // Resolved page-description paths, in page order; ranked individually so pages sharing a directory keep page order.
+        internal Dictionary<string, int> PageDescriptionIndex = new(StringComparer.OrdinalIgnoreCase);
         internal long OutputReservation;
+    }
+
+    /// <summary>
+    /// Ordinal path order by default. A linearized plan writes OFD.xml, the document entry and its resource tables,
+    /// then the first page's entries (Content.xml first), the document Res folder, the remaining pages in page order,
+    /// and finally every other entry (signatures, attachments, tags, annotations) in ordinal order.
+    /// </summary>
+    private static IEnumerable<KeyValuePair<string, byte[]>> OrderEntries(Dictionary<string, byte[]> entries, WritePlan plan)
+    {
+        if (!plan.Linearized) return entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase);
+        var resources = (plan.Directory.Length == 0 ? string.Empty : plan.Directory + "/") + "Res/";
+        long Rank(string key)
+        {
+            if (plan.LeadingRanks.TryGetValue(key, out var leading)) return leading;
+            if (plan.PageDescriptionIndex.TryGetValue(key, out var page)) return page == 0 ? 3 : 10 + 2L * page;
+            for (var index = 0; index < plan.PageDirectories.Count; index++)
+            {
+                // Supporting entries (PageRes, page Res) follow the first page description in their directory.
+                if (!key.StartsWith(plan.PageDirectories[index], StringComparison.OrdinalIgnoreCase)) continue;
+                return index == 0 ? 4 : 11 + 2L * index;
+            }
+            return key.StartsWith(resources, StringComparison.OrdinalIgnoreCase) ? 5 : long.MaxValue;
+        }
+        return entries.OrderBy(x => Rank(x.Key)).ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase);
     }
 
     private static WritePlan PreparePlan(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token, OfdFontEmbeddingPlan? fontPlan = null)
@@ -371,6 +401,7 @@ public sealed partial class OfdPackageWriter
             Namespace = XNamespace.Get(package.Options.Namespace),
             DocumentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml",
             Pages = package.Pages.OrderBy(page => page.Index).ToList(), Compression = package.Options.EnableDeflateCompression,
+            Linearized = package.Options.LinearizedEntryOrder,
             OutputReservation = material.OutputUpperBoundBytes - before
         };
         plan.Directory = OfdPackagePath.GetDirectory(plan.DocumentPath);
@@ -402,6 +433,13 @@ public sealed partial class OfdPackageWriter
         var knownPaths = new List<string> { publicPath };
         foreach (var path in plan.PagePaths.Values) knownPaths.Add(EntryInDirectory(OfdPackagePath.GetDirectory(path), "PageRes.xml"));
         if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) knownPaths.Add(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token));
+        plan.LeadingRanks[OfdConstants.OfdRootFile] = 0;
+        plan.LeadingRanks[plan.DocumentPath] = 1;
+        plan.LeadingRanks[publicPath] = 2;
+        if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) plan.LeadingRanks[material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token)] = 2;
+        plan.PageDirectories = plan.Pages.Select(page => OfdPackagePath.GetDirectory(plan.PagePaths[page]) + "/").ToList();
+        for (var index = 0; index < plan.Pages.Count; index++)
+            if (!plan.PageDescriptionIndex.ContainsKey(plan.PagePaths[plan.Pages[index]])) plan.PageDescriptionIndex[plan.PagePaths[plan.Pages[index]]] = index;
         material.ChargeCopy(32L * plan.Directory.Length + 1024, token);
         var outputRoles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         Role(OfdConstants.OfdRootFile, "OFD"); Role(plan.DocumentPath, "Document");

@@ -430,6 +430,7 @@ internal static class OfdStandardXml
                 Enum.TryParse<OfdDocUsage>(value, false, out var usage)) metadata.DocUsage = usage;
         }
         metadata.Cover = Scalar(info, "Cover"); metadata.CreatorVersion = Scalar(info, "CreatorVersion");
+        metadata.DocId = Scalar(info, "DocID");
         if (info.Elements(ns + "CustomDatas").Count() == 1)
         {
             var element = info.Element(ns + "CustomDatas")!;
@@ -538,6 +539,7 @@ internal static class OfdStandardXml
     internal static void WriteMetadata(OfdDocumentPackage package, XElement info)
     {
         var metadata = package.Options.Metadata;
+        Scalar("DocID", metadata.DocId);
         Scalar("DocUsage", metadata.DocUsage?.ToString());
         Scalar("Cover", metadata.Cover);
         Scalar("CreatorVersion", metadata.CreatorVersion);

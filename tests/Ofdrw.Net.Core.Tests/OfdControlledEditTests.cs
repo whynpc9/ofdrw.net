@@ -5,7 +5,7 @@ namespace Ofdrw.Net.Core.Tests;
 public sealed class OfdControlledEditTests
 {
     [Theory]
-    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)] [InlineData(6)] [InlineData(7)]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)] [InlineData(6)] [InlineData(7)] [InlineData(8)]
     public void GuardCoversUnqueriedScalarsArraysDatesAndOrder(int mutation)
     {
         var source = Document(); using var context = new OfdControlledEditContext(new OfdModelLimits());
@@ -20,6 +20,7 @@ public sealed class OfdControlledEditTests
             case 5: Assert.IsType<OfdImageElement>(source.Pages[1].Elements[0]).Alpha--; break;
             case 6: Assert.IsType<OfdImageElement>(source.Pages[1].Elements[0]).Transform![0]++; break;
             case 7: source.Pages.Reverse(); break;
+            case 8: source.Options.LinearizedEntryOrder = true; break;
         }
         Assert.Throws<InvalidDataException>(() => guard.AssertUnchanged(source, context));
     }

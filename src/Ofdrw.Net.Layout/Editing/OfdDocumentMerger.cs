@@ -352,6 +352,7 @@ public static class OfdDocumentMerger
             DocType = source.DocType,
             Namespace = source.Namespace,
             EnableDeflateCompression = source.EnableDeflateCompression,
+            LinearizedEntryOrder = source.LinearizedEntryOrder,
             FontEmbedding = new OfdFontEmbeddingOptions
             {
                 Mode = source.FontEmbedding.Mode,

@@ -35,7 +35,7 @@ internal static class OfdSerializedInventory
         S("publicResource", package.PublicResourceLocation); P(package.PublicResourceLocation);
         S("documentResource", package.DocumentResourceLocation); P(package.DocumentResourceLocation);
         var options = package.Options; S("docType", options.DocType); S("namespace", options.Namespace);
-        S("documentId", options.DocumentId); P(options.DocumentId); V("compression", options.EnableDeflateCompression);
+        S("documentId", options.DocumentId); P(options.DocumentId); V("compression", options.EnableDeflateCompression); V("linearizedEntryOrder", options.LinearizedEntryOrder);
         V("defaultWidth", options.DefaultPageWidthMillimeters); V("defaultHeight", options.DefaultPageHeightMillimeters);
         Object("fontEmbedding", options.FontEmbedding);
         V("fontMode", options.FontEmbedding.Mode); V("fontMaxBytes", options.FontEmbedding.MaximumFontBytes);
@@ -48,7 +48,7 @@ internal static class OfdSerializedInventory
         S("keywords", metadata.Keywords); S("creator", metadata.Creator);
         V("creation", metadata.CreationDate); V("modified", metadata.ModificationDate);
         V("docUsage", metadata.DocUsage); S("cover", metadata.Cover); P(metadata.Cover);
-        S("creatorVersion", metadata.CreatorVersion);
+        S("creatorVersion", metadata.CreatorVersion); S("docId", metadata.DocId);
         Standard("customDatas", metadata.CustomDatas); Standard("permissions", package.Permissions);
         Standard("viewingPreferences", package.ViewingPreferences); Standard("versions", package.Versions);
         Container("entries", package.PreservedEntries, package.PreservedEntries.Count);

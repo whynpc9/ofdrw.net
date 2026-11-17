@@ -89,6 +89,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             {
                 DocType = source.Options.DocType, Namespace = source.Options.Namespace, DocumentId = source.Options.DocumentId,
                 EnableDeflateCompression = source.Options.EnableDeflateCompression,
+                LinearizedEntryOrder = source.Options.LinearizedEntryOrder,
                 FontEmbedding = new OfdFontEmbeddingOptions
                 {
                     Mode = source.Options.FontEmbedding.Mode,
@@ -107,7 +108,8 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                     Creator = source.Options.Metadata.Creator, CreationDate = source.Options.Metadata.CreationDate,
                     ModificationDate = source.Options.Metadata.ModificationDate,
                     DocUsage = source.Options.Metadata.DocUsage, Cover = source.Options.Metadata.Cover,
-                    CreatorVersion = source.Options.Metadata.CreatorVersion
+                    CreatorVersion = source.Options.Metadata.CreatorVersion,
+                    DocId = source.Options.Metadata.DocId
                 }
             }
         };

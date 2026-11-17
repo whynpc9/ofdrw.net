@@ -5,6 +5,14 @@ namespace Ofdrw.Net.Core.Models;
 public sealed class OfdMetadata
 {
     private OfdCustomDatas? customDatas;
+
+    /// <summary>
+    /// Optional GB/T 33190 <c>DocInfo/DocID</c>, the document's unique identifier. It is unrelated to
+    /// <see cref="OfdDocumentOptions.DocumentId"/>, which names the package folder. Reading fills it from a plain-text
+    /// <c>DocID</c>; setting null before saving removes that value. Merging documents does not copy it.
+    /// </summary>
+    public string? DocId { get; set; }
+
     public string? Title { get; set; }
 
     public string? Author { get; set; }

@@ -42,6 +42,14 @@ public sealed class TextReplacementTests
     }
 
     [Fact]
+    public async Task PackageCopyKeepsTheLinearizedEntryOrderOption()
+    {
+        var source = await Read(); source.Options.LinearizedEntryOrder = true;
+        using var result = new OfdTextReplacer(new Metrics()).Replace(source, "B", "--");
+        Assert.True(result.CreatePackageCopy().Options.LinearizedEntryOrder);
+    }
+
+    [Fact]
     public async Task FullDeletionRetainsRootAllOriginalSlotsAndExplicitEmptyAnchors()
     {
         var source = await Read([("A", 2d, ""), ("B", 5d, ""), ("C", 8d, "")]);
