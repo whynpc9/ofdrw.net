@@ -412,6 +412,9 @@ internal static class MedicalRules
             ? O(rule, "7.2(d)", PreflightOutcome.Fail, "ImageFormatNotPermitted", rejected[0], "payload signature", Sample(rejected), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2")
             : formats.Count == 0
                 ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "NoReadableImage", Package, Package, "No readable image payload", "Permitted image formats")
+                : missing.Count + unresolved.Count > 0
+                    ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ImageUnavailable", (missing.Concat(unresolved)).First().Table.Path, Package,
+                        Sample(missing.Select(x => x.Resolved!).Concat(unresolved.Select(x => x.Declared))), "Every image payload inspected")
                 : incomplete
                     ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Sample(context.Structure.Unreadable), "Every resource table readable")
                     : O(rule, "7.2(d)", PreflightOutcome.Pass, "PermittedImageFormats", Package, "payload signature", string.Join(", ", formats.Distinct()), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2");
@@ -421,13 +424,24 @@ internal static class MedicalRules
     internal static IEnumerable<MedicalRuleObservation> MediaAndSize(MedicalRuleContext context)
     {
         const string rule = "MH-010";
-        var media = context.Structure.Media.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved)).ToList();
+        // Declared media whose payload is missing or unresolvable, and unreadable tables, leave the scope incomplete.
+        var incomplete = context.Structure.Unreadable.Count > 0;
+        var declaredMedia = context.Structure.Media;
+        var media = declaredMedia.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved)).ToList();
+        var unavailableMedia = declaredMedia.Where(x => x.Resolved == null || !context.Package.Exists(x.Resolved)).Select(x => x.Resolved ?? x.Declared).ToList();
+        string Unread() => Sample(context.Structure.Unreadable);
         foreach (var (clause, type, name) in new[] { ("7.2(f)", "Audio", "MP3"), ("7.2(g)", "Video", "MP4") })
         {
             var items = media.Where(x => string.Equals(x.Type, type, StringComparison.OrdinalIgnoreCase)).ToList();
+            var unavailable = declaredMedia.Where(x => string.Equals(x.Type, type, StringComparison.OrdinalIgnoreCase) && (x.Resolved == null || !context.Package.Exists(x.Resolved)))
+                .Select(x => x.Resolved ?? x.Declared).ToList();
             if (items.Count == 0)
             {
-                yield return O(rule, clause, PreflightOutcome.NotApplicable, "No" + type, Package, Package, "No embedded " + type.ToLowerInvariant(), name + " or another common format");
+                yield return unavailable.Count > 0
+                    ? O(rule, clause, PreflightOutcome.Unknown, "MediaUnavailable", unavailable[0], Package, Sample(unavailable), name + " or another common format")
+                    : incomplete
+                        ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
+                        : O(rule, clause, PreflightOutcome.NotApplicable, "No" + type, Package, Package, "No embedded " + type.ToLowerInvariant(), name + " or another common format");
                 continue;
             }
             var other = new List<string>();
@@ -443,14 +457,22 @@ internal static class MedicalRules
             // "MP3 等" / "MP4 等" admits other common formats, so an unrecognized payload is Unknown, not Fail.
             yield return other.Count > 0
                 ? O(rule, clause, PreflightOutcome.Unknown, "Other" + type + "Format", other[0], "payload signature", Sample(other), name + " or another common format")
+                : unavailable.Count > 0
+                    ? O(rule, clause, PreflightOutcome.Unknown, "MediaUnavailable", unavailable[0], Package, Sample(unavailable), name + " or another common format")
+                : incomplete
+                    ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
                 : O(rule, clause, PreflightOutcome.Pass, name + "Payloads", items[0].Resolved!, "payload signature", items.Count + " payloads", name);
         }
         var limit = context.Options.MaxEmbeddedObjectBytes;
         var mediaOver = media.Where(x => context.Package.Length(x.Resolved!) > limit).Select(x => x.Resolved!).ToList();
-        yield return media.Count == 0
-            ? O(rule, "7.2(e)", PreflightOutcome.NotApplicable, "NoEmbeddedObjects", Package, Package, "No embedded media", "At most " + limit + " bytes")
-            : mediaOver.Count > 0
-                ? O(rule, "7.2(e)", PreflightOutcome.Fail, "EmbeddedObjectOverLimit", mediaOver[0], "uncompressed size", Sample(mediaOver), "At most " + limit + " bytes")
+        yield return mediaOver.Count > 0
+            ? O(rule, "7.2(e)", PreflightOutcome.Fail, "EmbeddedObjectOverLimit", mediaOver[0], "uncompressed size", Sample(mediaOver), "At most " + limit + " bytes")
+            : unavailableMedia.Count > 0
+                ? O(rule, "7.2(e)", PreflightOutcome.Unknown, "MediaUnavailable", unavailableMedia[0], Package, Sample(unavailableMedia), "At most " + limit + " bytes")
+            : incomplete
+                ? O(rule, "7.2(e)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
+            : media.Count == 0
+                ? O(rule, "7.2(e)", PreflightOutcome.NotApplicable, "NoEmbeddedObjects", Package, Package, "No embedded media", "At most " + limit + " bytes")
                 : O(rule, "7.2(e)", PreflightOutcome.Pass, "EmbeddedObjectsWithinLimit", Package, "uncompressed size", media.Count + " objects", "At most " + limit + " bytes");
         var attachments = context.Structure.InternalAttachments.Where(x => context.Package.Exists(x.Path)).ToList();
         var attachmentsOver = attachments.Where(x => context.Package.Length(x.Path) > limit).Select(x => x.Path).ToList();
@@ -530,7 +552,7 @@ internal static class MedicalRules
             yield return O(rule, "7.5(b)", PreflightOutcome.NotApplicable, "NoMachineReadablePayload", Package, Package, "No tag or XML/JSON attachment payload", "UTF-8");
             yield break;
         }
-        var notUtf8 = new List<string>(); var notStructured = new List<string>();
+        var notUtf8 = new List<string>(); var notStructured = new List<string>(); var structureUnassessed = new List<string>();
         var strict = new UTF8Encoding(false, true);
         foreach (var (path, kind) in payloads)
         {
@@ -538,7 +560,7 @@ internal static class MedicalRules
             var bytes = context.Package.Bytes(path)!;
             string text;
             try { text = strict.GetString(bytes); }
-            catch (ArgumentException) { notUtf8.Add(path); continue; }
+            catch (ArgumentException) { notUtf8.Add(path); structureUnassessed.Add(path); continue; }
             text = text.TrimStart('﻿');
             if (kind == "xml")
             {
@@ -559,6 +581,8 @@ internal static class MedicalRules
             ? O(rule, "7.5(a)", PreflightOutcome.Fail, "NotSemiStructured", notStructured[0], Package, Sample(notStructured), "Well-formed XML or JSON object/array")
             : unavailable.Count > 0
             ? O(rule, "7.5(a)", PreflightOutcome.Unknown, "PayloadUnavailable", unavailable[0], Package, Sample(unavailable), "Readable tag and attachment payloads")
+            : structureUnassessed.Count > 0
+            ? O(rule, "7.5(a)", PreflightOutcome.Unknown, "StructureNotAssessed", structureUnassessed[0], Package, Sample(structureUnassessed) + " (not UTF-8; see 7.5(b))", "XML or JSON")
             : O(rule, "7.5(a)", PreflightOutcome.Pass, "SemiStructuredText", payloads[0].Path, Package, payloads.Count + " payloads (JSON checked by shape only)", "XML or JSON");
         yield return notUtf8.Count > 0
             ? O(rule, "7.5(b)", PreflightOutcome.Fail, "NotUtf8", notUtf8[0], Package, Sample(notUtf8), "UTF-8")

@@ -84,13 +84,13 @@ public static class MedicalDocumentProfile
             throw new ArgumentException("Mapped CustomData names must be distinct.", nameof(mapping));
 
         var custom = options.Metadata.CustomDatas ?? new OfdCustomDatas();
-        foreach (var (name, value) in new[] { (names.PatientField!, metadata.PatientId), (names.FileTypeField!, metadata.FileType), (names.SecretLevelField!, metadata.SecretLevel) })
-        {
-            var existing = custom.Items.Where(x => x.Name == name).ToList();
-            if (existing.Any(x => x.Value != value))
+        var fields = new[] { (names.PatientField!, metadata.PatientId), (names.FileTypeField!, metadata.FileType), (names.SecretLevelField!, metadata.SecretLevel) };
+        // Check every mapped name before inserting any, so a rejected apply leaves the caller's CustomDatas untouched.
+        foreach (var (name, value) in fields)
+            if (custom.Items.Any(x => x.Name == name && x.Value != value))
                 throw new ArgumentException("CustomData '" + name + "' already holds a different value.", nameof(options));
-            if (existing.Count == 0) custom.Add(name, value);
-        }
+        foreach (var (name, value) in fields)
+            if (!custom.Items.Any(x => x.Name == name)) custom.Add(name, value);
 
         options.DocType = MedicalDocTypes.Medical;
         options.Namespace = OfdConstants.StandardNamespace;

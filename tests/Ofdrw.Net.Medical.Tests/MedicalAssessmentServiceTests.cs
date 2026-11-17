@@ -228,6 +228,12 @@ public class MedicalAssessmentServiceTests
         report = await Assess(partial);
         foreach (var clause in new[] { "7.2(c)", "7.2(d)" })
             Assert.Equal("ResourceScopeIncomplete", report.Single(clause, "MH-009").ReasonCode);
+
+        // A readable PNG beside an image whose payload is missing does not establish the permitted formats.
+        var oneMissing = Mutate(await WithMedia(source, "Image", "scan.png", png), e =>
+            e.Set("Doc_0/DocumentRes.xml", e.Text("Doc_0/DocumentRes.xml").Replace("</ofd:MultiMedias>",
+                "<ofd:MultiMedia ID='91' Type='Image'><ofd:MediaFile>gone.png</ofd:MediaFile></ofd:MultiMedia></ofd:MultiMedias>")));
+        Assert.Equal("ImageUnavailable", (await Assess(oneMissing)).Single("7.2(d)", "MH-009").ReasonCode);
     }
 
     [Fact]
@@ -238,6 +244,15 @@ public class MedicalAssessmentServiceTests
         var report = await Assess(await WithMedia(source, "Audio", "voice.mp3", mp3));
         Assert.Equal("MP3Payloads", report.Single("7.2(f)", "MH-010").ReasonCode);
         Assert.Equal(PreflightOutcome.Pass, report.GetClause("7.2(e)").Outcome);
+
+        // Declared audio whose payload is missing, or audio that may sit in an unreadable table, is not "no audio".
+        report = await Assess(await WithMedia(source, "Audio", "gone.mp3", Array.Empty<byte>()));
+        Assert.Equal("MediaUnavailable", report.Single("7.2(f)", "MH-010").ReasonCode);
+        Assert.Equal("MediaUnavailable", report.Single("7.2(e)", "MH-010").ReasonCode);
+        report = await Assess(Mutate(await WithMedia(source, "Audio", "voice.mp3", mp3), e =>
+            e.Set("Doc_0/Pages/Page_1/Content.xml", e.Text("Doc_0/Pages/Page_1/Content.xml").Replace("<ofd:Content>", "<ofd:PageRes>PageRes.xml</ofd:PageRes><ofd:Content>"))));
+        foreach (var clause in new[] { "7.2(f)", "7.2(g)", "7.2(e)" })
+            Assert.Equal("ResourceScopeIncomplete", report.Single(clause, "MH-010").ReasonCode);
 
         // "MP3 等" admits other common formats: an unrecognized payload stays Unknown.
         report = await Assess(await WithMedia(source, "Audio", "voice.ogg", Encoding.ASCII.GetBytes("OggS\0\0\0\0\0\0")));
@@ -432,6 +447,16 @@ public class MedicalAssessmentServiceTests
             e["Doc_0/Attachs/emr.xml"] = Encoding.Latin1.GetBytes("<?xml version='1.0' encoding='ISO-8859-1'?><emr>café</emr>");
         });
         Assert.Equal("NotUtf8", (await Assess(attributeForm)).Single("7.5(b)", "MH-012").ReasonCode);
+
+        // Bytes that are not UTF-8 leave the structure unassessed rather than passing 7.5(a).
+        var invalidJson = AddToDocument(LayoutOfd(true).GetAwaiter().GetResult(), "<ofd:Attachments>Attachs/Attachments.xml</ofd:Attachments>", e =>
+        {
+            e.Set("Doc_0/Attachs/Attachments.xml", Open("Attachments") + "<ofd:Attachment ID='1' Name='record'><ofd:FileLoc>record.json</ofd:FileLoc></ofd:Attachment></ofd:Attachments>");
+            e["Doc_0/Attachs/record.json"] = new byte[] { 0xFF };
+        });
+        report = await Assess(invalidJson);
+        Assert.Equal("StructureNotAssessed", report.Single("7.5(a)", "MH-012").ReasonCode);
+        Assert.Equal("NotUtf8", report.Single("7.5(b)", "MH-012").ReasonCode);
     }
 
     [Fact]

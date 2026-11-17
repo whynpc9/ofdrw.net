@@ -98,6 +98,13 @@ public class MedicalContractTests
         conflicting.Metadata.CustomDatas.Add("EMR.PatientID", "someone else");
         Assert.Throws<ArgumentException>(() => MedicalDocumentProfile.Apply(conflicting, Metadata()));
         Assert.Equal("OFD", conflicting.DocType);
+
+        // A conflict on a later mapped name leaves earlier names uninserted.
+        var late = new OfdDocumentOptions();
+        late.Metadata.CustomDatas = new OfdCustomDatas();
+        late.Metadata.CustomDatas.Add("EMR.SecretLevel", "机密");
+        Assert.Throws<ArgumentException>(() => MedicalDocumentProfile.Apply(late, Metadata()));
+        Assert.Equal(new[] { "EMR.SecretLevel" }, late.Metadata.CustomDatas.Items.Select(x => x.Name));
     }
 
     [Fact]
