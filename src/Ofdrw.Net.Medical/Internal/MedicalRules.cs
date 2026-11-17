@@ -593,7 +593,11 @@ internal static class MedicalRules
         var pages = s.PagePaths.Where(x => !protectedEntries.Contains(x)).ToList();
         var annotationIndexUnreadable = s.AnnotationsPath != null && s.Unreadable.Contains(s.AnnotationsPath);
 
-        yield return pages.Count > 0
+        // FileRef resolves from the package root, as OfdSignatureVerifier and archival preflight do. While any reference
+        // is unresolvable it may still name an unlisted page, so a missing page is Unknown rather than Fail.
+        yield return pages.Count > 0 && unsafeRefs.Count > 0
+            ? O(rule, "6.3(e)", PreflightOutcome.Unknown, "UnresolvableReference", latest!, "Reference/@FileRef", Sample(unsafeRefs), "Every page description referenced")
+            : pages.Count > 0
             ? O(rule, "6.3(e)", PreflightOutcome.Fail, "PageContentNotProtected", latest!, "References", Sample(pages), "Every page description referenced")
             : s.PagePaths.Count == 0
                 ? O(rule, "6.3(e)", PreflightOutcome.Unknown, "PagesUnresolved", latest!, "References", "No resolved pages", "Every page description referenced")
@@ -640,14 +644,20 @@ internal static class MedicalRules
         var nonSm = values.Where(x => x.Value != null && NonSm(x.Value)).ToList();
         var unknown = values.Where(x => x.Value == null || !Sm(x.Value) && !NonSm(x.Value)).ToList();
         var names = values.Where(x => x.Value != null && Sm(x.Value) && x.Value != Sm2Oid && x.Value != Sm3Oid).ToList();
+        // SignatureMethod must name SM2 and CheckMethod SM3; an SM identifier in the wrong role is still wrong.
+        var misrole = values.Where(x => x.Value != null && Sm(x.Value) && !RoleMatches(x.Kind, x.Value)).ToList();
         string Show((string Path, string Kind, string? Value) x) => x.Path + " " + x.Kind + "=" + (x.Value ?? "<absent>");
         yield return nonSm.Count > 0
             ? O(rule, "8(d)", PreflightOutcome.Fail, "NonSmAlgorithm", nonSm[0].Path, nonSm[0].Kind, Sample(nonSm.Select(Show)), "SM2 signature, SM3 digest")
+            : misrole.Count > 0
+            ? O(rule, "8(d)", PreflightOutcome.Fail, "AlgorithmRoleMismatch", misrole[0].Path, misrole[0].Kind, Sample(misrole.Select(Show)), "SignatureMethod SM2, CheckMethod SM3")
             : unknown.Count > 0
                 ? O(rule, "8(d)", PreflightOutcome.Unknown, "AlgorithmUnrecognized", unknown[0].Path, unknown[0].Kind, Sample(unknown.Select(Show)), "SM2 signature, SM3 digest")
                 : O(rule, "8(d)", PreflightOutcome.Pass, "SmAlgorithms", values[0].Path, "SignatureMethod|CheckMethod", values.Count + " identifiers", "SM2 signature, SM3 digest");
         yield return names.Count > 0
             ? O(rule, "6.3(b)", PreflightOutcome.Fail, "IdentifierNotOid", names[0].Path, names[0].Kind, Sample(names.Select(Show)), Sm2Oid + " / " + Sm3Oid)
+            : misrole.Count > 0
+            ? O(rule, "6.3(b)", PreflightOutcome.Fail, "AlgorithmRoleMismatch", misrole[0].Path, misrole[0].Kind, Sample(misrole.Select(Show)), "SignatureMethod " + Sm2Oid + ", CheckMethod " + Sm3Oid)
             : nonSm.Count + unknown.Count > 0
                 ? O(rule, "6.3(b)", PreflightOutcome.Unknown, "IdentifierNotAssessed", values[0].Path, Package, "Non-SM or unrecognized identifiers (see 8(d))", Sm2Oid + " / " + Sm3Oid)
                 : O(rule, "6.3(b)", PreflightOutcome.Pass, "Gbt33560Identifiers", values[0].Path, "SignatureMethod|CheckMethod", values.Count + " identifiers", Sm2Oid + " / " + Sm3Oid);
@@ -655,6 +665,10 @@ internal static class MedicalRules
 
     private static bool Sm(string value) => value == Sm2Oid || value == Sm3Oid ||
         Regex.IsMatch(value, @"^(sm2|sm3|sm2-?with-?sm3|sm3-?with-?sm2)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static bool RoleMatches(string kind, string value) => kind == "CheckMethod"
+        ? value == Sm3Oid || string.Equals(value, "sm3", StringComparison.OrdinalIgnoreCase)
+        : value == Sm2Oid || Regex.IsMatch(value, @"^(sm2|sm2-?with-?sm3|sm3-?with-?sm2)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static bool NonSm(string value) =>
         value.StartsWith("1.2.840.113549.", StringComparison.Ordinal) || value.StartsWith("2.16.840.1.101.3.4.", StringComparison.Ordinal) ||

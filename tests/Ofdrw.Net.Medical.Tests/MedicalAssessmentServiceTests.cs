@@ -117,6 +117,37 @@ public class MedicalAssessmentServiceTests
         Assert.Equal(PreflightOutcome.Fail, report.GetClause("7.2(a)").Outcome);
     }
 
+    [Fact]
+    public async Task TemplatePageResourcesAreAssessedAndRootBaseLocIsAccepted()
+    {
+        var gif = new byte[] { (byte)'G', (byte)'I', (byte)'F', (byte)'8', (byte)'9', (byte)'a', 1, 0, 1, 0, 0, 0, 0 };
+        var package = Mutate(await LayoutOfd(true), e =>
+        {
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:PublicRes>",
+                "</ofd:PublicRes><ofd:TemplatePage ID='80' BaseLoc='Tpls/Tpl_0/Content.xml'/>"));
+            e.Set("Doc_0/Tpls/Tpl_0/Content.xml", Open("Page") + "<ofd:PageRes>Res.xml</ofd:PageRes><ofd:Content/></ofd:Page>");
+            // BaseLoc ".." from Doc_0/Tpls/Tpl_0 is Doc_0/Tpls; "/" would be the package root.
+            e.Set("Doc_0/Tpls/Tpl_0/Res.xml", Open("Res", " BaseLoc='/'") +
+                "<ofd:MultiMedias><ofd:MultiMedia ID='81' Type='Image'><ofd:MediaFile>logo.gif</ofd:MediaFile></ofd:MultiMedia></ofd:MultiMedias></ofd:Res>");
+            e["logo.gif"] = gif;
+        });
+        var report = await Assess(package);
+        Assert.Equal(MedicalExecutionState.Complete, report.ExecutionState);
+        Assert.Equal("ImageFormatNotPermitted", report.Single("7.2(d)", "MH-009").ReasonCode);
+    }
+
+    [Fact]
+    public async Task RereadingXmlIsChargedOnceAgainstTheBudget()
+    {
+        var package = await LayoutOfd(true);
+        var xml = Unzip(package).Where(x => x.Key.EndsWith(".xml", StringComparison.Ordinal)).Sum(x => (long)x.Value.Length);
+        var options = new MedicalAssessmentOptions();
+        // Enough for every distinct XML entry once, but not twice (MH-003 re-reads each one lexically).
+        options.Archival.Preflight.MaxXmlBytes = xml + xml / 2;
+        options.Archival.Preflight.MaxSingleXmlBytes = (int)xml;
+        Assert.Equal(MedicalExecutionState.Complete, (await Assess(package, options)).ExecutionState);
+    }
+
     private static Task<byte[]> WithMedia(byte[] package, string type, string file, byte[] payload) =>
         Task.FromResult(Mutate(package, e =>
         {
@@ -220,6 +251,14 @@ public class MedicalAssessmentServiceTests
         Assert.Equal(PreflightOutcome.Pass, annotatedReport.GetClause("8(c)").Outcome);
         Assert.Equal(PreflightOutcome.Pass, annotatedReport.GetClause("7.1(f)").Outcome);
 
+        // A reference that cannot be resolved may name a page, so an unlisted page is Unknown, not Fail.
+        var unresolved = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+            e.Set("Doc_0/Signs/Sign_0/Signature.xml", e.Text("Doc_0/Signs/Sign_0/Signature.xml")
+                .Replace("FileRef='/Doc_0/Pages/Page_0/Content.xml'", "FileRef='../../Pages/Page_0/Content.xml'")));
+        var unresolvedReport = await Assess(unresolved);
+        Assert.Equal("UnresolvableReference", unresolvedReport.Single("6.3(e)", "MH-013").ReasonCode);
+        Assert.Equal(PreflightOutcome.Unknown, unresolvedReport.GetClause("6.3(e)").Outcome);
+
         // A new attachment after signing needs a new signature (6.3(g)).
         var extended = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e => e.Set("Doc_0/Attachs/later.xml", "<later/>"));
         Assert.Equal("UnsignedModification", (await Assess(extended)).Single("6.3(g)", "MH-013").ReasonCode);
@@ -232,6 +271,14 @@ public class MedicalAssessmentServiceTests
         var named = await Assess(Signed(source, "SM2", "sm3"));
         Assert.Equal(PreflightOutcome.Pass, named.GetClause("8(d)").Outcome);
         Assert.Equal("IdentifierNotOid", named.Single("6.3(b)", "MH-014").ReasonCode);
+
+        // SM identifiers in swapped or duplicated roles are not SM2 signing with an SM3 digest.
+        foreach (var (method, check) in new[] { (MedicalRules.Sm3Oid, MedicalRules.Sm2Oid), (MedicalRules.Sm3Oid, MedicalRules.Sm3Oid) })
+        {
+            var swapped = await Assess(Signed(source, method, check));
+            Assert.Equal("AlgorithmRoleMismatch", swapped.Single("8(d)", "MH-014").ReasonCode);
+            Assert.Equal(PreflightOutcome.Fail, swapped.GetClause("6.3(b)").Outcome);
+        }
 
         var rsa = await Assess(Signed(source, "1.2.840.113549.1.1.11", "2.16.840.1.101.3.4.2.1"));
         Assert.Equal("NonSmAlgorithm", rsa.Single("8(d)", "MH-014").ReasonCode);

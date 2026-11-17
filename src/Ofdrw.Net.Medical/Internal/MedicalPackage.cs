@@ -46,6 +46,7 @@ internal sealed class MedicalPackage : IDisposable
     private readonly CancellationToken token;
     private readonly Dictionary<string, XDocument?> cache = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
     private long xmlBytes;
+    private readonly HashSet<string> charged = new HashSet<string>(StringComparer.Ordinal);
     private int xmlNodes, references;
 
     internal MedicalPackage(byte[] bytes, ArchivalPreflightOptions budgets, CancellationToken token)
@@ -104,9 +105,14 @@ internal sealed class MedicalPackage : IDisposable
     internal byte[]? Bytes(string name)
     {
         if (!byName.TryGetValue(name, out var entry)) return null;
-        if (entry.Length > budgets.MaxSingleXmlBytes || entry.Length > budgets.MaxXmlBytes - xmlBytes)
-            throw new MedicalBudgetExceededException("XmlBytes");
-        xmlBytes += entry.Length;
+        if (entry.Length > budgets.MaxSingleXmlBytes) throw new MedicalBudgetExceededException("XmlBytes");
+        // MaxXmlBytes bounds the distinct XML read; re-reading an entry (e.g. the MH-003 lexical pass) is not charged again.
+        if (!charged.Contains(name))
+        {
+            if (entry.Length > budgets.MaxXmlBytes - xmlBytes) throw new MedicalBudgetExceededException("XmlBytes");
+            xmlBytes += entry.Length;
+            charged.Add(name);
+        }
         var bytes = Head(name, (int)entry.Length) ?? Array.Empty<byte>();
         if (bytes.Length != entry.Length) throw new MedicalInputRejectedException("TruncatedEntry");
         return bytes;
@@ -175,7 +181,14 @@ internal sealed class MedicalPackage : IDisposable
     public void Dispose() => zip.Dispose();
 
     /// <summary>Resolves an OFD location against the entry that contains it; a leading slash is the package root.</summary>
-    internal static bool TryResolve(string containingEntry, string? location, out string resolved)
+    internal static bool TryResolve(string containingEntry, string? location, out string resolved) =>
+        Normalize(containingEntry, location, false, out resolved);
+
+    /// <summary>Resolves a directory location such as a resource BaseLoc; the package root is the empty string.</summary>
+    internal static bool TryResolveDirectory(string containingEntry, string? location, out string directory) =>
+        Normalize(containingEntry, location, true, out directory);
+
+    private static bool Normalize(string containingEntry, string? location, bool allowRoot, out string resolved)
     {
         resolved = string.Empty;
         if (string.IsNullOrWhiteSpace(location)) return false;
@@ -192,7 +205,7 @@ internal sealed class MedicalPackage : IDisposable
             else parts.Add(part);
         }
         resolved = string.Join("/", parts);
-        return resolved.Length > 0;
+        return allowRoot || resolved.Length > 0;
     }
 
     private static IReadOnlyList<MedicalZipEntry> ReadCentralDirectory(byte[] data, int maxEntries)

@@ -107,14 +107,14 @@ title: "GB/T 48666-2026 条款强度与可判定性矩阵"
 | MH-004 | 6.1.3(b) | 中央目录中压缩方法只为 0 或 8，且 XML 条目不以存储方式写入 | ZIP 6.2.0 规范的全部条款 |
 | MH-005 | 6.1.3(a) | 本地文件头物理顺序：OFD.xml 第一，文档在页面前，页面按顺序 | 网络加载性能；ZIP 中央目录仍在文件尾 |
 | MH-006 | 6.2(a)、7.1(b)、7.1(d)–(f) | 声明位置落在图 3 目录（`Doc_0`、`Pages/Page_N`、`Signs/Sign_N`、`Attachs`、`Tags`、`Annots`、`Res`、`Temps`）；FontFile/MediaFile 载荷在包内且位于 Res 目录 | 典型文件名；未声明的游离条目 |
-| MH-007 | 6.2(b)、7.2(a) | Font/ColorSpace 所在资源表，见上文冲突说明 | 绘制参数和多页共用资源的放置 |
+| MH-007 | 6.2(b)、7.2(a) | Font/ColorSpace 所在资源表（含模板页 PageRes），见上文冲突说明 | 绘制参数和多页共用资源的放置 |
 | MH-008 | 7.2(b) | 转述 GB/T 42133 的 AC-017/AC-018（已用字形与嵌入载荷） | 引用标准中的豁免条件；字体授权 |
-| MH-009 | 7.2(c)、7.2(d) | Image 类型 MultiMedia 载荷在包内，且文件签名为 BMP/JPEG/JPEG2000/TIFF/PNG/JBIG2 | DICOM 转换是否保留诊疗关联信息 |
+| MH-009 | 7.2(c)、7.2(d) | Image 类型 MultiMedia（含模板页 PageRes）载荷在包内，且文件签名为 BMP/JPEG/JPEG2000/TIFF/PNG/JBIG2 | DICOM 转换是否保留诊疗关联信息 |
 | MH-010 | 7.2(e)–(g)、7.4(c) | 音频为 MP3、视频为 MP4（其他格式 Unknown，因原文为“等”）；嵌入对象和内部附件不超过机构限值（默认 512 MiB） | 清晰度（7.2(h)）；外部附件的可达性 |
 | MH-011 | 7.1(c)、7.3(a)、7.3(b) | DocInfo 含 Author、CreationDate、Keywords、DocID，以及调用方映射的患者、文件类型、密级 CustomData | 字段语义是否正确；未映射时为 Unknown |
 | MH-012 | 7.5(a)、7.5(b) | 自定义标引载荷和 XML/JSON 内部附件为严格 UTF-8，XML 良构且声明编码为 UTF-8，JSON 至少为对象/数组外形 | 7.5(c) 头信息/元数据/标识的结构；JSON 完整语法 |
-| MH-013 | 6.3(e)、6.3(g)、8(c)、7.3(d) | 最后一个签名的 References 覆盖全部页面，且覆盖除签名目录、签名列表、注释列表和注释文件外的全部条目 | 摘要值与签名值的密码学有效性；早期签名的范围 |
-| MH-014 | 6.3(b)、8(d) | SignatureMethod 与 CheckMethod 为 SM2/SM3；标识为 GB/T 33560 OID `1.2.156.10197.1.501`/`.401` | 印章（GB/T 38540）内部算法；证书链 |
+| MH-013 | 6.3(e)、6.3(g)、8(c)、7.3(d) | 最后一个签名的 References（FileRef 自包根解析，与 `OfdSignatureVerifier` 一致）覆盖全部页面，且覆盖除签名目录、签名列表、注释列表和注释文件外的全部条目；存在无法解析的引用时，缺页为 Unknown | 摘要值与签名值的密码学有效性；早期签名的范围 |
+| MH-014 | 6.3(b)、8(d) | SignatureMethod 为 SM2、CheckMethod 为 SM3（角色互换或重复为 Fail）；标识为 GB/T 33560 OID `1.2.156.10197.1.501`/`.401` | 印章（GB/T 38540）内部算法；证书链 |
 | MH-015 | 7.3(g) | Document/Permissions 未把 Annot 或 Signature 设为 false | 元数据著录和文档组合是否被其他机制禁止 |
 | MH-016 | 8(b) | 存在 Encryptions.xml 时报告 Unknown（只允许临时使用） | 文件是否为临时文件；归档前是否已解密 |
 

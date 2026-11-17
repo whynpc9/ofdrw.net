@@ -105,7 +105,16 @@ internal sealed class MedicalStructure
         foreach (var element in common?.Elements(ns + "DocumentRes") ?? Enumerable.Empty<XElement>())
             result.AddTable(package, MedicalResourceScope.Document, MedicalLocationKind.DocumentRes, docPath, "CommonData/DocumentRes", element.Value);
         foreach (var template in common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>())
-            result.Add(MedicalLocationKind.Template, docPath, "CommonData/TemplatePage/@BaseLoc", (string?)template.Attribute("BaseLoc"));
+        {
+            package.Visit();
+            var templatePath = result.Add(MedicalLocationKind.Template, docPath, "CommonData/TemplatePage/@BaseLoc", (string?)template.Attribute("BaseLoc"));
+            if (templatePath == null) continue;
+            // Template pages carry their own PageRes; their fonts and media are page-scoped resources too.
+            var content = package.Xml(templatePath)?.Root;
+            if (content == null) { result.Unreadable.Add(templatePath); continue; }
+            foreach (var pageRes in content.Elements(ns + "PageRes"))
+                result.AddTable(package, MedicalResourceScope.Page, MedicalLocationKind.PageRes, templatePath, "Template/PageRes", pageRes.Value);
+        }
 
         foreach (var page in document.Element(ns + "Pages")?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
         {
@@ -197,7 +206,7 @@ internal sealed class MedicalStructure
         string? baseDirectory = directory;
         var baseLoc = (string?)root.Attribute("BaseLoc");
         if (baseLoc != null)
-            baseDirectory = MedicalPackage.TryResolve(path, baseLoc.TrimEnd('/') + "/x", out var probe) ? probe.Substring(0, probe.Length - 2) : null;
+            baseDirectory = MedicalPackage.TryResolveDirectory(path, baseLoc, out var resolvedBase) ? resolvedBase : null;
         var table = new MedicalResourceTable(scope, path, root, baseDirectory);
         Tables.Add(table);
         var ns = root.Name.Namespace;
