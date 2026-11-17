@@ -992,7 +992,7 @@ public sealed class DocumentToolTests
     public async Task Mix_CustomTagsUnmodeledXmlAndConflictingSourceRecordsRemainRejected(string kind)
     {
         var source = Source(); source.CustomTags["fixture"] = "public"; source = await RoundTrip(source);
-        var path = "Doc_0/Tags/CustomTag_EMR.xml"; var detail = Xml(source, path); var tag = detail.Root!.Elements().Single();
+        var path = "Doc_0/Tags/CustomTag_KeyValue.xml"; var detail = Xml(source, path); var tag = detail.Root!.Elements().Single();
         if (kind == "attribute") tag.SetAttributeValue("Unknown", "keep");
         if (kind == "child") tag.Add(new XElement(detail.Root.Name.Namespace + "Note", "keep"));
         if (kind == "vendor") tag.Name = XName.Get("Tag", "urn:vendor");

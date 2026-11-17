@@ -45,7 +45,7 @@ public sealed class Audit007RegressionTests
         var annotationIndex = Xml(archive, indexPath);
         var annotationPath = prefix + "Annots/" + annotationIndex.Descendants(ns + "FileLoc").Single().Value;
         Assert.Equal("annotation-value", Xml(archive, annotationPath).Descendants(ns + "Remark").Single().Value);
-        Assert.Equal("root-value", Xml(archive, prefix + "Tags/CustomTag_EMR.xml").Descendants(ns + "Tag").Single().Attribute("Value")!.Value);
+        Assert.Equal("root-value", Xml(archive, prefix + "Tags/CustomTag_KeyValue.xml").Descendants(XName.Get("Tag", "urn:ofdrw-net:custom-tags:kv:1")).Single().Attribute("Value")!.Value);
         output.Position = 0;
         var read = await new OfdReader().ReadAsync(output);
         Assert.Equal(prefix + "Document.xml", read.DocumentEntryPath);

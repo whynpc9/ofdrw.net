@@ -537,6 +537,7 @@ public sealed partial class DocxConversionTests
         });
         Assert.Equal("DOCX/OpenXML", package.CustomTags["source-text-origin"]);
         Assert.Equal("Native", package.CustomTags["docx-ofd-mode"]);
+        AssertNeutralSourceTags(output, "Native");
         Assert.Equal(ReadExpectedSourceText(), CompactExtractedText(package));
         Assert.Contains(package.Pages, page => page.Elements.OfType<OfdPathElement>().Any() ||
             page.Elements.OfType<OfdTextElement>().Select(text => text.XMillimeters).Distinct().Count() > 1);
@@ -924,7 +925,27 @@ public sealed partial class DocxConversionTests
         Assert.Equal("DOCX/OpenXML", package.CustomTags["source-text-origin"]);
         Assert.Equal("machine-readable", package.CustomTags["source-text-kind"]);
         Assert.Equal("DualLayer", package.CustomTags["docx-ofd-mode"]);
+        AssertNeutralSourceTags(output, "DualLayer");
         Assert.Equal(ReadExpectedSourceText(), CompactExtractedText(package));
+    }
+
+    // D2: source tags use the neutral key/value channel; no EMR declaration or payload is written.
+    private static void AssertNeutralSourceTags(MemoryStream output, string mode)
+    {
+        const string ofd = "http://www.ofdspec.org";
+        using var zip = new ZipArchive(new MemoryStream(output.ToArray()), ZipArchiveMode.Read);
+        XDocument Entry(string path) { using var stream = zip.GetEntry(path)!.Open(); return XDocument.Load(stream); }
+        Assert.DoesNotContain(zip.Entries, entry => entry.FullName.Contains("EMR", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("Tags/CustomTags.xml", Entry("Doc_0/Document.xml").Root!.Element(XName.Get("CustomTags", ofd))!.Value);
+        var record = Assert.Single(Entry("Doc_0/Tags/CustomTags.xml").Root!.Elements());
+        Assert.Equal("ofdrw-kv", record.Attribute("TypeID")!.Value);
+        var declared = record.Attribute("NameSpace")!.Value;
+        Assert.Equal("urn:ofdrw-net:custom-tags:kv:1", declared);
+        Assert.Equal("CustomTag_KeyValue.xml", record.Element(XName.Get("FileLoc", ofd))!.Value);
+        var payload = Entry("Doc_0/Tags/CustomTag_KeyValue.xml").Root!;
+        Assert.Equal(XName.Get("Tags", declared), payload.Name);
+        Assert.Contains(payload.Elements(XName.Get("Tag", declared)), tag =>
+            tag.Attribute("Key")!.Value == "docx-ofd-mode" && tag.Attribute("Value")!.Value == mode);
     }
 
     /// <summary>
@@ -1000,6 +1021,13 @@ public sealed partial class DocxConversionTests
             using var stream = entry.Open();
             var root = XDocument.Load(stream).Root!;
             if (entry.FullName == "OFD.xml") Assert.Equal("OFD", root.Attribute("DocType")?.Value);
+            // D2: the neutral tag payload lives in its own declared namespace, not the OFD namespace.
+            if (entry.FullName == "Doc_0/Tags/CustomTag_KeyValue.xml")
+            {
+                Assert.Equal(XName.Get("Tags", "urn:ofdrw-net:custom-tags:kv:1"), root.Name);
+                Assert.True(root.DescendantsAndSelf().All(node => node.Name.Namespace == root.Name.Namespace), $"{entry.FullName} mixes namespaces.");
+                continue;
+            }
             Assert.True(root.Name.NamespaceName == expectedNamespace,
                 $"{entry.FullName} uses namespace '{root.Name.NamespaceName}', expected '{expectedNamespace}'.");
             Assert.True(root.DescendantsAndSelf().All(node => node.Name.NamespaceName == expectedNamespace),

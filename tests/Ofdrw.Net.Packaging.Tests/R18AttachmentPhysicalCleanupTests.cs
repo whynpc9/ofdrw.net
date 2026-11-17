@@ -671,7 +671,7 @@ public sealed class R18AttachmentPhysicalCleanupTests
         var originalDocument = XDocument.Parse(Encoding.UTF8.GetString(source[documentPath]));
         var ns = originalDocument.Root!.Name.Namespace;
         var tagIndexPath = Assert.Single(source.Keys, path => path.EndsWith("/CustomTags.xml", StringComparison.Ordinal));
-        var tagDetailPath = Assert.Single(source.Keys, path => path.EndsWith("/CustomTag_EMR.xml", StringComparison.Ordinal));
+        var tagDetailPath = Assert.Single(source.Keys, path => path.EndsWith("/CustomTag_KeyValue.xml", StringComparison.Ordinal));
         Assert.True(loaded.RemoveAttachment(Assert.Single(loaded.Attachments), OfdAttachmentRemovalMode.Physical));
         var (output, result) = await Write(loaded);
         var saved = Entries(output);

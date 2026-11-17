@@ -158,7 +158,9 @@ internal static class OfdAttachmentPhysicalCleaner
             if (xml.DescendantNodes().OfType<XProcessingInstruction>().Any())
                 throw new NotSupportedException("Physical attachment removal cannot prove a processing instruction reference closure: " + entry.Key);
             var root = xml.Root;
-            if (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace)
+            // The SDK's neutral key/value tag payload is a closed grammar in its own namespace.
+            var keyValueTags = root.Name == OfdCustomTagChannels.KeyValueRoot;
+            if (!keyValueTags && root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace)
                 throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
             if (root.Name.LocalName == "DocVersion" && !IsStandardDocVersion(root))
                 throw new NotSupportedException("Physical attachment removal cannot prove a malformed DocVersion reference closure: " + entry.Key);
@@ -181,7 +183,9 @@ internal static class OfdAttachmentPhysicalCleaner
                         (a.Name.LocalName == "space" || a.Name.LocalName == "lang")) &&
                     !IsWriterOwnedHint(element, a)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
-                if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
+                if (!(keyValueTags ? element.Name == OfdCustomTagChannels.KeyValueRoot && element == root ||
+                        element.Name == OfdCustomTagChannels.KeyValueTag && element.Parent == root
+                        : KnownElements.Contains(element.Name.LocalName)) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
                 if (element.Name.LocalName == "Region" && !IsStandardActionRegion(element))

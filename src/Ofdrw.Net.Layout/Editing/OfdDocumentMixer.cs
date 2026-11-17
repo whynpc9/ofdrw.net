@@ -198,7 +198,7 @@ public static class OfdDocumentMixer
     private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization material)
     {
         var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
-        var detailPaths = new List<string>();
+        var detailPaths = new List<(string Path, OfdCustomTagChannel Channel)>();
         var inspected = new Dictionary<string, string>(StringComparer.Ordinal);
         XDocument Read(string path)
         {
@@ -226,32 +226,37 @@ public static class OfdDocumentMixer
                 if (declaration.Name != ns + "CustomTags" || !Literal(declaration))
                     throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags declarations.");
                 var listPath = material.ResolvePath(documentPath, declaration.Value, cancellationToken); var list = Read(listPath);
-                if (list.Root is null || !Supported(list.Root, "CustomTags", ns) || !Plain(list.Root)) throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
+                if (list.Root is null || !Supported(list.Root, "CustomTags", ns) || !Plain(list.Root)) throw new NotSupportedException("Mix supports only flat key/value CustomTags.");
                 foreach (var record in list.Root.Elements())
                 {
+                    var channel = OfdCustomTagChannels.Declared(record);
                     if (record.Name != list.Root.Name.Namespace + "CustomTag" || !Plain(record, "TypeID", "NameSpace") ||
-                        record.Attribute("TypeID")?.Value != "EMR" || record.Attribute("NameSpace")?.Value != "urn:ofdrw-net:custom-tags:emr" || record.Elements().Count() != 1)
-                        throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
+                        channel == OfdCustomTagChannel.None || record.Elements().Count() != 1)
+                        throw new NotSupportedException("Mix supports only flat key/value CustomTags.");
                     var location = record.Elements().Single();
                     if (location.Name != record.Name.Namespace + "FileLoc" || !Literal(location))
                         throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags file references.");
-                    detailPaths.Add(material.ResolvePath(listPath, location.Value, cancellationToken));
+                    detailPaths.Add((material.ResolvePath(listPath, location.Value, cancellationToken), channel));
                 }
             }
             if (declarations.Count == 0)
             {
                 var legacy = package.Options.DocumentId + "/Tags/CustomTag_EMR.xml";
-                if (package.PreservedEntries.ContainsKey(legacy)) detailPaths.Add(legacy);
+                if (package.PreservedEntries.ContainsKey(legacy)) detailPaths.Add((legacy, OfdCustomTagChannel.Emr));
             }
-            foreach (var path in detailPaths)
+            foreach (var (path, channel) in detailPaths)
             {
                 var detail = Read(path);
-                if (detail.Root is null || !Supported(detail.Root, "EMRTags", ns) || !Plain(detail.Root)) throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
-                foreach (var tag in detail.Root.Elements())
+                var root = detail.Root;
+                if (root is null || !Plain(root) || (channel == OfdCustomTagChannel.KeyValue
+                        ? root.Name != OfdCustomTagChannels.KeyValueRoot
+                        : !Supported(root, OfdCustomTagChannels.EmrPayloadRoot, ns)))
+                    throw new NotSupportedException("Mix supports only flat key/value CustomTags.");
+                foreach (var tag in root.Elements())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var key = tag.Attribute("Key")?.Value; var value = tag.Attribute("Value")?.Value;
-                    if (tag.Name != detail.Root.Name.Namespace + "Tag" || tag.HasElements || !Plain(tag, "Key", "Value") || string.IsNullOrWhiteSpace(key) || value is null)
+                    if (tag.Name != root.Name.Namespace + "Tag" || tag.HasElements || !Plain(tag, "Key", "Value") || string.IsNullOrWhiteSpace(key) || value is null)
                         throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags records.");
                     if (inspected.TryGetValue(key!, out var prior) && prior != value) throw new NotSupportedException($"Mix CustomTags conflict for key '{key}' in source XML.");
                     inspected[key!] = value;
@@ -264,7 +269,7 @@ public static class OfdDocumentMixer
             if (string.IsNullOrWhiteSpace(tag.Key) || tag.Value is null) throw new NotSupportedException("Mix requires scalar CustomTags keys and values.");
             if (package.Attachments.Any(attachment => !string.IsNullOrEmpty(attachment.Id) && attachment.Id == tag.Value))
                 throw new NotSupportedException($"Mix cannot remap the attachment reference in CustomTags key '{tag.Key}'.");
-            foreach (var basis in detailPaths.Concat(new[] { documentPath, "OFD.xml" }))
+            foreach (var basis in detailPaths.Select(detail => detail.Path).Concat(new[] { documentPath, "OFD.xml" }))
             {
                 string path; try { path = material.ResolvePath(basis, tag.Value, cancellationToken); } catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception)) { continue; }
                 if (package.PreservedEntries.ContainsKey(path)) throw new NotSupportedException($"Mix cannot remap the package reference in CustomTags key '{tag.Key}'.");

@@ -3,13 +3,52 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml.Linq;
 
 namespace Ofdrw.Net.Core.Models;
+
+internal enum OfdCustomTagChannel { None, Emr, KeyValue }
+
+// The two flat key/value tag schemas this SDK models. New generic tags are
+// written only through the neutral key/value channel; the historical EMR
+// channel stays readable and editable in place.
+internal static class OfdCustomTagChannels
+{
+    internal const string EmrTypeId = "EMR";
+    internal const string EmrNamespace = "urn:ofdrw-net:custom-tags:emr";
+    internal const string EmrPayloadRoot = "EMRTags";
+    internal const string KeyValueTypeId = "ofdrw-kv";
+    internal const string KeyValueNamespace = "urn:ofdrw-net:custom-tags:kv:1";
+    internal const string KeyValuePayloadStem = "Tags/CustomTag_KeyValue";
+    internal static readonly XNamespace KeyValueNs = XNamespace.Get(KeyValueNamespace);
+    internal static readonly XName KeyValueRoot = KeyValueNs + "Tags";
+    internal static readonly XName KeyValueTag = KeyValueNs + "Tag";
+
+    // Classifies an index record by its exact TypeID/NameSpace pair.
+    internal static OfdCustomTagChannel Declared(XElement customTag) =>
+        (customTag.Attribute("TypeID")?.Value, customTag.Attribute("NameSpace")?.Value) switch
+        {
+            (EmrTypeId, EmrNamespace) => OfdCustomTagChannel.Emr,
+            (KeyValueTypeId, KeyValueNamespace) => OfdCustomTagChannel.KeyValue,
+            _ => OfdCustomTagChannel.None
+        };
+
+    // The EMR payload root lives in the owning document's OFD namespace; the
+    // neutral payload root lives in its declared namespace.
+    internal static OfdCustomTagChannel Payload(XElement? root, XNamespace documentNamespace) =>
+        root is null ? OfdCustomTagChannel.None
+        : root.Name == documentNamespace + EmrPayloadRoot ? OfdCustomTagChannel.Emr
+        : root.Name == KeyValueRoot ? OfdCustomTagChannel.KeyValue
+        : OfdCustomTagChannel.None;
+
+    internal static XName TagName(OfdCustomTagChannel channel, XNamespace documentNamespace) =>
+        channel == OfdCustomTagChannel.KeyValue ? KeyValueTag : documentNamespace + "Tag";
+}
 
 // Reader-owned baseline. All containers are private and copied on capture/clone.
 internal sealed class OfdCustomTagSource
 {
-    internal const string EmrNamespace = "urn:ofdrw-net:custom-tags:emr";
+    internal const string EmrNamespace = OfdCustomTagChannels.EmrNamespace;
     private readonly OfdDocumentPackage owner;
     private readonly string[] declarations, indexes, details;
     private readonly Dictionary<string, string> baseline;
