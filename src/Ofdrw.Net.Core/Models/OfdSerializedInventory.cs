@@ -35,7 +35,7 @@ internal static class OfdSerializedInventory
         S("publicResource", package.PublicResourceLocation); P(package.PublicResourceLocation);
         S("documentResource", package.DocumentResourceLocation); P(package.DocumentResourceLocation);
         var options = package.Options; S("docType", options.DocType); S("namespace", options.Namespace);
-        S("documentId", options.DocumentId); P(options.DocumentId); V("compression", options.EnableDeflateCompression);
+        S("documentId", options.DocumentId); P(options.DocumentId); V("compression", options.EnableDeflateCompression); V("linearizedEntryOrder", options.LinearizedEntryOrder);
         V("defaultWidth", options.DefaultPageWidthMillimeters); V("defaultHeight", options.DefaultPageHeightMillimeters);
         Object("fontEmbedding", options.FontEmbedding);
         V("fontMode", options.FontEmbedding.Mode); V("fontMaxBytes", options.FontEmbedding.MaximumFontBytes);

@@ -635,6 +635,9 @@ internal static class MedicalRules
             ? O(rule, "6.3(e)", PreflightOutcome.Fail, "PageContentNotProtected", latest!, "References", Sample(pages), "Every page description referenced")
             : s.PagePaths.Count == 0
                 ? O(rule, "6.3(e)", PreflightOutcome.Unknown, "PagesUnresolved", latest!, "References", "No resolved pages", "Every page description referenced")
+            // A declared page whose location is unknown was not shown to be covered.
+            : s.Locations.FirstOrDefault(x => x.Kind == MedicalLocationKind.Page && x.Resolved == null) is { } unresolvedPage
+                ? O(rule, "6.3(e)", PreflightOutcome.Unknown, "PagesUnresolved", unresolvedPage.DeclaredIn, unresolvedPage.Selector, unresolvedPage.Declared, "Every page description referenced")
                 : O(rule, "6.3(e)", PreflightOutcome.Pass, "PageContentProtected", latest!, "References", s.PagePaths.Count + " pages", "Every page description referenced");
         foreach (var clause in new[] { "8(c)", "6.3(g)" })
         {

@@ -348,6 +348,11 @@ public class MedicalAssessmentServiceTests
             Assert.Equal("AnnotationIndexUnreadable", unreadableAnnotationReport.Single(clause, "MH-013").ReasonCode);
         Assert.Equal(PreflightOutcome.Unknown, unreadableAnnotationReport.GetClause("7.1(f)").Outcome);
 
+        // A page declared at an unresolvable location is not shown to be covered.
+        var unresolvedPage = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>", "<ofd:Page ID='99' BaseLoc='../../../escape.xml'/></ofd:Pages>")));
+        Assert.Equal("PagesUnresolved", (await Assess(unresolvedPage)).Single("6.3(e)", "MH-013").ReasonCode);
+
         // A Signatures index that does not resolve is not "no signature declared".
         var unresolvedIndex = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
             e.Set("OFD.xml", e.Text("OFD.xml").Replace("<ofd:Signatures>Doc_0/Signs/Signatures.xml", "<ofd:Signatures>Doc_0\\Signs\\Signatures.xml")));
