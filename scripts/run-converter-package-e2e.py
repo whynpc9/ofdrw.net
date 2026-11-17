@@ -99,7 +99,7 @@ def main():
                                    '  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>'
                                    '<ImplicitUsings>enable</ImplicitUsings></PropertyGroup>\n'
                                    f'  <ItemGroup>\n{references}\n  </ItemGroup>\n</Project>\n', encoding='utf-8')
-            elif source == 'Ofdrw.Net.Archival.E2E':
+            elif source in ('Ofdrw.Net.Archival.E2E', 'Ofdrw.Net.Medical.E2E'):
                 shutil.copyfile(ROOT / f'e2e/{source}/{source}.csproj', project)
             else:
                 shutil.copyfile(ROOT / 'e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj', project)
@@ -224,6 +224,14 @@ def main():
                         any(key.startswith('Ofdrw.Net.Converter') for key in archival_resolved):
                     raise RuntimeError(f'Unexpected archival consumer closure: {sorted(archival_resolved)}')
                 dn('run', '--project', archival_project, '-c', 'Release', '--no-build', '--no-restore', '--', ROOT, output / 'archival')
+                medical_project = consumer('Ofdrw.Net.Medical.E2E', 'medical-consumer')
+                medical_deps = json.loads((medical_project.parent / 'bin/Release/net10.0/Consumer.deps.json').read_text(encoding='utf-8'))
+                medical_resolved = {key for key in medical_deps['targets'][medical_deps['runtimeTarget']['name']]
+                                    if key.startswith('Ofdrw.Net.')}
+                if f'Ofdrw.Net.Medical/{options.version}' not in medical_resolved or \
+                        any(key.startswith('Ofdrw.Net.Converter') for key in medical_resolved):
+                    raise RuntimeError(f'Unexpected medical consumer closure: {sorted(medical_resolved)}')
+                dn('run', '--project', medical_project, '-c', 'Release', '--no-build', '--no-restore', '--', ROOT, output / 'medical')
                 font_project = consumer('Ofdrw.Net.FontSubset.E2E', 'font-consumer')
                 dn('run', '--project', font_project, '-c', 'Release', '--no-build', '--no-restore', '--', ROOT, output / 'font-subset')
                 text_project = consumer('Ofdrw.Net.Text.HarfBuzz.E2E', 'text-consumer')

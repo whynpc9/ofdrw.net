@@ -107,7 +107,8 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                     Creator = source.Options.Metadata.Creator, CreationDate = source.Options.Metadata.CreationDate,
                     ModificationDate = source.Options.Metadata.ModificationDate,
                     DocUsage = source.Options.Metadata.DocUsage, Cover = source.Options.Metadata.Cover,
-                    CreatorVersion = source.Options.Metadata.CreatorVersion
+                    CreatorVersion = source.Options.Metadata.CreatorVersion,
+                    DocId = source.Options.Metadata.DocId
                 }
             }
         };

@@ -96,7 +96,10 @@ public class ArchivalClauseMatrixTests
             System.Xml.Linq.XDocument.Load(path).Descendants("ProjectReference")
                 .Select(x => Path.GetFileNameWithoutExtension((string)x.Attribute("Include")!)).ToArray());
         Assert.Equal(new[] { "Ofdrw.Net.Packaging" }, references["Ofdrw.Net.Archival"]);
-        Assert.DoesNotContain(references, x => x.Key != "Ofdrw.Net.Archival" && x.Value.Contains("Ofdrw.Net.Archival"));
+        // Only the opt-in medical (OFD-H) package builds on Archival; nothing references Medical.
+        Assert.Equal(new[] { "Ofdrw.Net.Archival" }, references["Ofdrw.Net.Medical"]);
+        Assert.DoesNotContain(references, x => x.Key is not ("Ofdrw.Net.Archival" or "Ofdrw.Net.Medical") && x.Value.Contains("Ofdrw.Net.Archival"));
+        Assert.DoesNotContain(references, x => x.Value.Contains("Ofdrw.Net.Medical"));
     }
 
     [Fact]

@@ -60,7 +60,7 @@ internal sealed class OfdDocumentEnvelope
         result.Metadata.Add("Subject", metadata.Subject); result.Metadata.Add("Keywords", metadata.Keywords); result.Metadata.Add("Creator", metadata.Creator);
         result.Metadata.Add("CreationDate", metadata.CreationDate?.ToString("O")); result.Metadata.Add("ModDate", metadata.ModificationDate?.ToString("O"));
         result.Metadata.Add("DocUsage", metadata.DocUsage?.ToString()); result.Metadata.Add("Cover", metadata.Cover);
-        result.Metadata.Add("CreatorVersion", metadata.CreatorVersion);
+        result.Metadata.Add("CreatorVersion", metadata.CreatorVersion); result.Metadata.Add("DocID", metadata.DocId);
         return result;
 
         void CaptureSlots(XElement? root, OfdNavigationSource slots, List<string> values, string[] owned)

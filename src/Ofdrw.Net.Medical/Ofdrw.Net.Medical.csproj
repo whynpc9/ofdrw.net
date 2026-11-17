@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Opt-in GB/T 48666-2026 (OFD-H, electronic medical record fixed-layout document) support for Ofdrw.Net: a writer profile and a read-only, multi-dimensional assessment. Never certifies compliance.</Description>
+    <PackageTags>OFD;OFD-H;EMR;medical-record;GB-T-48666;preflight</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Dependency direction: Medical -> Archival -> Packaging -> Core. No other package may reference this project. -->
+    <ProjectReference Include="../Ofdrw.Net.Archival/Ofdrw.Net.Archival.csproj" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Medical.Tests" />
+  </ItemGroup>
+</Project>

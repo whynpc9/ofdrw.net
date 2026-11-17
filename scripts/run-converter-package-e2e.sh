@@ -148,6 +148,22 @@ assert all(key.endswith('/' + sys.argv[2]) for key in resolved), resolved
 assert not any(key.startswith('Ofdrw.Net.Converter') for key in resolved), resolved
 PY_ARCHIVAL
 dotnet run --project "$ARCHIVAL_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/archival"
+# The opt-in medical (OFD-H) package: an explicit reference brings in Medical and Archival, never a converter.
+mkdir -p "$TASK_DIR/medical-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Medical.E2E/Program.cs" "$TASK_DIR/medical-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Medical.E2E/Ofdrw.Net.Medical.E2E.csproj" "$TASK_DIR/medical-consumer/Consumer.csproj"
+MEDICAL_CONSUMER="$TASK_DIR/medical-consumer/Consumer.csproj"
+dotnet restore "$MEDICAL_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet build "$MEDICAL_CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+python3 - "$TASK_DIR/medical-consumer/bin/Release/net10.0/Consumer.deps.json" "$VERSION" <<'PY_MEDICAL'
+import json, sys
+deps = json.load(open(sys.argv[1]))
+resolved = {key for key in deps['targets'][deps['runtimeTarget']['name']] if key.startswith('Ofdrw.Net.')}
+assert f'Ofdrw.Net.Medical/{sys.argv[2]}' in resolved and f'Ofdrw.Net.Archival/{sys.argv[2]}' in resolved, resolved
+assert all(key.endswith('/' + sys.argv[2]) for key in resolved), resolved
+assert not any(key.startswith('Ofdrw.Net.Converter') for key in resolved), resolved
+PY_MEDICAL
+dotnet run --project "$MEDICAL_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/medical"
 # Exercise the production subset backend from the newly packed SDK as well.
 mkdir -p "$TASK_DIR/font-consumer"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.FontSubset.E2E/Program.cs" "$TASK_DIR/font-consumer/Program.cs"

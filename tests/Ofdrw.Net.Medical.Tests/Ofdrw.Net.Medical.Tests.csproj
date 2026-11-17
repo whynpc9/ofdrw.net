@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Ofdrw.Net.Medical/Ofdrw.Net.Medical.csproj" />
+    <!-- Layout and Reader only generate and read deterministic inputs; the medical package itself references neither. -->
+    <ProjectReference Include="../../src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+    <!-- Test-only: real Native/default DOCX output re-written through the OFD-H profile. -->
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
+  </ItemGroup>
+</Project>

@@ -48,7 +48,7 @@ internal static class OfdSerializedInventory
         S("keywords", metadata.Keywords); S("creator", metadata.Creator);
         V("creation", metadata.CreationDate); V("modified", metadata.ModificationDate);
         V("docUsage", metadata.DocUsage); S("cover", metadata.Cover); P(metadata.Cover);
-        S("creatorVersion", metadata.CreatorVersion);
+        S("creatorVersion", metadata.CreatorVersion); S("docId", metadata.DocId);
         Standard("customDatas", metadata.CustomDatas); Standard("permissions", package.Permissions);
         Standard("viewingPreferences", package.ViewingPreferences); Standard("versions", package.Versions);
         Container("entries", package.PreservedEntries, package.PreservedEntries.Count);

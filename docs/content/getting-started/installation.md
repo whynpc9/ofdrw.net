@@ -69,6 +69,6 @@ dotnet tool update --global Ofdrw.Net.Cli --version 0.4.0
 - **字体不随主包分发。** 处理中文 DOCX 或要求跨机器一致显示时，准备许可明确的实际字体文件，并按[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)配置。仅设置 `FontFamily` 名称不等于提供字体字节。
 - **Native DOCX 不调用 Office。** 直接 DOCX→PDF 和 DualLayer 可能使用 Word、LibreOffice 或 BuiltIn 渲染路径；图片导出还依赖 PDF/PDFium 原生链路。
 - **可选扩展单独核对。** PDF Vector、Skia、Password、SES interop 是独立源码扩展，不在 0.4.0 的默认 12 包发布集合中。
-- **归档评估包仅在 main。** 0.4.0 之后的 main 新增 `Ofdrw.Net.Archival`（只读归档评估），加入默认发布集合后共 13 包，但尚未发布到 NuGet。它只能显式引用，`Ofdrw.Net.Converter` 等普通包不会传递带入，见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)。使用前核对各自目标框架、原生资产、许可和本地构建版本，不假定存在与主包同号的公开扩展包。
+- **归档评估包与电子病历包仅在 main。** 0.4.0 之后的 main 新增 `Ofdrw.Net.Archival`（只读归档评估）和 `Ofdrw.Net.Medical`（GB/T 48666 OFD-H 写出 profile 与只读评估，依赖 Archival），加入默认发布集合后共 14 包，但尚未发布到 NuGet。两者都只能显式引用，`Ofdrw.Net.Converter` 等普通包不会传递带入，见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)和[电子病历 OFD-H](https://whynpc9.github.io/ofdrw.net/guides/medical-ofd-h/)。使用前核对各自目标框架、原生资产、许可和本地构建版本，不假定存在与主包同号的公开扩展包。
 
 下一步：运行[快速开始](https://whynpc9.github.io/ofdrw.net/getting-started/quickstart/)，或按任务查看 [DOCX](https://whynpc9.github.io/ofdrw.net/guides/docx/)、[格式转换](https://whynpc9.github.io/ofdrw.net/guides/conversion/)和[流式排版](https://whynpc9.github.io/ofdrw.net/guides/flow-layout/)指南。

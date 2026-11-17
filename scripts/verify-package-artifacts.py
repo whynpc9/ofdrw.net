@@ -19,14 +19,14 @@ PACKAGES = (
     'Ofdrw.Net.Core', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Text.HarfBuzz', 'Ofdrw.Net.Reader',
     'Ofdrw.Net.Converter.Abstractions', 'Ofdrw.Net.Converter.Docx', 'Ofdrw.Net.Converter.Pdf',
     'Ofdrw.Net.Converter.Svg', 'Ofdrw.Net.Signatures', 'Ofdrw.Net.Converter', 'Ofdrw.Net.Cli',
-    'Ofdrw.Net.Archival',
+    'Ofdrw.Net.Archival', 'Ofdrw.Net.Medical',
 )
 # Shipped in the default feed, but consumers must reference them explicitly: no other
 # package may depend on them, directly or transitively.
-OPT_IN_PACKAGES = {'Ofdrw.Net.Archival'}
-# Allowed direct Ofdrw.Net dependencies of opt-in packages (dependency direction Archival -> Packaging -> Core);
+OPT_IN_PACKAGES = {'Ofdrw.Net.Archival', 'Ofdrw.Net.Medical'}
+# Allowed direct Ofdrw.Net dependencies of opt-in packages (dependency direction Medical -> Archival -> Packaging -> Core);
 # anything outside this set, such as Reader or a converter, is rejected.
-OPT_IN_DEPENDENCIES = {'Ofdrw.Net.Archival': {'Ofdrw.Net.Packaging'}}
+OPT_IN_DEPENDENCIES = {'Ofdrw.Net.Archival': {'Ofdrw.Net.Packaging'}, 'Ofdrw.Net.Medical': {'Ofdrw.Net.Archival'}}
 
 
 def verify_opt_in_closure(dependencies):

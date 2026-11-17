@@ -36,9 +36,9 @@ class PackageArtifactsTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_complete_set_has_thirteen_bound_hashes(self):
+    def test_complete_set_has_fourteen_bound_hashes(self):
         manifest = packages.inspect(self.root, self.version)
-        self.assertEqual(13, len(manifest['packages']))
+        self.assertEqual(14, len(manifest['packages']))
         self.assertTrue(all(len(item['sha256']) == 64 for item in manifest['packages']))
 
     def test_missing_package_is_rejected(self):
@@ -69,11 +69,11 @@ class PackageArtifactsTests(unittest.TestCase):
 
     def test_exact_version_sdk_dependency_is_accepted(self):
         self._with_core_dependency(f'[{self.version}]')
-        self.assertEqual(13, len(packages.inspect(self.root, self.version)['packages']))
+        self.assertEqual(14, len(packages.inspect(self.root, self.version)['packages']))
 
     def test_archival_dependency_on_packaging_is_accepted(self):
         self._with_dependencies('Ofdrw.Net.Archival', 'Ofdrw.Net.Packaging')
-        self.assertEqual(13, len(packages.inspect(self.root, self.version)['packages']))
+        self.assertEqual(14, len(packages.inspect(self.root, self.version)['packages']))
 
     def test_converter_closure_reaching_archival_is_rejected(self):
         # Converter -> Converter.Docx -> Archival: ordinary consumers must not receive Archival transitively.
@@ -85,6 +85,21 @@ class PackageArtifactsTests(unittest.TestCase):
     def test_archival_dependency_outside_packaging_is_rejected(self):
         self._with_dependencies('Ofdrw.Net.Archival', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Reader')
         with self.assertRaisesRegex(ValueError, 'Ofdrw.Net.Archival may depend only on'):
+            packages.inspect(self.root, self.version)
+
+    def test_medical_dependency_on_archival_is_accepted(self):
+        self._with_dependencies('Ofdrw.Net.Archival', 'Ofdrw.Net.Packaging')
+        self._with_dependencies('Ofdrw.Net.Medical', 'Ofdrw.Net.Archival')
+        self.assertEqual(14, len(packages.inspect(self.root, self.version)['packages']))
+
+    def test_medical_dependency_outside_archival_is_rejected(self):
+        self._with_dependencies('Ofdrw.Net.Medical', 'Ofdrw.Net.Archival', 'Ofdrw.Net.Layout')
+        with self.assertRaisesRegex(ValueError, 'Ofdrw.Net.Medical may depend only on'):
+            packages.inspect(self.root, self.version)
+
+    def test_reader_closure_reaching_medical_is_rejected(self):
+        self._with_dependencies('Ofdrw.Net.Reader', 'Ofdrw.Net.Medical')
+        with self.assertRaisesRegex(ValueError, r'Ofdrw.Net.Reader\b.*opt-in.*Ofdrw.Net.Medical'):
             packages.inspect(self.root, self.version)
 
     def _with_core_dependency(self, version_text):
@@ -149,7 +164,7 @@ class PackageArtifactsTests(unittest.TestCase):
     def test_product_list_failure_does_not_accept_existing_feed(self):
         # This feed is valid before the injected generator failure. It must not
         # be accepted as proof that the present pack operation succeeded.
-        self.assertEqual(13, len(packages.inspect(self.root, self.version)['packages']))
+        self.assertEqual(14, len(packages.inspect(self.root, self.version)['packages']))
         repo = self.root / 'repo'
         scripts = repo / 'scripts'
         scripts.mkdir(parents=True)
@@ -209,7 +224,7 @@ class PackageArtifactsTests(unittest.TestCase):
     def test_release_pack_step_uses_exact_default_products(self):
         result, calls = self._run_release_pack_step(False)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(13, len(calls))
+        self.assertEqual(14, len(calls))
         self.assertEqual([f'pack src/{name}/{name}.csproj' for name in packages.PACKAGES], [' '.join(call.split()[:2]) for call in calls])
         self.assertTrue(all('Crypto.Password' not in call and 'nuget push' not in call for call in calls))
         self.assertTrue(all(f'-p:PackageVersion={self.version}' in call and '-o artifacts/nuget' in call for call in calls))
