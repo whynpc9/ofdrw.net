@@ -25,7 +25,8 @@ public sealed class OfdMixSource
 public static class OfdDocumentMixer
 {
     /// <summary>Flattens each source's background templates, body, foreground templates and visible annotation appearances, then overlays the next source.
-    /// Unsupported raw/referencing content fails. Source packages remain unchanged; existing signatures are not copied.</summary>
+    /// Unsupported raw/referencing content fails. Source packages remain unchanged; existing signatures are not copied.
+    /// If any source declares <c>DocType="OFD-A"</c>, at any position, throws <see cref="OfdArchivalOriginalException"/>.</summary>
     public static OfdDocumentPackage Mix(IEnumerable<OfdMixSource> sources, int maxSourceCount = 1_000,
         long maxExpandedBytes = 512L * 1024 * 1024, int maxObjectCount = 100_000, CancellationToken cancellationToken = default)
     {
@@ -40,6 +41,8 @@ public static class OfdDocumentMixer
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
+            // Any archival input, at any position, rejects the whole operation.
+            OfdArchivalEditGuard.ThrowIfArchival(item.Package, OfdDocumentMerger.MixOperation);
             material.InspectStorage(item.Package, cancellationToken); material.GuardPreservedXml(item.Package, cancellationToken);
             OfdAnnotationContract.Validate(item.Package, material, cancellationToken);
             if (OfdNavigationXml.HasTypedNavigation(item.Package, material, cancellationToken)) throw new NotSupportedException("Mix cannot remap typed navigation source ownership.");

@@ -53,7 +53,8 @@ public sealed class NamedAreaTextOptions
     public int MaxCharacters { get; set; } = 10000;
 }
 
-/// <summary>Queries and fills SDK-created named areas without repaginating other content.</summary>
+/// <summary>Queries and fills SDK-created named areas without repaginating other content.
+/// Filling rejects packages declaring <c>DocType="OFD-A"</c> with <see cref="OfdArchivalOriginalException"/>; querying does not.</summary>
 public sealed class OfdNamedAreaEditor
 {
     private sealed class LegacyMetrics : IFlowFontMetrics
@@ -71,6 +72,7 @@ public sealed class OfdNamedAreaEditor
     public void FillText(OfdDocumentPackage package, string name, string text,
         NamedAreaTextOptions? options = null, CancellationToken cancellationToken = default)
     {
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdNamedAreaEditor.FillText");
         if (text is null) throw new ArgumentNullException(nameof(text));
         if (text.Length == 0) throw new ArgumentException("Fill text cannot be empty.", nameof(text));
         if (text.IndexOf('\f') >= 0) throw new NotSupportedException("A named area cannot contain a page break.");
@@ -134,6 +136,7 @@ public sealed class OfdNamedAreaEditor
     public void FillImage(OfdDocumentPackage package, string name, byte[] encodedImage, string mediaType,
         double sourceWidthPixels, double sourceHeightPixels, CancellationToken cancellationToken = default)
     {
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdNamedAreaEditor.FillImage");
         var (areas, area) = Find(package, name);
         if (encodedImage is null) throw new ArgumentNullException(nameof(encodedImage));
         if (encodedImage.Length == 0 || encodedImage.Length > 16 * 1024 * 1024)

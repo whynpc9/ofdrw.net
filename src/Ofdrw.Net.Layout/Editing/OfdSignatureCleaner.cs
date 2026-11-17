@@ -10,7 +10,8 @@ namespace Ofdrw.Net.Layout.Editing;
 public static class OfdSignatureCleaner
 {
     /// <summary>Removes declarations and unreferenced owned values/appearances. Unknown/shared payloads are retained with diagnostics.
-    /// Use distinct streams and stage output for atomic publication. This is cleanup, not signing or signature validation.</summary>
+    /// Use distinct streams and stage output for atomic publication. This is cleanup, not signing or signature validation.
+    /// An input declaring <c>DocType="OFD-A"</c> throws <see cref="Ofdrw.Net.Core.Models.OfdArchivalOriginalException"/> before anything is written.</summary>
     public static Task<OfdPackageWriteResult> CleanAsync(Stream source, Stream destination,
         OfdPackageLoadOptions? options = null, CancellationToken cancellationToken = default) =>
         OfdPackageSignatureCleaner.CleanAsync(source, destination, options, cancellationToken);

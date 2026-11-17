@@ -79,6 +79,7 @@ internal static partial class Cli
         var mode = flags.Contains("--physical") ? OfdAttachmentRemovalMode.Physical : OfdAttachmentRemovalMode.Logical;
         // Writing keeps the page-editing restriction to a single DocBody.
         var source = await ReadToolInputAsync(input, token, documentIndex).ConfigureAwait(false);
+        RejectArchivalForAttachmentRemoval(source);
         source.RemoveAttachment(SelectAttachment(source, id), mode);
         await WriteToolOutputAsync(source, target, token).ConfigureAwait(false);
         WriteSuccessNotification($"Removed attachment {id} ({mode})");

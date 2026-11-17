@@ -239,6 +239,19 @@ public sealed class StandardEncryptionTests
             new MemoryStream(Zip(entries)), credential, verifier));
     }
 
+    [Fact]
+    public async Task EncryptionRejectsArchivalOriginalBeforeKeyWork()
+    {
+        var identity = TestIdentity.Create();
+        var options = new OfdStandardEncryptionOptions { ManifestSigner = identity.Signer() };
+        options.Recipients.Add(OfdStandardRecipient.ForPassword("archive-test", "test password"));
+        var entries = Fixture();
+        entries["OFD.xml"] = Encoding.UTF8.GetBytes("<OFD xmlns='http://www.ofdspec.org' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        var error = await Assert.ThrowsAsync<Ofdrw.Net.Core.Models.OfdArchivalOriginalException>(
+            () => OfdStandardEncryption.EncryptAsync(new MemoryStream(Zip(entries)), options));
+        Assert.Equal("OfdStandardEncryption.EncryptAsync", error.Operation);
+    }
+
     private static Dictionary<string, byte[]> Fixture() => new(StringComparer.OrdinalIgnoreCase)
     {
         ["OFD.xml"] = Encoding.UTF8.GetBytes("<OFD xmlns='http://www.ofdspec.org'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>"),

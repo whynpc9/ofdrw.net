@@ -6,7 +6,8 @@ using Ofdrw.Net.Core.Models;
 namespace Ofdrw.Net.Layout.Editing;
 
 /// <summary>
-/// In-memory page operations for an OFD document package.
+/// In-memory page operations for an OFD document package. Operations that take the package reject
+/// packages declaring <c>DocType="OFD-A"</c> with <see cref="OfdArchivalOriginalException"/>.
 /// </summary>
 public static class OfdDocumentEditor
 {
@@ -27,6 +28,8 @@ public static class OfdDocumentEditor
         {
             throw new ArgumentNullException(nameof(pageOrder));
         }
+
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdDocumentEditor.ReorderPages");
 
         var material = new OfdModelMaterialization(new OfdModelLimits());
         material.InspectStorage(package, default); material.GuardPreservedXml(package, default);
@@ -69,6 +72,8 @@ public static class OfdDocumentEditor
             throw new ArgumentNullException(nameof(pageIndexes));
         }
 
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdDocumentEditor.RemovePages");
+
         var material = new OfdModelMaterialization(new OfdModelLimits());
         material.InspectStorage(package, default); material.GuardPreservedXml(package, default);
         var indexes = new HashSet<int>();
@@ -95,8 +100,32 @@ public static class OfdDocumentEditor
     }
 
     /// <summary>
+    /// Sets the physical crop box of a page that belongs to <paramref name="package"/>.
+    /// Content coordinates remain unchanged. Packages declaring <c>DocType="OFD-A"</c> are rejected
+    /// before any change.
+    /// </summary>
+    /// <exception cref="OfdArchivalOriginalException">The package declares OFD-A.</exception>
+    /// <exception cref="ArgumentException">The page is not one of the package's pages.</exception>
+    public static void CropPage(
+        OfdDocumentPackage package,
+        OfdPage page,
+        double xMillimeters,
+        double yMillimeters,
+        double widthMillimeters,
+        double heightMillimeters)
+    {
+        if (package is null) throw new ArgumentNullException(nameof(package));
+        if (page is null) throw new ArgumentNullException(nameof(page));
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdDocumentEditor.CropPage");
+        if (!package.Pages.Any(candidate => ReferenceEquals(candidate, page)))
+            throw new ArgumentException("The page does not belong to the package.", nameof(page));
+        CropPage(page, xMillimeters, yMillimeters, widthMillimeters, heightMillimeters);
+    }
+
+    /// <summary>
     /// Sets a page physical crop box in the document coordinate system.
-    /// Content coordinates remain unchanged.
+    /// Content coordinates remain unchanged. This page-level overload has no document context and
+    /// cannot check the document declaration; prefer the overload that takes the package.
     /// </summary>
     public static void CropPage(
         OfdPage page,

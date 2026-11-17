@@ -73,6 +73,8 @@ var copy = await new ArchivalCopyConverter().ConvertAsync("source.ofd", "archive
 // 同时保留 copy.OutputPath 和 copy.AuditPath。
 ```
 
+预检、规则检查和副本转换不修改输入，对声明 OFD-A 的输入照常可用；副本转换另有自身的审计和后检。`main`（尚未发布）上的重排、删页、拆合、水印、签名清理等改变内容的入口会拒绝声明 OFD-A 的原件，需要先用 `OfdOrdinaryDerivation.CreateAsync` 或 `ofdrw derive-ofd` 创建普通 OFD 派生副本，见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。
+
 ## 按版本维护的覆盖清单
 
 [GB/T 42133-2022 条款账本](https://whynpc9.github.io/ofdrw.net/reference/archival-standard-coverage/)跟踪第 5–7 章和规范性附录 A，包括仍未覆盖或需要外部证据的条款。`ArchivalCoverageService.CheckAsync` 增加可选的只读观察：`AC-001`–`AC-003` 覆盖归档 DocType、单文档和文档 Goto 类型；`AC-004`–`AC-006` 覆盖页面/大纲 Goto 类型和大纲目标是否存在；`AC-007` 检查已用图像插值；`AC-008` 检查文本 Size；`AC-009` 检查保留批注的三个标志；`AC-010` 检测保留的对象动作；`AC-011` 检查重复页面图层名称；`AC-012` 检查保留批注外观中的嵌套 PageBlock；`AC-013` 检测可识别的外部 URI 动作；`AC-014` 检测带目标的保留文档扩展声明；`AC-015` 检测保留的根加密标记。`AC-010`、`AC-013`、`AC-014` 和 `AC-015` 在没有违规时仍为 Unknown，因为无法从一个输出包证明来源迁移、外部资源闭包、所有扩展位置或完整明文。该服务保留不变的 R17 报告，不扩展其副本处理器，也不改变六项本地 APF 规则。

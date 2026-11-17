@@ -58,6 +58,8 @@ internal sealed class OfdTextReplacementOperation : IDisposable
     private OfdTextReplacementOperation(OfdDocumentPackage source, OfdTextReplacementOptions options, CancellationToken token,
         OfdControlledEditContext context, OfdSerializedGuard? actualTransferredGuard = null)
     {
+        // Every replacement route (public replacer, file session, CLI private save) enters here.
+        OfdArchivalEditGuard.ThrowIfArchival(source, "OfdTextReplacer.Replace");
         Options = options; Source = source; preparationToken = token;
         Context = context; Context.AssertActive();
         var baseline = Context.Material;

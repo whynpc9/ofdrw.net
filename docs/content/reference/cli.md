@@ -44,6 +44,7 @@ ofdrw --help
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
 | 清理签名 | `ofdrw clean-signatures input.ofd unsigned.ofd` |
+| 从 OFD-A 原件派生普通 OFD（main，尚未发布） | `ofdrw derive-ofd archive.ofd working.ofd --json` |
 
 文档操作的更多示例见[页面重组、水印与附件](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。文字替换需要显式可信原字体身份，见[文字定位与替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/)。
 
@@ -91,6 +92,14 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `0` | 成功 |
 | `1` | 参数、输入、转换或输出失败 |
 | `130` | 用户取消，例如 Ctrl-C |
+
+改变内容的命令（`replace-text`、`reorder`、`delete-pages`、`crop`、`attachments remove`、`areas fill`、`watermark`、`split`、`mix`、`clean-signatures`、`merge`）另有专用退出码（main，尚未发布）：
+
+| 退出码 | 含义 |
+| --- | --- |
+| `5` | 输入（`merge`、`mix` 为任一输入）的 `OFD.xml` 声明 `DocType="OFD-A"`，命令拒绝修改归档原件，未写输出；先用 `derive-ofd` 创建普通 OFD 派生副本 |
+
+`derive-ofd <input.ofd> <output.ofd> [--json]` 成功返回 `0`；输入未声明 OFD-A、已签名或已加密、输出已存在或与输入相同时返回 `1` 且不写输出；取消返回 `130`。`--json` 时标准输出只有 `ofdrw-cli-derive-ofd/1` JSON（`operation`、`source`/`output` 的 `path`/`bytes`/`sha256`/`docType`、`changedEntry`、`inheritsArchivalConclusion`）。行为矩阵和边界见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护main尚未发布)。
 
 `verify-signatures` 另有专用退出码：
 

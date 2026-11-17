@@ -33,7 +33,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "areas" or "locate"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "areas" or "locate" or "derive-ofd"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -61,6 +61,8 @@ internal static partial class Cli
                 return await AreasAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "locate")
                 return await LocateAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "derive-ofd")
+                return await DeriveOfdAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -174,6 +176,11 @@ internal static partial class Cli
         {
             Console.Error.WriteLine("Conversion canceled.");
             return 130;
+        }
+        catch (Ofdrw.Net.Core.Models.OfdArchivalOriginalException ex)
+        {
+            Console.Error.WriteLine($"Error: {TerminalText.Escape(ex.Message)}");
+            return ArchivalOriginalExitCode;
         }
         catch (Exception ex)
         {
@@ -796,6 +803,7 @@ internal static partial class Cli
           ofdrw areas list <input.ofd> [--document 2] [--json]
           ofdrw areas fill <input.ofd> <output.ofd> --name NAME (--text TEXT | --image FILE) [--font NAME] [--font-size MM] [--document 2]
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
+          ofdrw derive-ofd <input.ofd> <output.ofd> [--json]
 
         Commands:
           convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
@@ -823,6 +831,8 @@ internal static partial class Cli
           mix          Overlay source/page pairs in input order, first page dimensions.
           clean-signatures Remove all declarations and unreferenced owned signature payloads.
           merge        Merge OFD pages into a self-contained output document.
+          derive-ofd   Copy an OFD-A original to a new ordinary OFD (root DocType only) for editing.
+                       Content-changing commands refuse OFD-A input with exit code 5.
 
         Options:
           text-to-ofd: positional paths or --input/--output; no mixing or duplicate options.
