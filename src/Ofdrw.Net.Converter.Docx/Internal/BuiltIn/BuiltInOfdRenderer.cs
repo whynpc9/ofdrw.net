@@ -131,7 +131,6 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                     MaximumCmapParseWork = _options.FontEmbedding.MaximumCmapParseWork,
                     MaximumGlyphClosureOperations = _options.FontEmbedding.MaximumGlyphClosureOperations
                 },
-                DocType = "OFD-H",
                 DocumentId = "Doc_0",
                 Namespace = _options.OfdNamespace,
                 Metadata = new OfdMetadata

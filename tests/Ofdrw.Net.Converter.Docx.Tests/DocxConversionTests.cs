@@ -526,6 +526,7 @@ public sealed partial class DocxConversionTests
 
         output.Position = 0;
         var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal("OFD", package.Options.DocType);
         Assert.NotEmpty(package.Pages);
         Assert.All(package.Pages, page =>
         {
@@ -953,7 +954,6 @@ public sealed partial class DocxConversionTests
         AssertPackageNamespace(output, expected);
         output.Position = 0;
         var package = await new OfdReader().ReadAsync(output);
-        Assert.Equal("OFD-H", package.Options.DocType);
         Assert.Equal("DOCX document", package.Options.Metadata.Title);
         Assert.Equal("DualLayer", package.CustomTags["docx-ofd-mode"]);
     }
@@ -999,6 +999,7 @@ public sealed partial class DocxConversionTests
         {
             using var stream = entry.Open();
             var root = XDocument.Load(stream).Root!;
+            if (entry.FullName == "OFD.xml") Assert.Equal("OFD", root.Attribute("DocType")?.Value);
             Assert.True(root.Name.NamespaceName == expectedNamespace,
                 $"{entry.FullName} uses namespace '{root.Name.NamespaceName}', expected '{expectedNamespace}'.");
             Assert.True(root.DescendantsAndSelf().All(node => node.Name.NamespaceName == expectedNamespace),

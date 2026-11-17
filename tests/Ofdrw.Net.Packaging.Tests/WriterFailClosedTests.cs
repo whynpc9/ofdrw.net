@@ -87,6 +87,8 @@ public sealed class WriterFailClosedTests
     private static OfdDocumentPackage Package()
     {
         var package = new OfdDocumentPackage();
+        // Pin the document type used by the historical writer manifest.
+        package.Options.DocType = "OFD-H";
         for (var page = 0; page < 3; page++)
         {
             var model = new OfdPage { Index = page, WidthMillimeters = 210, HeightMillimeters = 297 };

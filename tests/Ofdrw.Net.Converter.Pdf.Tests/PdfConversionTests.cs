@@ -35,6 +35,11 @@ public sealed class PdfConversionTests
         await pdfToOfd.ConvertAsync(inputPdf, ofdStream, new[] { 2, 0, 2 });
 
         ofdStream.Position = 0;
+        using (var zip = new ZipArchive(ofdStream, ZipArchiveMode.Read, leaveOpen: true))
+        using (var entry = zip.GetEntry("OFD.xml")!.Open())
+            Assert.Equal("OFD", XDocument.Load(entry).Root!.Attribute("DocType")?.Value);
+
+        ofdStream.Position = 0;
         var ofdReader = new OfdReader();
         var ofdDoc = await ofdReader.ReadAsync(ofdStream);
         Assert.Equal(3, ofdDoc.Pages.Count);

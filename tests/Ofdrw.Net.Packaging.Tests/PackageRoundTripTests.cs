@@ -16,8 +16,10 @@ namespace Ofdrw.Net.Packaging.Tests;
 
 public sealed class PackageRoundTripTests
 {
-    [Fact]
-    public async Task Writer_ShouldGenerateRequiredEntries_AndReaderCanParse()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("OFD-H")]
+    public async Task Writer_ShouldGenerateRequiredEntries_AndReaderCanParse(string? docType)
     {
         var builder = new OfdDocumentBuilder();
         builder.AddPage(new OfdPage
@@ -40,6 +42,7 @@ public sealed class PackageRoundTripTests
         });
 
         var package = builder.Build();
+        if (docType is not null) package.Options.DocType = docType;
         var writer = new OfdPackageWriter();
 
         await using var ms = new MemoryStream();
@@ -49,7 +52,8 @@ public sealed class PackageRoundTripTests
         var loader = new OfdPackageLoader();
         var archive = await loader.LoadAsync(ms);
 
-        Assert.Contains("OFD.xml", archive.EntryNames);
+        var root = XDocument.Parse(archive.ReadUtf8Text("OFD.xml")).Root!;
+        Assert.Equal(docType ?? "OFD", root.Attribute("DocType")?.Value);
         Assert.Contains("Doc_0/Document.xml", archive.EntryNames);
         Assert.Contains("Doc_0/Pages/Page_0/Content.xml", archive.EntryNames);
 
@@ -70,6 +74,7 @@ public sealed class PackageRoundTripTests
         var reader = new OfdReader();
         var parsed = await reader.ReadAsync(ms);
 
+        Assert.Equal(docType ?? "OFD", parsed.Options.DocType);
         Assert.Single(parsed.Pages);
         var firstText = parsed.Pages[0].Elements.OfType<OfdTextElement>().First();
         Assert.Equal("hello ofd", firstText.Text);
