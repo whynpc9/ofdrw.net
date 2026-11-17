@@ -37,7 +37,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 
 ## Follow-up roadmaps
 
-- [OFD 通用输出与 OFD-A 归档能力分阶段计划](ofd-archival-roadmap.md) — 2026-11-17，关联 [#145](https://github.com/whynpc9/ofdrw.net/issues/145)。D0 默认 OFD 已集成并推送 main（`826d9cef`），NuGet 发布另行安排，详见[验收摘要](../../validation/standard-doctype-d0-20261117.md)。计划已纳入[上游 DocType 对照](../upstream-doctype-comparison-20261117.md)，明确最终 ZIP 后检和内容保留用例；并依据 #145 复核补充了自有 Native DOCX 产物的只读检查基线、缺口分组到工作包的归属，以及 D1（生成端字体自包含，候选）和 H0（OFD-H 独立包，未立项）。A1–A5 待执行。
+- [OFD 通用输出与 OFD-A 归档能力分阶段计划](ofd-archival-roadmap.md) — 2026-11-17，关联 [#145](https://github.com/whynpc9/ofdrw.net/issues/145)。D0 默认 OFD 已集成并推送 main（`826d9cef`），D1、D2、A1a–A1d、A2 已实现待合并，NuGet 发布另行安排，详见[验收摘要](../../validation/standard-doctype-d0-20261117.md)。计划已纳入[上游 DocType 对照](../upstream-doctype-comparison-20261117.md)，明确最终 ZIP 后检和内容保留用例；并依据 #145 复核补充了自有 Native DOCX 产物的只读检查基线、缺口分组到工作包的归属，以及 D1（生成端字体自包含，候选）和 H0（OFD-H 独立包，未立项）。A1–A5 待执行。
 
 ## Dependency notes
 
