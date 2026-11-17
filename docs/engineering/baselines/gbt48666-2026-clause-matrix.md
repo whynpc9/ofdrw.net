@@ -103,7 +103,7 @@ title: "GB/T 48666-2026 条款强度与可判定性矩阵"
 | --- | --- | --- | --- |
 | MH-001 | 7.1(a) | 根节点无限定 `DocType` 恰为 ASCII `OFD-H` | 文件内容是否为病历 |
 | MH-002 | 6.1.1、6.1.2(a) | OFD.xml 可识别；只有一个 DocBody；DocRoot 解析为 `Doc_0/Document.xml` | 多文档拆分来源 |
-| MH-003 | 6.2(c)、6.2(d) | `Version` 为 1.x 时所有 OFD XML 根命名空间为 `http://www.ofdspec.org/2016` 并在根上声明 `xmlns:ofd`（结构所指条目使用其他命名空间时为 Fail，仅标签载荷与附件豁免）；元素使用 `ofd` 前缀、属性无限定（宜） | 后续 GB/T 33190 版本的命名空间（Version 非 1.x 时为 Unknown） |
+| MH-003 | 6.2(c)、6.2(d) | `Version` 为 1.x 时所有 OFD XML 根命名空间为 `http://www.ofdspec.org/2016` 并在根上声明 `xmlns:ofd`（结构所指条目不论扩展名均检查，使用其他命名空间时为 Fail，仅标签载荷与附件豁免）；元素使用 `ofd` 前缀、属性无限定（宜） | 后续 GB/T 33190 版本的命名空间（Version 非 1.x 时为 Unknown） |
 | MH-004 | 6.1.3(b) | 中央目录中压缩方法只为 0 或 8，且 XML 条目不以存储方式写入 | ZIP 6.2.0 规范的全部条款 |
 | MH-005 | 6.1.3(a) | 本地文件头物理顺序：OFD.xml 第一，文档在页面前，页面按顺序 | 网络加载性能；ZIP 中央目录仍在文件尾 |
 | MH-006 | 6.2(a)、7.1(b)、7.1(d)–(f) | 声明位置落在图 3 目录（`Doc_0`、`Pages/Page_N`、`Signs/Sign_N`、`Attachs`、`Tags`、`Annots`、`Res`、`Temps`）；FontFile/MediaFile 载荷在包内且位于 Res 目录 | 典型文件名；未声明的游离条目 |
@@ -112,7 +112,7 @@ title: "GB/T 48666-2026 条款强度与可判定性矩阵"
 | MH-009 | 7.2(c)、7.2(d) | Image 类型 MultiMedia（含模板页 PageRes）载荷在包内，且文件签名为 BMP/JPEG/JPEG2000/TIFF/PNG/JBIG2 | DICOM 转换是否保留诊疗关联信息 |
 | MH-010 | 7.2(e)–(g)、7.4(c) | 音频为 MP3、视频为 MP4（其他格式 Unknown，因原文为“等”）；嵌入对象和内部附件不超过机构限值（默认 512 MiB） | 清晰度（7.2(h)）；外部附件的可达性 |
 | MH-011 | 7.1(c)、7.3(a)、7.3(b) | DocInfo 含 Author、CreationDate、Keywords、DocID，以及调用方映射的患者、文件类型、密级 CustomData | 字段语义是否正确；未映射时为 Unknown |
-| MH-012 | 7.5(a)、7.5(b) | 自定义标引载荷和 XML/JSON 内部附件为严格 UTF-8，XML 良构且声明编码为 UTF-8，JSON 至少为对象/数组外形 | 7.5(c) 头信息/元数据/标识的结构；JSON 完整语法 |
+| MH-012 | 7.5(a)、7.5(b) | 自定义标引载荷（所有 CustomTags 索引）和 XML/JSON 内部附件为严格 UTF-8，XML 良构且声明编码为 UTF-8，JSON 至少为对象/数组外形；已声明但缺失或索引不可读的载荷为 Unknown | 7.5(c) 头信息/元数据/标识的结构；JSON 完整语法 |
 | MH-013 | 6.3(e)、6.3(g)、8(c)、7.3(d) | 最后一个签名的 References（FileRef 自包根解析，与 `OfdSignatureVerifier` 一致）覆盖全部页面，且覆盖除签名目录、签名列表、注释列表和注释文件外的全部条目；存在无法解析的引用时，缺页为 Unknown | 摘要值与签名值的密码学有效性；早期签名的范围 |
 | MH-014 | 6.3(b)、8(d) | SignatureMethod 为 SM2、CheckMethod 为 SM3（角色互换或重复为 Fail）；标识为 GB/T 33560 OID `1.2.156.10197.1.501`/`.401` | 印章（GB/T 38540）内部算法；证书链 |
 | MH-015 | 7.3(g) | Document/Permissions 未把 Annot 或 Signature 设为 false | 元数据著录和文档组合是否被其他机制禁止 |

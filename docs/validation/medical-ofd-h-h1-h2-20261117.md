@@ -12,7 +12,7 @@ title: "OFD-H 专用包 H1/H2 验收记录（2026-11-17）"
 
 | 项目 | 结果 |
 | --- | --- |
-| `Ofdrw.Net.Medical.Tests` | 41/41 通过（含 PR 评审修复的回归用例；含 DOCX 显式 native 与默认模式各 1 例，需物化的固定 CJK 字体） |
+| `Ofdrw.Net.Medical.Tests` | 42/42 通过（含 PR 评审修复的回归用例；含 DOCX 显式 native 与默认模式各 1 例，需物化的固定 CJK 字体） |
 | `Ofdrw.Net.Archival.Tests` | 74/74 通过（opt-in 源码级依赖测试已允许 Medical → Archival，并禁止任何项目引用 Medical） |
 | 全解决方案其余测试 | Core 163、Packaging 1785、Layout 443、Cli 400（1 跳过）、Converter.Pdf 1266（17 跳过）等全部通过；`Converter.Docx.Tests` 1 例失败，见下 |
 | `python3 -m unittest discover -s scripts/tests` | 通过（包数 14，新增 Medical 依赖闭包接受/拒绝用例） |

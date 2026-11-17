@@ -155,6 +155,21 @@ public class MedicalAssessmentServiceTests
     }
 
     [Fact]
+    public async Task StructuralEntriesAreInspectedWhateverTheirExtension()
+    {
+        var package = Mutate(await LayoutOfd(true), e =>
+        {
+            var page = e.Text("Doc_0/Pages/Page_1/Content.xml").Replace("<ofd:", "<o:").Replace("</ofd:", "</o:");
+            e.Set("Doc_0/Pages/Page_1/Content", page.Replace("xmlns:ofd=", "xmlns:o=\"" + MedicalPackage.Namespace2016 + "\" xmlns:ofd="));
+            e.Remove("Doc_0/Pages/Page_1/Content.xml");
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("Pages/Page_1/Content.xml", "Pages/Page_1/Content"));
+        });
+        var observation = (await Assess(package)).Single("6.2(d)", "MH-003");
+        Assert.Equal("ElementsNotOfdPrefixed", observation.ReasonCode);
+        Assert.Contains("Doc_0/Pages/Page_1/Content", observation.Evidence.Observed);
+    }
+
+    [Fact]
     public async Task ZipLoadingBudgetsBoundMedicalInspection()
     {
         var package = await LayoutOfd(true);
@@ -302,6 +317,26 @@ public class MedicalAssessmentServiceTests
                 Assert.True(trailingReport.GetClause(clause).Outcome == PreflightOutcome.Unknown, baseLoc + " " + clause + " is " + trailingReport.GetClause(clause).Outcome);
         }
 
+        // A second annotation index and its page files are excluded from the signed scope like the first.
+        var twoAnnotationIndexes = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+        {
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>",
+                "</ofd:Pages><ofd:Annotations>Annots/Annotations.xml</ofd:Annotations><ofd:Annotations>Annots/Second.xml</ofd:Annotations>"));
+            e.Set("Doc_0/Annots/Annotations.xml", Open("Annotations") + "<ofd:Page PageID='1'><ofd:FileLoc>Page_0/Annotation.xml</ofd:FileLoc></ofd:Page></ofd:Annotations>");
+            e.Set("Doc_0/Annots/Page_0/Annotation.xml", Open("PageAnnot") + "</ofd:PageAnnot>");
+            e.Set("Doc_0/Annots/Second.xml", Open("Annotations") + "<ofd:Page PageID='2'><ofd:FileLoc>Page_1/Annotation.xml</ofd:FileLoc></ofd:Page></ofd:Annotations>");
+            e.Set("Doc_0/Annots/Page_1/Annotation.xml", Open("PageAnnot") + "</ofd:PageAnnot>");
+        });
+        Assert.Equal(PreflightOutcome.Pass, (await Assess(twoAnnotationIndexes)).GetClause("8(c)").Outcome);
+
+        // A Signatures index that does not resolve is not "no signature declared".
+        var unresolvedIndex = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+            e.Set("OFD.xml", e.Text("OFD.xml").Replace("<ofd:Signatures>Doc_0/Signs/Signatures.xml", "<ofd:Signatures>Doc_0\\Signs\\Signatures.xml")));
+        var unresolvedIndexReport = await Assess(unresolvedIndex);
+        foreach (var clause in new[] { "6.3(e)", "8(c)", "8(d)" })
+            Assert.True(unresolvedIndexReport.GetClause(clause).Outcome == PreflightOutcome.Unknown, clause + " is " + unresolvedIndexReport.GetClause(clause).Outcome);
+        Assert.Equal("SignatureUnreadable", unresolvedIndexReport.Single("7.3(d)", "MH-013").ReasonCode);
+
         // A new attachment after signing needs a new signature (6.3(g)).
         var extended = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e => e.Set("Doc_0/Attachs/later.xml", "<later/>"));
         Assert.Equal("UnsignedModification", (await Assess(extended)).Single("6.3(g)", "MH-013").ReasonCode);
@@ -354,6 +389,17 @@ public class MedicalAssessmentServiceTests
         report = await Assess(twoIndexes);
         Assert.Equal("NotUtf8", report.Single("7.5(b)", "MH-012").ReasonCode);
         Assert.Contains("EMR2.xml", report.Single("7.5(b)", "MH-012").Evidence.Observed);
+
+        // A declared payload that is missing, or an unreadable index, is unknown rather than absent.
+        var missing = Mutate(WithTag(Encoding.UTF8.GetBytes("<emr>ok</emr>")), e =>
+            e.Set("Doc_0/Tags/CustomTags.xml", e.Text("Doc_0/Tags/CustomTags.xml").Replace("</ofd:CustomTags>",
+                "<ofd:CustomTag NameSpace='urn:example:gone'><ofd:FileLoc>Gone.xml</ofd:FileLoc></ofd:CustomTag></ofd:CustomTags>")));
+        report = await Assess(missing);
+        foreach (var clause in new[] { "7.5(a)", "7.5(b)" })
+            Assert.Equal("PayloadUnavailable", report.Single(clause, "MH-012").ReasonCode);
+        var unreadableIndex = Mutate(WithTag(Encoding.UTF8.GetBytes("<emr>ok</emr>")), e => e.Set("Doc_0/Tags/CustomTags.xml", "<not-closed"));
+        report = await Assess(unreadableIndex);
+        Assert.Equal(PreflightOutcome.Unknown, report.GetClause("7.5(b)").Outcome);
     }
 
     [Fact]

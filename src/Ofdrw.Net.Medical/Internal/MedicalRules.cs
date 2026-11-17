@@ -142,7 +142,8 @@ internal static class MedicalRules
             .Where(x => x.Resolved != null && x.Kind is not (MedicalLocationKind.Attachment or MedicalLocationKind.CustomTag or
                 MedicalLocationKind.Extensions or MedicalLocationKind.ResourcePayload))
             .Select(x => x.Resolved!), StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
-        foreach (var name in context.Package.EntryNames.Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).OrderBy(x => x, StringComparer.Ordinal))
+        // Structural entries are inspected whatever their extension; other entries only when they are .xml.
+        foreach (var name in context.Package.EntryNames.Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) || structural.Contains(x)).OrderBy(x => x, StringComparer.Ordinal))
         {
             context.Package.Visit();
             var document = context.Package.Xml(name)?.Root;
@@ -504,8 +505,17 @@ internal static class MedicalRules
         const string rule = "MH-012";
         var s = context.Structure;
         var payloads = s.TagPayloads.Select(x => (Path: x, Kind: "xml"))
-            .Concat(s.InternalAttachments.Select(x => (x.Path, Kind: Kind(x.Path, x.Format))).Where(x => x.Kind != null).Select(x => (x.Path, Kind: x.Kind!)))
-            .Where(x => context.Package.Exists(x.Path)).Distinct().ToList();
+            .Concat(s.InternalAttachments.Select(x => (x.Path, Kind: MachineReadableKind(x.Path, x.Format))).Where(x => x.Kind != null).Select(x => (x.Path, Kind: x.Kind!)))
+            .Distinct().ToList();
+        // Declared but unavailable payloads, and unreadable or unresolved indexes, are not "no payload": they are unknown.
+        var unavailable = s.MachineReadableUnavailable.Concat(payloads.Where(x => !context.Package.Exists(x.Path)).Select(x => x.Path)).Distinct().ToList();
+        payloads = payloads.Where(x => context.Package.Exists(x.Path)).ToList();
+        if (payloads.Count == 0 && unavailable.Count > 0)
+        {
+            foreach (var clause in new[] { "7.5(a)", "7.5(b)" })
+                yield return O(rule, clause, PreflightOutcome.Unknown, "PayloadUnavailable", unavailable[0], Package, Sample(unavailable), "Readable tag and attachment payloads");
+            yield break;
+        }
         if (payloads.Count == 0)
         {
             yield return O(rule, "7.5(a)", PreflightOutcome.NotApplicable, "NoMachineReadablePayload", Package, Package, "No tag or XML/JSON attachment payload", "XML or JSON");
@@ -539,13 +549,17 @@ internal static class MedicalRules
         }
         yield return notStructured.Count > 0
             ? O(rule, "7.5(a)", PreflightOutcome.Fail, "NotSemiStructured", notStructured[0], Package, Sample(notStructured), "Well-formed XML or JSON object/array")
+            : unavailable.Count > 0
+            ? O(rule, "7.5(a)", PreflightOutcome.Unknown, "PayloadUnavailable", unavailable[0], Package, Sample(unavailable), "Readable tag and attachment payloads")
             : O(rule, "7.5(a)", PreflightOutcome.Pass, "SemiStructuredText", payloads[0].Path, Package, payloads.Count + " payloads (JSON checked by shape only)", "XML or JSON");
         yield return notUtf8.Count > 0
             ? O(rule, "7.5(b)", PreflightOutcome.Fail, "NotUtf8", notUtf8[0], Package, Sample(notUtf8), "UTF-8")
+            : unavailable.Count > 0
+            ? O(rule, "7.5(b)", PreflightOutcome.Unknown, "PayloadUnavailable", unavailable[0], Package, Sample(unavailable), "Readable tag and attachment payloads")
             : O(rule, "7.5(b)", PreflightOutcome.Pass, "Utf8", payloads[0].Path, Package, payloads.Count + " payloads", "UTF-8");
     }
 
-    private static string? Kind(string path, string? format)
+    internal static string? MachineReadableKind(string path, string? format)
     {
         var value = (format ?? string.Empty).Trim().TrimStart('.').ToLowerInvariant();
         if (value == "xml" || path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) return "xml";
@@ -564,7 +578,7 @@ internal static class MedicalRules
                 yield return O(rule, clause, PreflightOutcome.Unknown, "RootUnavailable", "OFD.xml", Package, "OFD.xml unavailable", "Signature coverage");
             yield break;
         }
-        if (s.SignaturePaths.Count == 0 && s.SignaturesPath == null)
+        if (!s.SignaturesDeclared)
         {
             foreach (var clause in new[] { "6.3(e)", "6.3(g)", "8(c)" })
                 yield return O(rule, clause, PreflightOutcome.NotApplicable, "NoSignatures", "OFD.xml", "/OFD/DocBody/Signatures", "absent", "Signature coverage");
@@ -592,8 +606,8 @@ internal static class MedicalRules
         }
         var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (s.SignaturesPath != null) excluded.Add(s.SignaturesPath);
+        foreach (var index in s.AnnotationIndexPaths) excluded.Add(index);
         var signDirectories = s.SignaturePaths.Select(x => x.Substring(0, x.LastIndexOf('/') + 1)).ToList();
-        if (s.AnnotationsPath != null) excluded.Add(s.AnnotationsPath);
         foreach (var path in s.AnnotationPaths) excluded.Add(path);
         var required = context.Package.EntryNames
             .Where(x => !excluded.Contains(x) && !signDirectories.Any(d => d.Length > 0 && x.StartsWith(d, StringComparison.OrdinalIgnoreCase)))
@@ -601,7 +615,7 @@ internal static class MedicalRules
         var missingRefs = protectedEntries.Where(x => !context.Package.Exists(x)).ToList();
         var unprotected = required.Where(x => !protectedEntries.Contains(x)).ToList();
         var pages = s.PagePaths.Where(x => !protectedEntries.Contains(x)).ToList();
-        var annotationIndexUnreadable = s.AnnotationsPath != null && s.Unreadable.Contains(s.AnnotationsPath);
+        var annotationIndexUnreadable = s.AnnotationIndexUnresolved || s.AnnotationIndexPaths.Any(s.Unreadable.Contains);
 
         // FileRef resolves from the package root, as OfdSignatureVerifier and archival preflight do. While any reference
         // is unresolvable it may still name an unlisted page, so a missing page is Unknown rather than Fail.
@@ -622,7 +636,7 @@ internal static class MedicalRules
             else if (unprotected.Count > 0)
                 yield return O(rule, clause, PreflightOutcome.Fail, reason, latest!, "References", unprotected.Count + " entries: " + Sample(unprotected), "All content except annotation and signature files");
             else if (annotationIndexUnreadable)
-                yield return O(rule, clause, PreflightOutcome.Unknown, "AnnotationIndexUnreadable", s.AnnotationsPath!, Package, "Exclusions unknown", "Readable annotation index");
+                yield return O(rule, clause, PreflightOutcome.Unknown, "AnnotationIndexUnreadable", s.AnnotationIndexPaths.FirstOrDefault(x => s.Unreadable.Contains(x)) ?? "Doc_0/Document.xml", Package, "Exclusions unknown", "Readable annotation index");
             else
                 yield return O(rule, clause, PreflightOutcome.Pass, "StructuralCoverageComplete", latest!, "References", protectedEntries.Count + " references; digests not verified", "All content except annotation and signature files");
         }
@@ -636,7 +650,7 @@ internal static class MedicalRules
         var s = context.Structure;
         if (s.SignaturePaths.Count == 0)
         {
-            var outcome = s.SignatureDeclarations.Count > 0 || s.SignaturesPath != null && s.Unreadable.Contains(s.SignaturesPath)
+            var outcome = s.SignatureDeclarations.Count > 0 || s.SignaturesDeclared && (s.SignaturesPath == null || s.Unreadable.Contains(s.SignaturesPath))
                 ? PreflightOutcome.Unknown : PreflightOutcome.NotApplicable;
             yield return O(rule, "6.3(b)", outcome, "NoSignatures", "OFD.xml", "/OFD/DocBody/Signatures", "none", "GB/T 33560 identifiers");
             yield return O(rule, "8(d)", outcome, "NoSignatures", "OFD.xml", "/OFD/DocBody/Signatures", "none", "SM2/SM3");

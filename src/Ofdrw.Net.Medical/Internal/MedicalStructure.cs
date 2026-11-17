@@ -68,10 +68,17 @@ internal sealed class MedicalStructure
     internal List<string> PagePaths = new List<string>();
     internal List<string> Unreadable = new List<string>();
     internal string? SignaturesPath;
+    /// <summary>True when OFD.xml declares a Signatures index, whether or not it resolves.</summary>
+    internal bool SignaturesDeclared;
     internal List<string> SignaturePaths = new List<string>();
     /// <summary>Every declared signature in index order; null where its BaseLoc does not resolve.</summary>
     internal List<string?> SignatureDeclarations = new List<string?>();
-    internal string? AnnotationsPath;
+    /// <summary>Resolved annotation index paths; a document may declare more than one.</summary>
+    internal List<string> AnnotationIndexPaths = new List<string>();
+    /// <summary>True when an annotation index is declared but its location does not resolve.</summary>
+    internal bool AnnotationIndexUnresolved;
+    /// <summary>Declared machine-readable payloads (or their indexes) that are unresolved, missing or unreadable.</summary>
+    internal List<string> MachineReadableUnavailable = new List<string>();
     internal List<string> AnnotationPaths = new List<string>();
     internal List<(string Path, string? Format)> InternalAttachments = new List<(string, string?)>();
     internal List<string> TagPayloads = new List<string>();
@@ -136,6 +143,7 @@ internal sealed class MedicalStructure
             var path = result.Add(MedicalLocationKind.Attachments, docPath, "Document/Attachments", attachments);
             var list = path == null ? null : package.Xml(path)?.Root;
             if (path != null && list == null) result.Unreadable.Add(path);
+            if (list == null) result.MachineReadableUnavailable.Add(path ?? attachments); // attachments it lists are unknown
             foreach (var item in list?.Elements(ns + "Attachment") ?? Enumerable.Empty<XElement>())
             {
                 package.Visit();
@@ -143,7 +151,9 @@ internal sealed class MedicalStructure
                 // A location with a URI scheme is an external attachment (7.4(b)); it is not a package entry.
                 if (location != null && location.Contains("://")) continue;
                 var payload = result.Add(MedicalLocationKind.Attachment, path!, "Attachment/FileLoc", location);
-                if (payload != null) result.InternalAttachments.Add((payload, (string?)item.Attribute("Format")));
+                var format = (string?)item.Attribute("Format");
+                if (payload != null) result.InternalAttachments.Add((payload, format));
+                else if (MedicalRules.MachineReadableKind(location ?? string.Empty, format) != null) result.MachineReadableUnavailable.Add(location ?? "<missing FileLoc>");
             }
         }
 
@@ -152,20 +162,24 @@ internal sealed class MedicalStructure
             var path = result.Add(MedicalLocationKind.CustomTags, docPath, "Document/CustomTags", tags);
             var list = path == null ? null : package.Xml(path)?.Root;
             if (path != null && list == null) result.Unreadable.Add(path);
+            if (list == null) result.MachineReadableUnavailable.Add(path ?? tags);
             foreach (var item in list?.Elements(ns + "CustomTag") ?? Enumerable.Empty<XElement>())
             {
                 package.Visit();
-                var payload = result.Add(MedicalLocationKind.CustomTag, path!, "CustomTag/FileLoc", item.Element(ns + "FileLoc")?.Value);
+                var declaredPayload = item.Element(ns + "FileLoc")?.Value;
+                var payload = result.Add(MedicalLocationKind.CustomTag, path!, "CustomTag/FileLoc", declaredPayload);
                 if (payload != null) result.TagPayloads.Add(payload);
+                else result.MachineReadableUnavailable.Add(declaredPayload ?? "<missing FileLoc>");
                 var schema = item.Element(ns + "SchemaLoc")?.Value;
                 if (schema != null) result.Add(MedicalLocationKind.CustomTag, path!, "CustomTag/SchemaLoc", schema);
             }
         }
 
-        var annotations = document.Element(ns + "Annotations")?.Value;
-        if (annotations != null)
+        foreach (var annotations in document.Elements(ns + "Annotations").Select(x => x.Value))
         {
-            var path = result.AnnotationsPath = result.Add(MedicalLocationKind.Annotations, docPath, "Document/Annotations", annotations);
+            var path = result.Add(MedicalLocationKind.Annotations, docPath, "Document/Annotations", annotations);
+            if (path == null) { result.AnnotationIndexUnresolved = true; continue; }
+            result.AnnotationIndexPaths.Add(path);
             var list = path == null ? null : package.Xml(path)?.Root;
             if (path != null && list == null) result.Unreadable.Add(path);
             foreach (var item in list?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
@@ -183,6 +197,7 @@ internal sealed class MedicalStructure
 
     private void WalkSignatures(MedicalPackage package, string declared)
     {
+        SignaturesDeclared = true;
         var path = SignaturesPath = Add(MedicalLocationKind.Signatures, "OFD.xml", "DocBody/Signatures", declared);
         if (path == null) return;
         var list = package.Xml(path)?.Root;
