@@ -571,7 +571,8 @@ internal static class MedicalRules
             yield return O(rule, "7.3(d)", PreflightOutcome.Fail, "NoSignature", "OFD.xml", "/OFD/DocBody/Signatures", "absent", "Signature or seal present");
             yield break;
         }
-        var latest = s.SignaturePaths.LastOrDefault();
+        // The last declared signature, never an earlier one standing in for an unresolvable BaseLoc.
+        var latest = s.SignatureDeclarations.Count > 0 ? s.SignatureDeclarations[s.SignatureDeclarations.Count - 1] : null;
         var signature = latest == null ? null : context.Package.Xml(latest)?.Root;
         if (signature == null)
         {
@@ -635,12 +636,15 @@ internal static class MedicalRules
         var s = context.Structure;
         if (s.SignaturePaths.Count == 0)
         {
-            var outcome = s.SignaturesPath != null && s.Unreadable.Contains(s.SignaturesPath) ? PreflightOutcome.Unknown : PreflightOutcome.NotApplicable;
+            var outcome = s.SignatureDeclarations.Count > 0 || s.SignaturesPath != null && s.Unreadable.Contains(s.SignaturesPath)
+                ? PreflightOutcome.Unknown : PreflightOutcome.NotApplicable;
             yield return O(rule, "6.3(b)", outcome, "NoSignatures", "OFD.xml", "/OFD/DocBody/Signatures", "none", "GB/T 33560 identifiers");
             yield return O(rule, "8(d)", outcome, "NoSignatures", "OFD.xml", "/OFD/DocBody/Signatures", "none", "SM2/SM3");
             yield break;
         }
         var values = new List<(string Path, string Kind, string? Value)>();
+        if (s.SignatureDeclarations.Count != s.SignaturePaths.Count)
+            values.Add((s.SignaturesPath ?? "OFD.xml", "Signature/@BaseLoc", null)); // unresolved declaration: algorithms unknown
         foreach (var path in s.SignaturePaths)
         {
             context.Package.Visit();

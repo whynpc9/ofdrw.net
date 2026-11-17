@@ -46,7 +46,7 @@ internal sealed class MedicalPackage : IDisposable
     private readonly CancellationToken token;
     private readonly Dictionary<string, XDocument?> cache = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
     private long xmlBytes;
-    private readonly HashSet<string> charged = new HashSet<string>(StringComparer.Ordinal);
+    private readonly HashSet<string> charged = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // same identity as byName
     private int xmlNodes, references;
 
     internal MedicalPackage(byte[] bytes, ArchivalPreflightOptions budgets, CancellationToken token)

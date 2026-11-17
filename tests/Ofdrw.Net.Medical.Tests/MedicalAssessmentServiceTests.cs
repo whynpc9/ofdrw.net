@@ -175,6 +175,10 @@ public class MedicalAssessmentServiceTests
         options.Archival.Preflight.MaxXmlBytes = xml + xml / 2;
         options.Archival.Preflight.MaxSingleXmlBytes = (int)xml;
         Assert.Equal(MedicalExecutionState.Complete, (await Assess(package, options)).ExecutionState);
+
+        // Entry identity is case-insensitive: a DocRoot spelled in another case is the same entry, charged once.
+        var recased = Mutate(package, e => e.Set("OFD.xml", e.Text("OFD.xml").Replace("Doc_0/Document.xml", "dOC_0/document.xml")));
+        Assert.Equal(MedicalExecutionState.Complete, (await Assess(recased, options)).ExecutionState);
     }
 
     private static Task<byte[]> WithMedia(byte[] package, string type, string file, byte[] payload) =>
@@ -288,6 +292,16 @@ public class MedicalAssessmentServiceTests
         Assert.Equal("UnresolvableReference", unresolvedReport.Single("6.3(e)", "MH-013").ReasonCode);
         Assert.Equal(PreflightOutcome.Unknown, unresolvedReport.GetClause("6.3(e)").Outcome);
 
+        // An unresolvable last signature is not replaced by the earlier, readable one.
+        foreach (var baseLoc in new[] { "Sign_9/Signature.xml", "../../../../escape.xml" })
+        {
+            var trailing = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+                e.Set("Doc_0/Signs/Signatures.xml", e.Text("Doc_0/Signs/Signatures.xml").Replace("</ofd:Signatures>", $"<ofd:Signature ID='2' BaseLoc='{baseLoc}'/></ofd:Signatures>")));
+            var trailingReport = await Assess(trailing);
+            foreach (var clause in new[] { "6.3(e)", "6.3(g)", "8(c)", "8(d)", "6.3(b)" })
+                Assert.True(trailingReport.GetClause(clause).Outcome == PreflightOutcome.Unknown, baseLoc + " " + clause + " is " + trailingReport.GetClause(clause).Outcome);
+        }
+
         // A new attachment after signing needs a new signature (6.3(g)).
         var extended = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e => e.Set("Doc_0/Attachs/later.xml", "<later/>"));
         Assert.Equal("UnsignedModification", (await Assess(extended)).Single("6.3(g)", "MH-013").ReasonCode);
@@ -329,6 +343,17 @@ public class MedicalAssessmentServiceTests
 
         report = await Assess(WithTag(Encoding.Latin1.GetBytes("<?xml version='1.0' encoding='ISO-8859-1'?><emr>café</emr>")));
         Assert.Equal("NotUtf8", report.Single("7.5(b)", "MH-012").ReasonCode);
+
+        // A second CustomTags index is assessed too, not only the first.
+        var twoIndexes = Mutate(WithTag(Encoding.UTF8.GetBytes("<emr>ok</emr>")), e =>
+        {
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:CustomTags>", "</ofd:CustomTags><ofd:CustomTags>Tags/Second.xml</ofd:CustomTags>"));
+            e.Set("Doc_0/Tags/Second.xml", Open("CustomTags") + "<ofd:CustomTag NameSpace='urn:example:emr2'><ofd:FileLoc>EMR2.xml</ofd:FileLoc></ofd:CustomTag></ofd:CustomTags>");
+            e["Doc_0/Tags/EMR2.xml"] = Encoding.Latin1.GetBytes("<?xml version='1.0' encoding='ISO-8859-1'?><emr>café</emr>");
+        });
+        report = await Assess(twoIndexes);
+        Assert.Equal("NotUtf8", report.Single("7.5(b)", "MH-012").ReasonCode);
+        Assert.Contains("EMR2.xml", report.Single("7.5(b)", "MH-012").Evidence.Observed);
     }
 
     [Fact]

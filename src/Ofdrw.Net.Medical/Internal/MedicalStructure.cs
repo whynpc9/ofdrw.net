@@ -69,6 +69,8 @@ internal sealed class MedicalStructure
     internal List<string> Unreadable = new List<string>();
     internal string? SignaturesPath;
     internal List<string> SignaturePaths = new List<string>();
+    /// <summary>Every declared signature in index order; null where its BaseLoc does not resolve.</summary>
+    internal List<string?> SignatureDeclarations = new List<string?>();
     internal string? AnnotationsPath;
     internal List<string> AnnotationPaths = new List<string>();
     internal List<(string Path, string? Format)> InternalAttachments = new List<(string, string?)>();
@@ -128,8 +130,8 @@ internal sealed class MedicalStructure
                 result.AddTable(package, MedicalResourceScope.Page, MedicalLocationKind.PageRes, pagePath, "Page/PageRes", pageRes.Value);
         }
 
-        var attachments = document.Element(ns + "Attachments")?.Value;
-        if (attachments != null)
+        // Every index declaration counts; a document may declare more than one.
+        foreach (var attachments in document.Elements(ns + "Attachments").Select(x => x.Value))
         {
             var path = result.Add(MedicalLocationKind.Attachments, docPath, "Document/Attachments", attachments);
             var list = path == null ? null : package.Xml(path)?.Root;
@@ -145,8 +147,7 @@ internal sealed class MedicalStructure
             }
         }
 
-        var tags = document.Element(ns + "CustomTags")?.Value;
-        if (tags != null)
+        foreach (var tags in document.Elements(ns + "CustomTags").Select(x => x.Value))
         {
             var path = result.Add(MedicalLocationKind.CustomTags, docPath, "Document/CustomTags", tags);
             var list = path == null ? null : package.Xml(path)?.Root;
@@ -190,6 +191,7 @@ internal sealed class MedicalStructure
         {
             package.Visit();
             var signature = Add(MedicalLocationKind.Signature, path, "Signature/@BaseLoc", (string?)item.Attribute("BaseLoc"));
+            SignatureDeclarations.Add(signature);
             if (signature != null) SignaturePaths.Add(signature);
         }
     }
