@@ -118,6 +118,20 @@ public class MedicalContractTests
         Assert.True(linear.IndexOf("Doc_0/Pages/Page_0/Content.xml") < linear.FindIndex(x => x.StartsWith("Doc_0/Res/")));
         Assert.True(linear.FindIndex(x => x.StartsWith("Doc_0/Res/")) < linear.IndexOf("Doc_0/Pages/Page_1/Content.xml"));
         Assert.Equal(ordinary.Count, linear.Count);
+
+        // Page descriptions sharing a directory keep page order, not name order.
+        var shared = Mutate(await LayoutOfd(false), e =>
+        {
+            e["Doc_0/Pages/Z.xml"] = e["Doc_0/Pages/Page_0/Content.xml"]; e.Remove("Doc_0/Pages/Page_0/Content.xml");
+            e["Doc_0/Pages/A.xml"] = e["Doc_0/Pages/Page_1/Content.xml"]; e.Remove("Doc_0/Pages/Page_1/Content.xml");
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("Pages/Page_0/Content.xml", "Pages/Z.xml").Replace("Pages/Page_1/Content.xml", "Pages/A.xml"));
+        });
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(shared));
+        reread.Options.LinearizedEntryOrder = true;
+        using var output = new MemoryStream();
+        await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(reread, output);
+        var written = Order(output.ToArray());
+        Assert.True(written.IndexOf("Doc_0/Pages/Z.xml") < written.IndexOf("Doc_0/Pages/A.xml"), string.Join(", ", written));
     }
 
     [Theory]

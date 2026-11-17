@@ -268,6 +268,11 @@ public class MedicalAssessmentServiceTests
             e.Set("Doc_0/DocumentRes.xml", e.Text("Doc_0/DocumentRes.xml").Replace("</ofd:MultiMedias>",
                 "<ofd:MultiMedia ID='91' Type='Image'><ofd:MediaFile>gone.png</ofd:MediaFile></ofd:MultiMedia></ofd:MultiMedias>")));
         Assert.Equal("ImageUnavailable", (await Assess(oneMissing)).Single("7.2(d)", "MH-009").ReasonCode);
+
+        // A page whose BaseLoc does not resolve may declare further images in its PageRes.
+        var unresolvedPage = Mutate(await WithMedia(source, "Image", "scan.png", png), e =>
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>", "<ofd:Page ID='99' BaseLoc='../../../escape.xml'/></ofd:Pages>")));
+        Assert.Equal("ResourceScopeIncomplete", (await Assess(unresolvedPage)).Single("7.2(d)", "MH-009").ReasonCode);
     }
 
     [Fact]

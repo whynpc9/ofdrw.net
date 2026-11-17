@@ -351,6 +351,8 @@ public sealed partial class OfdPackageWriter
         internal bool Linearized;
         internal Dictionary<string, int> LeadingRanks = new(StringComparer.OrdinalIgnoreCase);
         internal List<string> PageDirectories = new();
+        // Resolved page-description paths, in page order; ranked individually so pages sharing a directory keep page order.
+        internal Dictionary<string, int> PageDescriptionIndex = new(StringComparer.OrdinalIgnoreCase);
         internal long OutputReservation;
     }
 
@@ -366,12 +368,12 @@ public sealed partial class OfdPackageWriter
         long Rank(string key)
         {
             if (plan.LeadingRanks.TryGetValue(key, out var leading)) return leading;
+            if (plan.PageDescriptionIndex.TryGetValue(key, out var page)) return page == 0 ? 3 : 10 + 2L * page;
             for (var index = 0; index < plan.PageDirectories.Count; index++)
             {
+                // Supporting entries (PageRes, page Res) follow the first page description in their directory.
                 if (!key.StartsWith(plan.PageDirectories[index], StringComparison.OrdinalIgnoreCase)) continue;
-                var content = key.EndsWith("/Content.xml", StringComparison.OrdinalIgnoreCase) &&
-                    key.Length == plan.PageDirectories[index].Length + "Content.xml".Length ? 0 : 1;
-                return index == 0 ? 3 + content : 10 + 2L * index + content;
+                return index == 0 ? 4 : 11 + 2L * index;
             }
             return key.StartsWith(resources, StringComparison.OrdinalIgnoreCase) ? 5 : long.MaxValue;
         }
@@ -436,6 +438,8 @@ public sealed partial class OfdPackageWriter
         plan.LeadingRanks[publicPath] = 2;
         if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) plan.LeadingRanks[material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token)] = 2;
         plan.PageDirectories = plan.Pages.Select(page => OfdPackagePath.GetDirectory(plan.PagePaths[page]) + "/").ToList();
+        for (var index = 0; index < plan.Pages.Count; index++)
+            if (!plan.PageDescriptionIndex.ContainsKey(plan.PagePaths[plan.Pages[index]])) plan.PageDescriptionIndex[plan.PagePaths[plan.Pages[index]]] = index;
         material.ChargeCopy(32L * plan.Directory.Length + 1024, token);
         var outputRoles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         Role(OfdConstants.OfdRootFile, "OFD"); Role(plan.DocumentPath, "Document");

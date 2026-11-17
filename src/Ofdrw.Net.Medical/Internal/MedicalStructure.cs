@@ -122,8 +122,10 @@ internal sealed class MedicalStructure
         foreach (var template in common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>())
         {
             package.Visit();
-            var templatePath = result.Add(MedicalLocationKind.Template, docPath, "CommonData/TemplatePage/@BaseLoc", (string?)template.Attribute("BaseLoc"));
-            if (templatePath == null) continue;
+            var templateLoc = (string?)template.Attribute("BaseLoc");
+            var templatePath = result.Add(MedicalLocationKind.Template, docPath, "CommonData/TemplatePage/@BaseLoc", templateLoc);
+            // An unresolved template or page may hold PageRes tables: the resource scope is incomplete, not empty.
+            if (templatePath == null) { result.Unreadable.Add(templateLoc ?? "<missing TemplatePage BaseLoc>"); continue; }
             // Template pages carry their own PageRes; their fonts and media are page-scoped resources too.
             var content = package.Xml(templatePath)?.Root;
             if (content == null) { result.Unreadable.Add(templatePath); continue; }
@@ -134,8 +136,9 @@ internal sealed class MedicalStructure
         foreach (var page in document.Element(ns + "Pages")?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
         {
             package.Visit();
-            var pagePath = result.Add(MedicalLocationKind.Page, docPath, "Pages/Page/@BaseLoc", (string?)page.Attribute("BaseLoc"));
-            if (pagePath == null) continue;
+            var pageLoc = (string?)page.Attribute("BaseLoc");
+            var pagePath = result.Add(MedicalLocationKind.Page, docPath, "Pages/Page/@BaseLoc", pageLoc);
+            if (pagePath == null) { result.Unreadable.Add(pageLoc ?? "<missing Page BaseLoc>"); continue; }
             result.PagePaths.Add(pagePath);
             var content = package.Xml(pagePath)?.Root;
             if (content == null) { result.Unreadable.Add(pagePath); continue; }
