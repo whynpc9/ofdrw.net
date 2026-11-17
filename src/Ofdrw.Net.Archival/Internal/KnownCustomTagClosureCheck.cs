@@ -28,6 +28,7 @@ internal sealed class KnownCustomTagClosureCheck : IArchivalClauseCheck
         var scope = context.Scope;
         if (scope.Document == null || scope.DocumentEntry == null)
         {
+            context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable",
                 "<document>", "<package>", "Document not resolved by scope inspection");
             yield break;
@@ -35,6 +36,7 @@ internal sealed class KnownCustomTagClosureCheck : IArchivalClauseCheck
         if (!scope.Document.Elements().Any(x => x.Name.LocalName == "CustomTags"))
         {
             // 6.11 depends on tags existing before archiving; the result alone cannot show that.
+            context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, PreflightOutcome.Unknown, NoTagsReason, scope.DocumentEntry,
                 ArchivalPackagePath.Selector(scope.Document), "No CustomTags declaration; source tag presence not evidenced");
             yield break;
@@ -46,7 +48,9 @@ internal sealed class KnownCustomTagClosureCheck : IArchivalClauseCheck
         {
             var selector = finding.Node == null ? "<package>" : ArchivalPackagePath.Selector(finding.Node);
             var observed = finding.Observed.Length == 0 ? finding.Reason : finding.Observed;
+            context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, Retention, finding.Outcome, finding.Reason, finding.Entry, selector, observed);
+            context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, SelfContained, finding.Outcome, finding.Reason, finding.Entry, selector, observed);
         }
     }

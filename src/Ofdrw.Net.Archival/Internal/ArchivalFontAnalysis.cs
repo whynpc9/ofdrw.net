@@ -68,9 +68,12 @@ internal sealed class ArchivalFontAnalysis
         return analysis;
     }
 
-    private void Add(ArchivalOwnedRuleDefinition rule, PreflightOutcome outcome, string reason, string entry, XElement? node, string observed) =>
+    private void Add(ArchivalOwnedRuleDefinition rule, PreflightOutcome outcome, string reason, string entry, XElement? node, string observed)
+    {
+        context.SpendResult();
         observations[rule.RuleId].Add(ArchivalOwnedRules.Observation(rule, outcome, reason, entry,
             node == null ? "<package>" : ArchivalPackagePath.Selector(node), observed));
+    }
 
     private void Analyse()
     {
@@ -85,8 +88,11 @@ internal sealed class ArchivalFontAnalysis
         {
             usageScopeComplete = false;
             foreach (var rule in new[] { UsedTextRule, ClippingTextRule })
+            {
+                context.SpendResult();
                 observations[rule.RuleId].Add(ArchivalOwnedRules.Observation(rule, PreflightOutcome.Unknown, "TextScopeIncomplete:" + finding.Code,
                     finding.Evidence.Entry, finding.Evidence.Selector, finding.Evidence.Observed));
+            }
         }
 
         var ns = scope.Document.Name.Namespace;

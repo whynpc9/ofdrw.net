@@ -278,6 +278,23 @@ public sealed class FontPayloadTests
         Assert.Contains("FontPayloadNotAssessed", report.Document.Gaps);
     }
 
+    [Fact]
+    public async Task PackageOwnedObservationsRespectTheResultBudget()
+    {
+        // One unresolved font reference per text object would otherwise add an observation per object without bound.
+        var objects = string.Concat(Enumerable.Range(0, 200).Select(i => Text("99", "O", (100 + i).ToString())));
+        var options = new ArchivalAssessmentOptions();
+        options.Preflight.MaxResults = 40;
+        var report = await Assess(Package(Font("1"), objects), options);
+        Assert.Equal(ArchivalExecutionState.BudgetExhausted, report.ExecutionState);
+        Assert.Contains(report.GetClause(B1).Observations, x => x.ReasonCode == "InspectionBudgetExceeded");
+        Assert.DoesNotContain(report.GetClause(B1).Observations, x => x.ReasonCode == "UnresolvedFontReference");
+        Assert.NotEqual(PreflightOutcome.Pass, report.Document.StandardOutcome);
+        // The default budget still decides the same package.
+        report = await Assess(Package(Font("1"), objects));
+        Assert.Equal(200, report.GetClause(B1).Observations.Count(x => x.ReasonCode == "UnresolvedFontReference"));
+    }
+
     private static string Glyphs(string font, int gid) =>
         $"<TextObject ID='10' Boundary='0 0 100 10' Font='{font}' Size='3'><CGTransform CodePosition='0' CodeCount='1' GlyphCount='1'>" +
         $"<Glyphs>{gid}</Glyphs></CGTransform><TextCode X='0' Y='3'>A</TextCode></TextObject>";

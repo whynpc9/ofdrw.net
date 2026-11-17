@@ -57,6 +57,16 @@ internal sealed class ArchivalCheckContext
     /// <summary>Root, document and page entries established by the scope inspection; any may be null/empty.</summary>
     internal ArchivalScopeResult Scope { get; }
     internal CancellationToken CancellationToken { get; }
+
+    private int results;
+    /// <summary>
+    /// Counts one package-owned observation against <see cref="ArchivalPreflightOptions.MaxResults"/>; exceeding it
+    /// throws ArchivalBudgetExceededException so the run is reported BudgetExhausted instead of growing without bound.
+    /// </summary>
+    internal void SpendResult()
+    {
+        if (++results > Options.MaxResults) throw new ArchivalBudgetExceededException("Result");
+    }
 }
 
 /// <summary>
