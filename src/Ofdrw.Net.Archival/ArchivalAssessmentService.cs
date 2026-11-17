@@ -59,7 +59,7 @@ public sealed class ArchivalAssessmentService
         finally { input.Position = 0; }
         if (bytes == null)
             return Build(profile, ArchivalExecutionState.BudgetExhausted, "InputBudgetExceeded", null, null,
-                new ArchivalScopeResult(), Array.Empty<ArchivalClauseObservation>());
+                new ArchivalScopeResult(), Array.Empty<ArchivalClauseObservation>(), new HashSet<string>());
 
         using var copy = new MemoryStream(bytes, false);
         var coverage = await new ArchivalCoverageService().CheckAsync(copy, preflight, cancellationToken).ConfigureAwait(false);
@@ -76,6 +76,7 @@ public sealed class ArchivalAssessmentService
 
         var scope = new ArchivalScopeResult();
         var owned = new List<ArchivalClauseObservation>();
+        var decided = new HashSet<string>(StringComparer.Ordinal);
         if (archive != null)
         {
             var xml = new ArchivalXmlReader(archive, preflight, cancellationToken);
@@ -87,9 +88,10 @@ public sealed class ArchivalAssessmentService
                 try
                 {
                     var produced = (check.Check(context) ?? Enumerable.Empty<ArchivalClauseObservation>()).ToList();
-                    if (produced.Count == 0 || produced.Any(x => x.RuleId != check.Rule.RuleId || x.Clause != check.Rule.Clause))
+                    if (produced.Count == 0 || produced.Any(x => x.RuleId != check.Rule.RuleId || !check.Rule.Clauses.Contains(x.Clause)))
                         throw new InvalidOperationException("Clause check " + check.Rule.RuleId + " returned an invalid observation set.");
                     owned.AddRange(produced);
+                    if (check.GapCode != null && check.Decided(produced.AsReadOnly())) decided.Add(check.GapCode);
                 }
                 catch (ArchivalBudgetExceededException ex)
                 {
@@ -111,7 +113,9 @@ public sealed class ArchivalAssessmentService
                 ? (local.CoverageGaps.Contains("InspectionBudgetExceeded") ? (ArchivalExecutionState.BudgetExhausted, "InspectionBudgetExceeded") : (ArchivalExecutionState.Error, "InputRejected")) :
             scope.BudgetExceeded != null ? (ArchivalExecutionState.BudgetExhausted, "ScopeInspectionBudgetExceeded") :
             (ArchivalExecutionState.Complete, "Complete");
-        return Build(profile, state, reason, identity, coverage, scope, owned);
+        // A gap closes only for a complete run whose checks actually decided the question for this input.
+        if (state != ArchivalExecutionState.Complete) decided.Clear();
+        return Build(profile, state, reason, identity, coverage, scope, owned, decided);
     }
 
     private static async Task<(byte[]?, ArchivalInputIdentity?)> Snapshot(Stream input, long limit, CancellationToken token)
@@ -135,7 +139,7 @@ public sealed class ArchivalAssessmentService
 
     private static ArchivalAssessmentReport Build(ArchivalInputProfile profile, ArchivalExecutionState state, string reason,
         ArchivalInputIdentity? identity, ArchivalCoverageReport? coverage, ArchivalScopeResult scope,
-        IReadOnlyList<ArchivalClauseObservation> owned)
+        IReadOnlyList<ArchivalClauseObservation> owned, ISet<string> decidedGaps)
     {
         var complete = state == ArchivalExecutionState.Complete;
         var declaration = Declaration(coverage, scope);
@@ -176,12 +180,12 @@ public sealed class ArchivalAssessmentService
                 ArchivalClauseAggregation.Outcome(matrix.Strength, observations, complete), notes.AsReadOnly());
         }).ToList().AsReadOnly();
 
-        // CustomTagClosureNotAssessed and FontPayloadNotAssessed are removed once the A1b/A1c checks are registered.
+        // CustomTagClosureNotAssessed and FontPayloadNotAssessed are removed only where the owned checks decided them.
         var gaps = new List<string>
         {
             "NoFullStandardAssessment", "ReferencedEditionsNotFixed", "MatrixScopeUnverified:6.11,6.13.1(a),6.13.1(b),6.13.1(c)",
             "LocalPreflightRulesNotMappedToClauses", "CustomTagClosureNotAssessed", "FontPayloadNotAssessed"
-        };
+        }.Where(x => !decidedGaps.Contains(x)).ToList();
         if (support == ArchivalInputSupport.OutOfScope) gaps.Add("InputOutsideProfile");
         if (support == ArchivalInputSupport.Unknown) gaps.Add("InputScopeUnknown");
         if (!complete) gaps.Add("AssessmentIncomplete:" + reason);

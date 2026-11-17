@@ -102,13 +102,21 @@ public sealed class ArchivalPreflightChecker
         private readonly HashSet<string> resourceEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> attachmentEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> signatureEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Opt-in only: Document entries whose sole scope trigger is a text-only CustomTags declaration.
+        private readonly Dictionary<string, XElement> deferredCustomTags = new Dictionary<string, XElement>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, XDocument?> tagXml = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         private OfdPackageArchive package = null!;
         private PreflightRunState state;
         private long xmlBytes;
         private int nodes, references, entryCount, documentCount;
         private bool scopeUnknown;
 
-        internal Inspection(ArchivalPreflightOptions options, CancellationToken token) { this.options = options; this.token = token; }
+        internal Inspection(ArchivalPreflightOptions options, CancellationToken token)
+        {
+            this.options = options; this.token = token;
+            if (options.RecognizeKnownCustomTags)
+                gaps.Add("Known custom-tag shapes (ofdrw-kv; legacy EMR as written by this library) are followed; their conformance to GB/T 33190 custom-tag requirements is not verified.");
+        }
         private static string Rule(int rule) => "APF-00" + rule;
         private void Check() => token.ThrowIfCancellationRequested();
         private void Add(int rule, PreflightOutcome outcome, string reason, string entry, XElement? node = null, string observed = "", string expected = "Known local declaration and existing package target")
@@ -157,27 +165,7 @@ public sealed class ArchivalPreflightChecker
             Check();
             if (!xml.TryGetValue(entry, out var doc))
             {
-                var bytes = package.GetBytes(entry);
-                if (bytes.Length > options.MaxSingleXmlBytes || bytes.Length > options.MaxXmlBytes - xmlBytes) throw new BudgetExceededException();
-                xmlBytes += bytes.Length;
-                var settings = new XmlReaderSettings
-                {
-                    DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
-                    MaxCharactersInDocument = options.MaxSingleXmlBytes, MaxCharactersFromEntities = 1
-                };
-                try
-                {
-                    // Count before building the tree: limits apply to allocation, not merely to traversal afterwards.
-                    using (var source = new MemoryStream(bytes, false))
-                    using (var reader = XmlReader.Create(source, settings))
-                        while (reader.Read())
-                        {
-                            Check();
-                            if (++nodes > options.MaxXmlNodes || reader.Depth > options.MaxXmlDepth) throw new BudgetExceededException();
-                        }
-                    using (var source = new MemoryStream(bytes, false))
-                    using (var reader = XmlReader.Create(source, settings)) doc = XDocument.Load(reader);
-                }
+                try { doc = LoadCounted(entry); }
                 catch (XmlException ex)
                 {
                     // Unsupported declared encodings are evidence gaps; malformed local XML and prohibited DTD are diagnostics.
@@ -207,10 +195,57 @@ public sealed class ArchivalPreflightChecker
             }
             if (options.RequireNoEncryption && doc.Root.DescendantsAndSelf().Any(x => x.Name.LocalName.IndexOf("Encrypt", StringComparison.OrdinalIgnoreCase) >= 0 || x.Name.LocalName.IndexOf("Crypto", StringComparison.OrdinalIgnoreCase) >= 0))
                 Add(4, PreflightOutcome.Unknown, "UnrecognizedEncryptionExtension", entry, doc.Root);
-            if (doc.Root.DescendantsAndSelf().Any(x => new[] { "Extensions", "CustomTags", "Annotations", "CompositeGraphicUnits" }.Contains(x.Name.LocalName)))
-                Uncertain("UnsupportedResourceScope", entry, doc.Root);
+            var scoped = doc.Root.DescendantsAndSelf().Where(x => new[] { "Extensions", "CustomTags", "Annotations", "CompositeGraphicUnits" }.Contains(x.Name.LocalName)).ToList();
+            if (scoped.Count > 0)
+            {
+                // Opt-in: a Document whose only trigger is known-shape CustomTags declarations is decided by traversal.
+                if (options.RecognizeKnownCustomTags && rootName == "Document" && scoped.All(x => KnownCustomTagScope.IsDeclaration(x, doc.Root)))
+                    deferredCustomTags[entry] = doc.Root;
+                else Uncertain("UnsupportedResourceScope", entry, doc.Root);
+            }
             ValidateShapes(entry, doc.Root);
             return doc;
+        }
+        // Budgeted parse shared by control XML and opted-in custom-tag entries; malformed XML throws XmlException.
+        private XDocument LoadCounted(string entry)
+        {
+            var bytes = package.GetBytes(entry);
+            if (bytes.Length > options.MaxSingleXmlBytes || bytes.Length > options.MaxXmlBytes - xmlBytes) throw new BudgetExceededException();
+            xmlBytes += bytes.Length;
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+                MaxCharactersInDocument = options.MaxSingleXmlBytes, MaxCharactersFromEntities = 1
+            };
+            // Count before building the tree: limits apply to allocation, not merely to traversal afterwards.
+            using (var source = new MemoryStream(bytes, false))
+            using (var reader = XmlReader.Create(source, settings))
+                while (reader.Read())
+                {
+                    Check();
+                    if (++nodes > options.MaxXmlNodes || reader.Depth > options.MaxXmlDepth) throw new BudgetExceededException();
+                }
+            using (var source = new MemoryStream(bytes, false))
+            using (var reader = XmlReader.Create(source, settings)) return XDocument.Load(reader);
+        }
+        private XDocument? ReadTagXml(string entry)
+        {
+            Check();
+            if (tagXml.TryGetValue(entry, out var cached)) return cached;
+            XDocument? doc;
+            try { doc = LoadCounted(entry); }
+            catch (XmlException) { doc = null; }
+            tagXml[entry] = doc;
+            return doc;
+        }
+        private void InspectCustomTags(string entry, XElement document)
+        {
+            var findings = KnownCustomTagScope.Traverse(package, entry, document, ReadTagXml,
+                () => { if (++references > options.MaxReferences) throw new BudgetExceededException(); },
+                xml.ContainsKey, token);
+            foreach (var finding in findings)
+                if (finding.Outcome == PreflightOutcome.Unknown) Uncertain(finding.Reason, finding.Entry, finding.Node);
+                else Add(2, finding.Outcome, finding.Reason, finding.Entry, finding.Node, finding.Observed);
         }
         private void ValidateShapes(string entry, XElement root)
         {
@@ -363,6 +398,7 @@ public sealed class ArchivalPreflightChecker
                 }
             }
             foreach (var attachment in Children(doc, "Attachments")) InspectAttachments(entry, attachment);
+            if (deferredCustomTags.TryGetValue(entry, out var tagged)) InspectCustomTags(entry, tagged);
         }
         private void InspectResources(string entry, HashSet<string> fonts)
         {

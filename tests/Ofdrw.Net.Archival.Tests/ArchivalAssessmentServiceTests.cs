@@ -97,8 +97,11 @@ public class ArchivalAssessmentServiceTests
         Assert.Equal(new[] { "6.2.1(a)" }, FailedClauses(report));
         Assert.Equal(PreflightOutcome.Fail, report.Document.StandardOutcome);
         Assert.Equal(report.Coverage!.StandardOutcome, report.Document.StandardOutcome);
-        Assert.Equal(17, report.Clauses.Sum(x => x.Observations.Count));
-        Assert.Equal(88, report.Document.UncheckedClauses.Count);
+        // 17 Packaging observations plus AC-016 on 6.11: Layout output declares no CustomTags.
+        Assert.Equal(18, report.Clauses.Sum(x => x.Observations.Count));
+        Assert.Equal("NoCustomTagsInResult", Assert.Single(report.GetClause("6.11").Observations).ReasonCode);
+        Assert.DoesNotContain("CustomTagClosureNotAssessed", report.Document.Gaps);
+        Assert.Equal(87, report.Document.UncheckedClauses.Count);
         Assert.All(report.Document.UncheckedClauses, x => Assert.Equal(PreflightOutcome.Unknown, report.GetClause(x).Outcome));
         Assert.Equal(new[] { "7.1(1)", "7.1(2)", "7.2(1)", "7.2(2)" }, report.SoftwareRequirements.Clauses);
         var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } });
@@ -383,6 +386,8 @@ public class ArchivalAssessmentServiceTests
     private sealed class FixedCheck(string id, string clause, PreflightOutcome outcome) : IArchivalClauseCheck
     {
         public ArchivalOwnedRuleDefinition Rule { get; } = new(id, clause, "synthetic condition");
+        public string? GapCode => null;
+        public bool Decided(IReadOnlyList<ArchivalClauseObservation> observations) => false;
         public IEnumerable<ArchivalClauseObservation> Check(ArchivalCheckContext context)
         {
             Assert.NotNull(context.Scope.Document);

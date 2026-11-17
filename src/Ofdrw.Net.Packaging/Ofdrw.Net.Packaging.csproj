@@ -9,5 +9,7 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Reader" />
     <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
+    <!-- The opt-in archival package shares the known custom-tag traversal instead of copying it; it pins Packaging to the exact same version. -->
+    <InternalsVisibleTo Include="Ofdrw.Net.Archival" />
   </ItemGroup>
 </Project>

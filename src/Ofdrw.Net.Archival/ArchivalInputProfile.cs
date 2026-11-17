@@ -56,7 +56,11 @@ public sealed class ArchivalInputProfile
 /// <summary>Options for <see cref="ArchivalAssessmentService"/>. Values are copied before any input is read.</summary>
 public sealed class ArchivalAssessmentOptions
 {
-    /// <summary>Existing ZIP/XML/reference/result budgets and local policy, shared with the Preflight services.</summary>
+    /// <summary>
+    /// Existing ZIP/XML/reference/result budgets and local policy, shared with the Preflight services. The assessment always
+    /// runs the local preflight with <see cref="ArchivalPreflightOptions.RecognizeKnownCustomTags"/> enabled, whatever this
+    /// instance says, so its embedded report carries <see cref="ArchivalPreflightReport.KnownCustomTagsProfileVersion"/>.
+    /// </summary>
     public ArchivalPreflightOptions Preflight { get; set; } = new ArchivalPreflightOptions();
     /// <summary>Input profile identity; currently only <see cref="ArchivalInputProfile.SelfGeneratedSimpleId"/>.</summary>
     public string ProfileId { get; set; } = ArchivalInputProfile.SelfGeneratedSimpleId;
@@ -78,6 +82,7 @@ public sealed class ArchivalAssessmentOptions
             RequireSingleDocument = source.RequireSingleDocument, RequireNoEncryption = source.RequireNoEncryption,
             MaxXmlBytes = source.MaxXmlBytes, MaxSingleXmlBytes = source.MaxSingleXmlBytes, MaxXmlDepth = source.MaxXmlDepth,
             MaxXmlNodes = source.MaxXmlNodes, MaxReferences = source.MaxReferences, MaxResults = source.MaxResults,
+            RecognizeKnownCustomTags = true,
             LoadOptions = new OfdPackageLoadOptions
             {
                 DocumentIndex = load.DocumentIndex, MaxInputBytes = load.MaxInputBytes, MaxEntryCount = load.MaxEntryCount,
@@ -89,3 +94,4 @@ public sealed class ArchivalAssessmentOptions
         };
     }
 }
+

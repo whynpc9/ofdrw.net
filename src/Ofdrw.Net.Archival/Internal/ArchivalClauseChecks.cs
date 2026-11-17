@@ -15,10 +15,17 @@ namespace Ofdrw.Net.Archival.Internal;
 /// </summary>
 internal sealed class ArchivalOwnedRuleDefinition
 {
-    internal ArchivalOwnedRuleDefinition(string ruleId, string clause, string condition, int version = 1)
-    { RuleId = ruleId; Clause = clause; Condition = condition; Version = version; }
+    internal ArchivalOwnedRuleDefinition(string ruleId, string clause, string condition, int version = 1,
+        params string[] additionalClauses)
+    {
+        RuleId = ruleId; Clause = clause; Condition = condition; Version = version;
+        Clauses = Array.AsReadOnly(new[] { clause }.Concat(additionalClauses).ToArray());
+    }
     internal string RuleId { get; }
+    /// <summary>Primary clause; used for package-level Unknown observations (budget, load failure).</summary>
     internal string Clause { get; }
+    /// <summary>Every ledger clause this rule may observe, primary first.</summary>
+    internal IReadOnlyList<string> Clauses { get; }
     internal string Condition { get; }
     internal int Version { get; }
 }
@@ -46,8 +53,12 @@ internal sealed class ArchivalCheckContext
 internal interface IArchivalClauseCheck
 {
     ArchivalOwnedRuleDefinition Rule { get; }
+    /// <summary>Document gap this check can close, or null.</summary>
+    string? GapCode { get; }
     /// <summary>Returns at least one observation for <see cref="Rule"/>. Unknown when evidence is insufficient.</summary>
     IEnumerable<ArchivalClauseObservation> Check(ArchivalCheckContext context);
+    /// <summary>Whether these observations decided the question behind <see cref="GapCode"/> for this input.</summary>
+    bool Decided(IReadOnlyList<ArchivalClauseObservation> observations);
 }
 
 internal static class ArchivalOwnedRules
@@ -57,8 +68,11 @@ internal static class ArchivalOwnedRules
     /// <summary>First AC number owned by this package. Packaging owns AC-001..AC-015.</summary>
     internal const int FirstRuleNumber = 16;
 
-    /// <summary>Registered checks, in report order. Empty in A1a; A1b/A1c add their checks here.</summary>
-    internal static IReadOnlyList<IArchivalClauseCheck> Registered { get; } = Array.AsReadOnly(Array.Empty<IArchivalClauseCheck>());
+    /// <summary>Registered checks, in report order.</summary>
+    internal static IReadOnlyList<IArchivalClauseCheck> Registered { get; } = Array.AsReadOnly(new IArchivalClauseCheck[]
+    {
+        new KnownCustomTagClosureCheck()
+    });
 
     internal static IReadOnlyList<IArchivalClauseCheck> Validate(IEnumerable<IArchivalClauseCheck> checks)
     {
@@ -71,7 +85,7 @@ internal static class ArchivalOwnedRules
             if (!IsOwnedId(rule.RuleId) || !ids.Add(rule.RuleId) ||
                 ArchivalCoverageRuleCatalog.Rules.Any(x => x.RuleId == rule.RuleId) ||
                 ArchivalRuleCatalog.Rules.Any(x => x.RuleId == rule.RuleId) ||
-                !ArchivalClauseCatalog.Clauses.Any(x => x.Clause == rule.Clause))
+                rule.Clauses.Any(clause => !ArchivalClauseCatalog.Clauses.Any(x => x.Clause == clause)))
                 throw new ArgumentException("Owned checks need unique AC-016+ identities mapped to ledger clauses.", nameof(checks));
         }
         return list.AsReadOnly();
@@ -84,7 +98,11 @@ internal static class ArchivalOwnedRules
 
     internal static ArchivalClauseObservation Observation(ArchivalOwnedRuleDefinition rule, PreflightOutcome outcome,
         string reason, string entry, string selector, string observed) =>
-        new ArchivalClauseObservation(rule.RuleId, Owner, rule.Version, rule.Clause, outcome, reason,
+        Observation(rule, rule.Clause, outcome, reason, entry, selector, observed);
+
+    internal static ArchivalClauseObservation Observation(ArchivalOwnedRuleDefinition rule, string clause, PreflightOutcome outcome,
+        string reason, string entry, string selector, string observed) =>
+        new ArchivalClauseObservation(rule.RuleId, Owner, rule.Version, clause, outcome, reason,
             new ArchivalEvidenceLocation(entry, selector, observed, rule.Condition));
 
     internal static ArchivalClauseObservation Observation(ArchivalOwnedRuleDefinition rule, PreflightOutcome outcome,
