@@ -269,6 +269,11 @@ public class MedicalAssessmentServiceTests
                 "<ofd:MultiMedia ID='91' Type='Image'><ofd:MediaFile>gone.png</ofd:MediaFile></ofd:MultiMedia></ofd:MultiMedias>")));
         Assert.Equal("ImageUnavailable", (await Assess(oneMissing)).Single("7.2(d)", "MH-009").ReasonCode);
 
+        // An unresolved page leaves the page sequence, and so linearization, unassessed.
+        Assert.Equal("PagesUnresolved", (await Assess(Mutate(source, e =>
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>", "<ofd:Page ID='98' BaseLoc='../../../escape.xml'/></ofd:Pages>")))))
+            .Single("6.1.3(a)", "MH-005").ReasonCode);
+
         // A page whose BaseLoc does not resolve may declare further images in its PageRes.
         var unresolvedPage = Mutate(await WithMedia(source, "Image", "scan.png", png), e =>
             e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>", "<ofd:Page ID='99' BaseLoc='../../../escape.xml'/></ofd:Pages>")));
@@ -401,6 +406,20 @@ public class MedicalAssessmentServiceTests
         foreach (var clause in new[] { "8(c)", "6.3(g)" })
             Assert.Equal("AnnotationIndexUnreadable", unreadableAnnotationReport.Single(clause, "MH-013").ReasonCode);
         Assert.Equal(PreflightOutcome.Unknown, unreadableAnnotationReport.GetClause("7.1(f)").Outcome);
+
+        // Only signature files and their declared payloads are exempt, not everything beside them.
+        var besideSignature = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e => e.Set("Doc_0/Signs/Sign_0/record.json", "{}"));
+        var besideReport = await Assess(besideSignature);
+        Assert.Equal("ContentNotProtected", besideReport.Single("8(c)", "MH-013").ReasonCode);
+        Assert.Contains("Doc_0/Signs/Sign_0/record.json", besideReport.Single("8(c)", "MH-013").Evidence.Observed);
+
+        // A seal declared the way OfdSignatureService writes it (Seal/@BaseLoc) stays exempt.
+        var sealed_ = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+        {
+            e.Set("Doc_0/Signs/Sign_0/Signature.xml", e.Text("Doc_0/Signs/Sign_0/Signature.xml").Replace("<ofd:References", "<ofd:Seal BaseLoc='/Doc_0/Signs/Sign_0/Seal.esl'/><ofd:References"));
+            e["Doc_0/Signs/Sign_0/Seal.esl"] = new byte[] { 0x30, 0x00 };
+        });
+        Assert.Equal(PreflightOutcome.Pass, (await Assess(sealed_)).GetClause("8(c)").Outcome);
 
         // A page declared at an unresolvable location is not shown to be covered.
         var unresolvedPage = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>

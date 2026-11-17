@@ -212,9 +212,13 @@ internal static class MedicalRules
         }
         int Index(string name) => order.FindIndex(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase));
         var pages = s.PagePaths.Select(Index).ToList();
+        var unresolvedPage = s.Locations.FirstOrDefault(x => x.Kind == MedicalLocationKind.Page && x.Resolved == null);
         var linear = order.Count > 0 && order[0] == "OFD.xml" && Index(s.DocumentPath) >= 0 && pages.All(x => x > Index(s.DocumentPath)) &&
                      pages.Zip(pages.Skip(1), (a, b) => a < b).All(x => x);
-        yield return linear
+        // Observed misordering fails; otherwise a declared page that does not resolve leaves the sequence unassessed.
+        yield return linear && unresolvedPage != null
+            ? O(rule, clause, PreflightOutcome.Unknown, "PagesUnresolved", unresolvedPage.DeclaredIn, unresolvedPage.Selector, unresolvedPage.Declared, expected)
+            : linear
             ? O(rule, clause, PreflightOutcome.Pass, "EntryOrderLinearized", order[0], "local headers", "first: " + Sample(order), expected)
             : O(rule, clause, PreflightOutcome.Fail, "EntryOrderNotLinearized", order.FirstOrDefault() ?? Package, "local headers", "first: " + Sample(order), expected);
     }
@@ -658,11 +662,27 @@ internal static class MedicalRules
         var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (s.SignaturesPath != null) excluded.Add(s.SignaturesPath);
         foreach (var index in s.AnnotationIndexPaths) excluded.Add(index);
-        var signDirectories = s.SignaturePaths.Select(x => x.Substring(0, x.LastIndexOf('/') + 1)).ToList();
         foreach (var path in s.AnnotationPaths) excluded.Add(path);
-        var required = context.Package.EntryNames
-            .Where(x => !excluded.Contains(x) && !signDirectories.Any(d => d.Length > 0 && x.StartsWith(d, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(x => x, StringComparer.Ordinal).ToList();
+        // Exempt the signature files themselves and the payloads they declare (SignedValue, Seal), not their whole
+        // directories: other content placed beside a signature still has to be signed.
+        var signatureFilesUnknown = s.SignatureDeclarations.Count != s.SignaturePaths.Count;
+        foreach (var path in s.SignaturePaths)
+        {
+            context.Package.Visit();
+            excluded.Add(path);
+            var root = context.Package.Xml(path)?.Root;
+            if (root == null) { signatureFilesUnknown = true; continue; }
+            var sns = root.Name.Namespace;
+            var declared = root.Descendants(sns + "SignedValue").Select(x => x.Value)
+                .Concat(root.Descendants(sns + "Seal").SelectMany(x => x.Elements(sns + "BaseLoc").Select(e => e.Value)
+                    .Concat(x.Attribute("BaseLoc") is { } a ? new[] { a.Value } : Array.Empty<string>()))); // OfdSignatureService writes the attribute
+            foreach (var value in declared)
+            {
+                if (MedicalPackage.TryResolve(path, value, out var payload)) excluded.Add(payload);
+                else signatureFilesUnknown = true;
+            }
+        }
+        var required = context.Package.EntryNames.Where(x => !excluded.Contains(x)).OrderBy(x => x, StringComparer.Ordinal).ToList();
         var missingRefs = protectedEntries.Where(x => !context.Package.Exists(x)).ToList();
         var unprotected = required.Where(x => !protectedEntries.Contains(x)).ToList();
         var pages = s.PagePaths.Where(x => !protectedEntries.Contains(x)).ToList();
@@ -689,6 +709,8 @@ internal static class MedicalRules
                 yield return O(rule, clause, PreflightOutcome.Unknown, "UnresolvableReference", latest!, "Reference/@FileRef", Sample(unsafeRefs), "Package-relative FileRef");
             else if (missingRefs.Count > 0)
                 yield return O(rule, clause, PreflightOutcome.Fail, "ReferencedEntryMissing", latest!, "Reference/@FileRef", Sample(missingRefs), "Referenced entries exist");
+            else if (unprotected.Count > 0 && signatureFilesUnknown)
+                yield return O(rule, clause, PreflightOutcome.Unknown, "SignatureFilesUnknown", latest!, Package, unprotected.Count + " unsigned entries; signature payloads unknown", "Readable signature files");
             else if (unprotected.Count > 0 && annotationIndexUnreadable)
                 yield return O(rule, clause, PreflightOutcome.Unknown, "AnnotationIndexUnreadable", latest!, Package, unprotected.Count + " unsigned entries; annotation exclusions unknown", "Readable annotation index");
             else if (unprotected.Count > 0)
