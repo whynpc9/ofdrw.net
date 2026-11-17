@@ -14,7 +14,7 @@ namespace Ofdrw.Net.Cli.Tests;
 [Collection("Owned CLI console")]
 public sealed class ArchivalEditCliTests : IDisposable
 {
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofdrw-cli-archival-" + Guid.NewGuid().ToString("N"));
+    private readonly string _directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-cli-archival-" + Guid.NewGuid().ToString("N"));
     public ArchivalEditCliTests() => Directory.CreateDirectory(_directory);
     public void Dispose() { try { Directory.Delete(_directory, true); } catch (IOException) { } }
     private string PathFor(string name) => Path.Combine(_directory, name);

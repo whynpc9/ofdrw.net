@@ -60,6 +60,8 @@ CONSUMED_DOCS = (
     'docs/evidence/ses-interop/BouncyCastle-LICENSE.md',
     # Read by ArchivalDossierTests.
     'docs/content/reference/archival-standard-coverage.md',
+    # Read by Ofdrw.Net.Archival.Tests (report excerpt pinned by PipelineRegressionTests).
+    'docs/content/guides/archival-assessment.md',
     # API-documentation, NuGet-advisory and third-party dependency baselines.
     'docs/engineering/baselines/',
     # verify-public-table-evidence.py.
