@@ -236,12 +236,17 @@ internal static class MedicalRules
             ? O(rule, "6.2(a)", PreflightOutcome.Fail, "NonCanonicalLocation", bad[0].DeclaredIn, bad[0].Selector, bad.Count + " locations: " + Sample(bad.Select(x => x.Resolved!)), "Doc_0 figure 3 folders")
             : unsafeLocations.Count > 0
                 ? O(rule, "6.2(a)", PreflightOutcome.Unknown, "UnresolvableLocation", unsafeLocations[0].DeclaredIn, unsafeLocations[0].Selector, Sample(unsafeLocations.Select(x => x.Declared)), "Package-relative location")
+            // An unreadable entry may declare further locations.
+            : s.Unreadable.Count > 0
+                ? O(rule, "6.2(a)", PreflightOutcome.Unknown, "StructureIncomplete", s.Unreadable[0], Package, Sample(s.Unreadable), "Every structural entry readable")
                 : O(rule, "6.2(a)", PreflightOutcome.Pass, "CanonicalFolders", s.DocumentPath, Package, s.Locations.Count + " locations", "Doc_0 figure 3 folders");
 
         var payloads = s.Locations.Where(x => x.Kind == MedicalLocationKind.ResourcePayload).ToList();
         var missing = payloads.Where(x => x.Resolved != null && !context.Package.Exists(x.Resolved)).ToList();
         var outside = payloads.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved) && !Canonical(x)).ToList();
-        if (payloads.Count == 0)
+        if (payloads.Count == 0 && s.Unreadable.Count > 0)
+            yield return O(rule, "7.1(b)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", s.Unreadable[0], Package, Sample(s.Unreadable), "Every resource table readable");
+        else if (payloads.Count == 0)
             yield return O(rule, "7.1(b)", PreflightOutcome.NotApplicable, "NoResourcePayloads", s.DocumentPath, Package, "No FontFile or MediaFile", "Resources inside the container");
         else if (missing.Count > 0)
             yield return O(rule, "7.1(b)", PreflightOutcome.Fail, "ResourceNotInContainer", missing[0].DeclaredIn, missing[0].Selector, missing.Count + " missing: " + Sample(missing.Select(x => x.Resolved!)), "Payload inside the container");
@@ -249,6 +254,8 @@ internal static class MedicalRules
             yield return O(rule, "7.1(b)", PreflightOutcome.Fail, "ResourceOutsideResFolder", outside[0].DeclaredIn, outside[0].Selector, Sample(outside.Select(x => x.Resolved!)), "Doc_0/Res or Page_N/Res");
         else if (payloads.Any(x => x.Resolved == null))
             yield return O(rule, "7.1(b)", PreflightOutcome.Unknown, "UnresolvableLocation", payloads.First(x => x.Resolved == null).DeclaredIn, Package, "Unsafe payload location", "Package-relative location");
+        else if (s.Unreadable.Count > 0)
+            yield return O(rule, "7.1(b)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", s.Unreadable[0], Package, Sample(s.Unreadable), "Every resource table readable");
         else
             yield return O(rule, "7.1(b)", PreflightOutcome.Pass, "ResourcesInResFolders", s.DocumentPath, Package, payloads.Count + " payloads", "Resources inside Res folders");
 
@@ -476,7 +483,14 @@ internal static class MedicalRules
                 : O(rule, "7.2(e)", PreflightOutcome.Pass, "EmbeddedObjectsWithinLimit", Package, "uncompressed size", media.Count + " objects", "At most " + limit + " bytes");
         var attachments = context.Structure.InternalAttachments.Where(x => context.Package.Exists(x.Path)).ToList();
         var attachmentsOver = attachments.Where(x => context.Package.Length(x.Path) > limit).Select(x => x.Path).ToList();
-        yield return attachments.Count == 0
+        // Missing payloads, unresolved FileLoc and unreadable attachment indexes leave sizes unknown.
+        var attachmentsUnknown = context.Structure.InternalAttachments.Where(x => !context.Package.Exists(x.Path)).Select(x => x.Path)
+            .Concat(context.Structure.Locations.Where(x => x.Resolved == null && x.Kind is MedicalLocationKind.Attachment or MedicalLocationKind.Attachments).Select(x => x.Declared))
+            .Concat(context.Structure.Locations.Where(x => x.Kind == MedicalLocationKind.Attachments && x.Resolved != null && context.Structure.Unreadable.Contains(x.Resolved)).Select(x => x.Resolved!))
+            .ToList();
+        yield return attachmentsOver.Count == 0 && attachmentsUnknown.Count > 0
+            ? O(rule, "7.4(c)", PreflightOutcome.Unknown, "AttachmentUnavailable", attachmentsUnknown[0], Package, Sample(attachmentsUnknown), "At most " + limit + " bytes")
+            : attachments.Count == 0
             ? O(rule, "7.4(c)", PreflightOutcome.NotApplicable, "NoInternalAttachments", Package, Package, "No internal attachment payload", "At most " + limit + " bytes")
             : attachmentsOver.Count > 0
                 ? O(rule, "7.4(c)", PreflightOutcome.Fail, "AttachmentOverLimit", attachmentsOver[0], "uncompressed size", Sample(attachmentsOver), "External attachment above " + limit + " bytes")

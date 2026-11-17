@@ -170,6 +170,21 @@ public class MedicalAssessmentServiceTests
     }
 
     [Fact]
+    public async Task UnreadableEntriesKeepLocationAndSizeClausesUnknown()
+    {
+        var source = await LayoutOfd(true);
+        // A page resource table that cannot be read may declare further locations and payloads.
+        var report = await Assess(Mutate(source, e =>
+            e.Set("Doc_0/Pages/Page_1/Content.xml", e.Text("Doc_0/Pages/Page_1/Content.xml").Replace("<ofd:Content>", "<ofd:PageRes>PageRes.xml</ofd:PageRes><ofd:Content>"))));
+        Assert.Equal("StructureIncomplete", report.Single("6.2(a)", "MH-006").ReasonCode);
+        Assert.Equal("ResourceScopeIncomplete", report.Single("7.1(b)", "MH-006").ReasonCode);
+
+        // An unreadable attachment index leaves attachment sizes unknown.
+        report = await Assess(AddToDocument(source, "<ofd:Attachments>Attachs/Attachments.xml</ofd:Attachments>", e => e.Set("Doc_0/Attachs/Attachments.xml", "<not-closed")));
+        Assert.Equal("AttachmentUnavailable", report.Single("7.4(c)", "MH-010").ReasonCode);
+    }
+
+    [Fact]
     public async Task ZipLoadingBudgetsBoundMedicalInspection()
     {
         var package = await LayoutOfd(true);
