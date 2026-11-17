@@ -221,6 +221,13 @@ public class MedicalAssessmentServiceTests
         report = await Assess(await WithMedia(source, "Image", "missing.png", Array.Empty<byte>()));
         Assert.Equal("ImageNotInFile", report.Single("7.2(c)", "MH-009").ReasonCode);
         Assert.Equal("ResourceNotInContainer", report.Single("7.1(b)", "MH-006").ReasonCode);
+
+        // A readable PNG does not vouch for a page resource table that could not be read.
+        var partial = Mutate(await WithMedia(source, "Image", "scan.png", png), e =>
+            e.Set("Doc_0/Pages/Page_1/Content.xml", e.Text("Doc_0/Pages/Page_1/Content.xml").Replace("<ofd:Content>", "<ofd:PageRes>PageRes.xml</ofd:PageRes><ofd:Content>")));
+        report = await Assess(partial);
+        foreach (var clause in new[] { "7.2(c)", "7.2(d)" })
+            Assert.Equal("ResourceScopeIncomplete", report.Single(clause, "MH-009").ReasonCode);
     }
 
     [Fact]
@@ -329,6 +336,18 @@ public class MedicalAssessmentServiceTests
         });
         Assert.Equal(PreflightOutcome.Pass, (await Assess(twoAnnotationIndexes)).GetClause("8(c)").Outcome);
 
+        // An unreadable annotation index leaves its page files' status unknown, not unsigned content.
+        var unreadableAnnotationIndex = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+        {
+            e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace("</ofd:Pages>", "</ofd:Pages><ofd:Annotations>Annots/Annotations.xml</ofd:Annotations>"));
+            e.Set("Doc_0/Annots/Annotations.xml", "<not-closed");
+            e.Set("Doc_0/Annots/Page_0/Annotation.xml", Open("PageAnnot") + "</ofd:PageAnnot>");
+        });
+        var unreadableAnnotationReport = await Assess(unreadableAnnotationIndex);
+        foreach (var clause in new[] { "8(c)", "6.3(g)" })
+            Assert.Equal("AnnotationIndexUnreadable", unreadableAnnotationReport.Single(clause, "MH-013").ReasonCode);
+        Assert.Equal(PreflightOutcome.Unknown, unreadableAnnotationReport.GetClause("7.1(f)").Outcome);
+
         // A Signatures index that does not resolve is not "no signature declared".
         var unresolvedIndex = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
             e.Set("OFD.xml", e.Text("OFD.xml").Replace("<ofd:Signatures>Doc_0/Signs/Signatures.xml", "<ofd:Signatures>Doc_0\\Signs\\Signatures.xml")));
@@ -400,6 +419,14 @@ public class MedicalAssessmentServiceTests
         var unreadableIndex = Mutate(WithTag(Encoding.UTF8.GetBytes("<emr>ok</emr>")), e => e.Set("Doc_0/Tags/CustomTags.xml", "<not-closed"));
         report = await Assess(unreadableIndex);
         Assert.Equal(PreflightOutcome.Unknown, report.GetClause("7.5(b)").Outcome);
+
+        // Attachments may give FileLoc as an attribute; the payload is still inspected.
+        var attributeForm = AddToDocument(LayoutOfd(true).GetAwaiter().GetResult(), "<ofd:Attachments>Attachs/Attachments.xml</ofd:Attachments>", e =>
+        {
+            e.Set("Doc_0/Attachs/Attachments.xml", Open("Attachments") + "<ofd:Attachment ID='1' Name='emr' FileLoc='emr.xml'/></ofd:Attachments>");
+            e["Doc_0/Attachs/emr.xml"] = Encoding.Latin1.GetBytes("<?xml version='1.0' encoding='ISO-8859-1'?><emr>café</emr>");
+        });
+        Assert.Equal("NotUtf8", (await Assess(attributeForm)).Single("7.5(b)", "MH-012").ReasonCode);
     }
 
     [Fact]

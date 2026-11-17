@@ -267,6 +267,8 @@ internal static class MedicalRules
                 yield return O(rule, clause, PreflightOutcome.Fail, "OutsideFolder", wrong[0].DeclaredIn, wrong[0].Selector, Sample(wrong.Select(x => x.Resolved!)), folder);
             else if (items.Any(x => x.Resolved == null))
                 yield return O(rule, clause, PreflightOutcome.Unknown, "UnresolvableLocation", items.First(x => x.Resolved == null).DeclaredIn, Package, "Unsafe location", folder);
+            else if (items.FirstOrDefault(x => x.Kind == kinds[0] && s.Unreadable.Contains(x.Resolved!)) is { } index)
+                yield return O(rule, clause, PreflightOutcome.Unknown, "IndexUnreadable", index.Resolved!, Package, "Listed locations unknown", folder);
             else
                 yield return O(rule, clause, PreflightOutcome.Pass, "InFolder", items[0].DeclaredIn, items[0].Selector, items.Count + " locations", folder);
         }
@@ -388,13 +390,17 @@ internal static class MedicalRules
             yield return O(rule, "7.2(d)", reason, reason == PreflightOutcome.Unknown ? "ResourceScopeIncomplete" : "NoImages", Package, Package, "No image resources", "Permitted image formats");
             yield break;
         }
+        // An unreadable page or table may declare further images; only a confirmed violation outranks that.
+        var incomplete = context.Structure.Unreadable.Count > 0;
         var missing = images.Where(x => x.Resolved != null && !context.Package.Exists(x.Resolved)).ToList();
         var unresolved = images.Where(x => x.Resolved == null).ToList();
         yield return missing.Count > 0
             ? O(rule, "7.2(c)", PreflightOutcome.Fail, "ImageNotInFile", missing[0].Table.Path, missing[0].Selector, Sample(missing.Select(x => x.Resolved!)), "Image payload in the file")
             : unresolved.Count > 0
                 ? O(rule, "7.2(c)", PreflightOutcome.Unknown, "UnresolvableLocation", unresolved[0].Table.Path, unresolved[0].Selector, unresolved[0].Declared, "Package-relative MediaFile")
-                : O(rule, "7.2(c)", PreflightOutcome.Pass, "ImagesInFile", images[0].Table.Path, Package, images.Count + " images", "Image payloads in the file");
+                : incomplete
+                    ? O(rule, "7.2(c)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Sample(context.Structure.Unreadable), "Every resource table readable")
+                    : O(rule, "7.2(c)", PreflightOutcome.Pass, "ImagesInFile", images[0].Table.Path, Package, images.Count + " images", "Image payloads in the file");
         var formats = new List<string>(); var rejected = new List<string>();
         foreach (var image in images.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved)))
         {
@@ -406,7 +412,9 @@ internal static class MedicalRules
             ? O(rule, "7.2(d)", PreflightOutcome.Fail, "ImageFormatNotPermitted", rejected[0], "payload signature", Sample(rejected), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2")
             : formats.Count == 0
                 ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "NoReadableImage", Package, Package, "No readable image payload", "Permitted image formats")
-                : O(rule, "7.2(d)", PreflightOutcome.Pass, "PermittedImageFormats", Package, "payload signature", string.Join(", ", formats.Distinct()), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2");
+                : incomplete
+                    ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Sample(context.Structure.Unreadable), "Every resource table readable")
+                    : O(rule, "7.2(d)", PreflightOutcome.Pass, "PermittedImageFormats", Package, "payload signature", string.Join(", ", formats.Distinct()), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2");
     }
 
     // MH-010 -------------------------------------------------------------------------------------------------
@@ -615,7 +623,9 @@ internal static class MedicalRules
         var missingRefs = protectedEntries.Where(x => !context.Package.Exists(x)).ToList();
         var unprotected = required.Where(x => !protectedEntries.Contains(x)).ToList();
         var pages = s.PagePaths.Where(x => !protectedEntries.Contains(x)).ToList();
-        var annotationIndexUnreadable = s.AnnotationIndexUnresolved || s.AnnotationIndexPaths.Any(s.Unreadable.Contains);
+        // The exclusion set is incomplete while an annotation index or page file location is unknown.
+        var annotationIndexUnreadable = s.AnnotationIndexUnresolved || s.AnnotationIndexPaths.Any(s.Unreadable.Contains) ||
+            s.Locations.Any(x => x.Kind == MedicalLocationKind.PageAnnotation && x.Resolved == null);
 
         // FileRef resolves from the package root, as OfdSignatureVerifier and archival preflight do. While any reference
         // is unresolvable it may still name an unlisted page, so a missing page is Unknown rather than Fail.
@@ -633,6 +643,8 @@ internal static class MedicalRules
                 yield return O(rule, clause, PreflightOutcome.Unknown, "UnresolvableReference", latest!, "Reference/@FileRef", Sample(unsafeRefs), "Package-relative FileRef");
             else if (missingRefs.Count > 0)
                 yield return O(rule, clause, PreflightOutcome.Fail, "ReferencedEntryMissing", latest!, "Reference/@FileRef", Sample(missingRefs), "Referenced entries exist");
+            else if (unprotected.Count > 0 && annotationIndexUnreadable)
+                yield return O(rule, clause, PreflightOutcome.Unknown, "AnnotationIndexUnreadable", latest!, Package, unprotected.Count + " unsigned entries; annotation exclusions unknown", "Readable annotation index");
             else if (unprotected.Count > 0)
                 yield return O(rule, clause, PreflightOutcome.Fail, reason, latest!, "References", unprotected.Count + " entries: " + Sample(unprotected), "All content except annotation and signature files");
             else if (annotationIndexUnreadable)

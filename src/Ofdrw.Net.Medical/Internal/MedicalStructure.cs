@@ -147,7 +147,15 @@ internal sealed class MedicalStructure
             foreach (var item in list?.Elements(ns + "Attachment") ?? Enumerable.Empty<XElement>())
             {
                 package.Visit();
-                var location = item.Element(ns + "FileLoc")?.Value;
+                // FileLoc may be an element or, as OfdReader and archival preflight accept, an attribute.
+                var element = item.Element(ns + "FileLoc")?.Value; var attribute = (string?)item.Attribute("FileLoc");
+                if (element != null && attribute != null && element.Trim() != attribute.Trim())
+                {
+                    result.Locations.Add(new MedicalLocation(MedicalLocationKind.Attachment, path!, "Attachment/FileLoc", "ambiguous FileLoc", null));
+                    result.MachineReadableUnavailable.Add("ambiguous FileLoc in " + path);
+                    continue;
+                }
+                var location = element ?? attribute;
                 // A location with a URI scheme is an external attachment (7.4(b)); it is not a package entry.
                 if (location != null && location.Contains("://")) continue;
                 var payload = result.Add(MedicalLocationKind.Attachment, path!, "Attachment/FileLoc", location);
