@@ -13,6 +13,8 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Archival/Ofdrw.Net.Archival.csproj" />
     <!-- Layout only generates deterministic ordinary OFD inputs; the archival package itself does not reference it. -->
     <ProjectReference Include="../../src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
+    <!-- Test-only: A1d regression runs real Native/default DOCX output through the assessment. -->
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

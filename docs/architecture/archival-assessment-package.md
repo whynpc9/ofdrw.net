@@ -1,6 +1,6 @@
-# Ofdrw.Net.Archival：只读归档评估包（A1a）
+# Ofdrw.Net.Archival：只读归档评估包（A1a–A1c）
 
-本文记录[归档路线图](../engineering/plans/ofd-archival-roadmap.md) A1a 的设计决定。适用版本为 main（0.4.0 之后，尚未发布）。用户说明见[归档评估指南](../content/guides/archival-assessment.md)。
+本文记录[归档路线图](../engineering/plans/ofd-archival-roadmap.md) A1a 的设计决定，以及 A1b、A1c 的补充决定。适用版本为 main（0.4.0 之后，尚未发布）。用户说明见[归档评估指南](../content/guides/archival-assessment.md)。
 
 ## 定位与依赖方向
 
@@ -8,6 +8,8 @@
 
 - 包随默认发布集合打包（`verify-package-artifacts.py` 的 `PACKAGES`，共 13 个），但列入 `OPT_IN_PACKAGES`：任何其他包的 `Ofdrw.Net.*` 传递依赖到达它即校验失败；Archival 自身只允许依赖 Packaging。
 - 包消费 E2E 检查 Converter 消费者的 `deps.json`，不得解析出 `Ofdrw.Net.Archival`。
+
+Packaging 的 csproj 对 `Ofdrw.Net.Archival` 声明了 `InternalsVisibleTo`。理由：A1b/A1c 需要沿用 Packaging 的已知 CustomTags 遍历（`KnownCustomTagScope`）和资源基址解析（`OfdResourceBase`），共享同一份实现比在 Archival 中复制一份更不容易出现两边语义漂移；这些代码仍是内部实现，不成为公开 API。代价是 Archival 绑定 Packaging 的内部细节，因此 Archival 对 Packaging 采用**精确版本**依赖（两者同版本一起发布），不能单独升级其中一个。Core 的字体代码不走这条路，见下文“字体验证接口”。
 
 新包组合已发布的 Preflight API（`ArchivalCoverageService` 及其中的 AR/AC/APF 结果、`ArchivalClauseCatalog`），不搬移公开类型，不复制检查器。Packaging 中的类型、程序集位置和行为不变；`ArchivalCoverageRuleCatalog` 仍是 15 项，账本修订仍为 `ofdrw-archival-ledger/1`。
 
@@ -44,7 +46,7 @@
 
 不以“由本库生成”为信任依据（`ProvenanceVerified` 恒为 false），每项都检查包内容。发现排除内容记为 OutOfScope（如 `MultipleDocuments`、`SignaturesDeclared`、`EncryptionMarkerPresent`、`AttachmentsDeclared`、`VersionsDeclared`、`ObjectActionsDeclared`）；无法识别或无法解析的结构记为 Unknown（如 `UnrecognizedDocumentContent`、`PageContentUnavailable`）。OutOfScope 优先于 Unknown。既有规则在超范围输入上发现的确定违规（多 DocBody 的 AC-002、根加密标记的 AC-015）照常 Fail。
 
-A1a 尚未判断字体载荷和 CustomTags 引用闭包，报告以 `FontPayloadNotAssessed`、`CustomTagClosureNotAssessed` 缺口标明，由 A1c、A1b 补上。
+字体载荷（A1c）和 CustomTags 引用闭包（A1b）由 AC-016～AC-020 判断。`FontPayloadNotAssessed`、`CustomTagClosureNotAssessed` 缺口只有在对应检查于一次 `Complete` 运行中全部作出判定（没有 Unknown 观察）时才去掉，否则保留。
 
 ## 规范强度策略
 
@@ -56,7 +58,7 @@ A1a 尚未判断字体载荷和 CustomTags 引用闭包，报告以 `FontPayload
 - 矩阵标为 `Unverified` 的 6.11、6.13.1(a)–(c) 原样公开，并附 `ModalScopeUnverified` 注记。
 - AC-009、AC-012 以批注作为注释对象保留（6.10.1 方式 a）为前提；采用方式 b 把外观合并到页面时不适用。6.10.1(a)(2)、(a)(3) 条款附 `AnnotationObjectRetentionAssumed` 注记。
 
-当前 17 项 AR/AC 都映射到 `Statement` 条款，因此现有报告中不会出现 advisory；该策略由单元测试和合成检查验证。
+17 项 AR/AC 和 AC-017～AC-020 都映射到 `Statement` 条款。AC-016 同时映射 6.11（`Should`，`Unverified`）和 6.1（第一段，`Statement`）：标签闭包问题在 6.11 上只作 advisory；引用目标缺失或越出包外在 6.1（第一段）上为 Fail。
 
 ## 矩阵数据
 
@@ -66,20 +68,40 @@ A1a 尚未判断字体载荷和 CustomTags 引用闭包，报告以 `FontPayload
 
 AC-001–AC-015 归 Packaging 所有。本包从 **AC-016** 起继续 `AC-` 序列，编号在本包内定义，不修改 `ArchivalCoverageRuleCatalog`，因此 Packaging 的规则数量和既有报告不变。观察的 `RuleOwner` 标明 `Ofdrw.Net.Packaging` 或 `Ofdrw.Net.Archival`。
 
-扩展点为内部接口 `IArchivalClauseCheck`（非公开插件 API）：每项检查带 `ArchivalOwnedRuleDefinition`（规则号、条款、条件、修订），从 `ArchivalCheckContext` 取得有预算的 XML 读取器、范围检查已解析的根、文档和页面，返回至少一条观察。服务构造时校验编号为 AC-016 及以上、互不重复、不与 Packaging 冲突且条款在账本内。检查耗尽预算时该检查记 Unknown，运行记为 BudgetExhausted。A1a 不注册任何检查；计划中的使用者：
+扩展点为内部接口 `IArchivalClauseCheck`（非公开插件 API）：每项检查带 `ArchivalOwnedRuleDefinition`（规则号、条款、条件、修订），从 `ArchivalCheckContext` 取得有预算的 XML 读取器、范围检查已解析的根、文档和页面，返回至少一条观察。服务构造时校验编号为 AC-016 及以上、互不重复、不与 Packaging 冲突且条款在账本内。检查耗尽预算时该检查记 Unknown，运行记为 BudgetExhausted。一条规则可映射多个条款（`AdditionalClauses`），服务校验每条观察的条款都在规则声明的条款内。当前注册：
 
-- A1b：已知 CustomTags 的引用闭包，映射 6.11、6.1（第一段）。
-- A1c：字体载荷与实际使用字形，映射 6.2.6(b)(1)、(b)(2)、(c)(1)、(c)(2)。
+| 规则 | 条款 | 内容 |
+| --- | --- | --- |
+| AC-016 | 6.11；6.1（第一段） | 已知 CustomTags 引用闭包（A1b） |
+| AC-017 | 6.2.6(b)(1) | 填充/描边文字所用字体的包内载荷覆盖实际字符和字形编号（A1c） |
+| AC-018 | 6.2.6(b)(2) | 同上，裁剪区文字 |
+| AC-019 | 6.2.6(c)(1) | 嵌入载荷保留轮廓表，所用字形轮廓可读 |
+| AC-020 | 6.2.6(c)(2) | 嵌入载荷保留八张必需表 |
+
+## 已知 CustomTags 与 EMR 的归类（A1b）
+
+APF 新增 `ArchivalPreflightOptions.RecognizeKnownCustomTags`，默认关闭，关闭时输出逐字节不变（回归测试固定）；开启时 `ProfileVersion` 为 `ofdrw-local-preflight/0.1-draft+known-custom-tags.1`。评估入口在内部开启它。
+
+遍历按 XML 字段语义进行（元素/属性名、命名空间、FileLoc 的元素或属性形式），不用正则。识别两种形状：
+
+- **中性键值通道**：`TypeID="ofdrw-kv"`、`NameSpace="urn:ofdrw-net:custom-tags:kv:1"`，载荷根为同一命名空间的 `Tags`。本库当前写出的形状。
+- **EMR 通道**：`TypeID="EMR"`、`NameSpace="urn:ofdrw-net:custom-tags:emr"`，载荷根为 OFD 命名空间的 `EMRTags`。**归类为“本库历史上写出的已知形状”，没有对照 GB/T 33190 核验**；报告的覆盖缺口如实记录这一点。识别它只为了让历史产物不被无差别 Unknown，不表示 EMR 载荷符合任何电子病历标准。
+
+其余（未知 TypeID/命名空间、外来属性、SchemaLoc、歧义引用、循环、超预算）为 Unknown；空、外部、越出根目录或缺失的目标为 Fail。
+
+## 字体检查（A1c）
+
+字体按声明它的资源表（Document 的 PublicRes/DocumentRes、页面的 PageRes）解析，`FontFile` 相对该表的 `BaseLoc`，复用 Packaging 的 `OfdResourceBase`。已用字符与字形编号取自页面和模板中的 TextCode 与 CGTransform；无法建模的映射、范围不完整的页面为 Unknown。宿主字体从不作为证据；`fsType` 只记录，可解析不代表有许可。没有 FontFile 时按 `ArchivalAssessmentOptions.FontExemptionPolicy` 处理：默认 `ExemptionBasisUnverified` 为 Unknown，`NoExemptionsAccepted` 为定位到 Font 元素的 Fail。
 
 ## 字体验证接口的决定
 
 `src/Ofdrw.Net.Core/Fonts/` 的 OpenType 解析与子集代码为 internal，本包不在 Core 的 `InternalsVisibleTo` 名单内。**决定：在 Core 增加面向字节验证的窄公共接口，不为 Archival 增加内部可见性。** 理由：归档包不绑定尚未稳定的内部类型；依赖方向仍为 `Archival → Packaging → Core`；接口可被其他只读检查复用。
 
-拟定形态（A1c 实现时定稿，A1a 不实现）：
+A1c 定稿的形态：
 
-- 位置：`Ofdrw.Net.Core.Fonts` 命名空间，一个无状态的静态检查入口，例如 `OfdFontPayloadInspector.Inspect(ReadOnlyMemory<byte> payload, OfdFontPayloadRequest request, CancellationToken)`。
-- 请求：需要覆盖的 Unicode 码点和/或 GID 集合、是否作为子集评估、字节/表数/字形数预算。
-- 结果：只读值对象，含识别出的格式（TrueType/CFF/未知）、可否解析、存在与缺失的必需表（轮廓、度量、cmap、name 等）、缺失码点/GID、稳定原因码；无法可靠解释时为 Unknown，不抛出格式异常。
+- 位置：`Ofdrw.Net.Core.Fonts`，无状态静态入口 `OfdFontPayloadInspector.Inspect(byte[] payload, OfdFontPayloadRequest request, CancellationToken)`。建在既有内部 `OpenTypeFace`、cmap 和字形轮廓代码上，没有第二套解析器。
+- 请求：需要覆盖的 Unicode 码点和 GID 集合，以及载荷字节、cmap 工作量和字形检查数预算。
+- 结果：`OfdFontPayloadReport`，含 `Status`（`Parsed`/`Unsupported`/`Malformed`/`BudgetExceeded`）、`Format`（`TrueType`/`OpenTypeCff`/`Unknown`）、稳定原因码、表清单、缺失的轮廓表和必需表、缺失码点/GID、不可读字形和 `EmbeddingPermissions`。TTC、WOFF、CFF2、可变和无法识别的格式为 `Unsupported`，归档层映射为 Unknown 而非 Fail；畸形字体返回状态，不抛出格式异常；取消照常抛出。
 - 约束：不查找宿主字体，不回传字体字节，不判断嵌入许可是否构成授权；许可位只作为单独字段报告。
 
 ## 有意不声明的内容

@@ -50,6 +50,18 @@ ofdrw preflight input.ofd --json > report.json     # 标准输出仅包含 JSON 
 ofdrw preflight input.ofd --json --output report.json --allow-multiple-documents
 ```
 
+## 已知 CustomTags（可选，main 开发版本）
+
+0.4.0 之后的 main（尚未发布）为 `ArchivalPreflightOptions` 增加了 `RecognizeKnownCustomTags`，**默认关闭**。默认关闭时结果逐字节不变：Document 中含 `CustomTags` 声明仍按 `UnsupportedResourceScope` 使 APF-002、003、005、006（`RequireNoEncryption` 时连同 APF-004）为 Unknown，`ProfileVersion` 仍为 `ofdrw-local-preflight/0.1-draft`，回归测试固定了这一输出。
+
+```csharp
+var report = await new ArchivalPreflightChecker().CheckAsync(input,
+    new ArchivalPreflightOptions { RecognizeKnownCustomTags = true }, cancellationToken);
+// report.ProfileVersion == ArchivalPreflightReport.KnownCustomTagsProfileVersion
+```
+
+开启后，报告的 `ProfileVersion` 为 `ofdrw-local-preflight/0.1-draft+known-custom-tags.1`，以便与默认 profile 区分。只有当 Document 下的 `CustomTags` 是纯文本声明、且整个引用链按 XML 字段语义闭合到已知形状时，才视为受支持：本库的中性键值通道（`ofdrw-kv`）或历史 EMR 形状的通道。EMR 只是“本库写出的已知形状”，没有对照 GB/T 33190 核验，`CoverageGaps` 中会如实记录。闭合时在 APF-002 记 Pass；目标为空、外部、越出根目录或缺失时在 APF-002 记 Fail；未知 schema、外来命名空间、歧义或循环仍为 Unknown。`ofdrw preflight` CLI 不开启此选项。[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)入口在内部开启它。
+
 现有 `ValidationReport` 和宽松的 `OfdPackageStructureChecker` 保持原有约定；不存在隐式的有损布尔适配。
 
 可执行边界示例位于 `ArchivalPreflightTests`。其中四字节字体和 SignedValue 哨兵仅用于证明存在性，绝不可用作渲染或签名有效性证据。预检不生成或修改页面，因此页面渲染、PNG 检查和 Preview 验收不适用于此实现。
