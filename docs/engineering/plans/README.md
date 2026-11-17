@@ -35,6 +35,10 @@ Repository rules every plan inherits (from `AGENTS.md`):
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
+## Follow-up roadmaps
+
+- [OFD 通用输出与 OFD-A 归档能力分阶段计划](ofd-archival-roadmap.md) — 2026-11-17，关联 [#145](https://github.com/whynpc9/ofdrw.net/issues/145)。D0 默认 OFD 已按本地直接集成方式完成，随本次提交推送；NuGet 发布另行安排。可选归档包的只读评估及后续转换、编辑保护和复杂场景待执行，详见[验收摘要](../../validation/standard-doctype-d0-20261117.md)。
+
 ## Dependency notes
 
 - **001 first.** The reader rejects documents with more than ~1,100 text objects: a 24-page FlowDocument written by the SDK itself fails to read back with `OFD traversal exceeds its reference budget.`; reproduced at `09a2e7e`. Large-document regression tests in later plans depend on it. 009 edits the same file (`OfdReader.cs`).
