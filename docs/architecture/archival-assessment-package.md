@@ -91,7 +91,7 @@ APF 新增 `ArchivalPreflightOptions.RecognizeKnownCustomTags`，默认关闭，
 
 ## 字体检查（A1c）
 
-字体按声明它的资源表（Document 的 PublicRes/DocumentRes、页面的 PageRes）解析，`FontFile` 相对该表的 `BaseLoc`，复用 Packaging 的 `OfdResourceBase`。已用字符与字形编号取自页面和模板中的 TextCode 与 CGTransform；无法建模的映射、范围不完整的页面为 Unknown。宿主字体从不作为证据；`fsType` 只记录，可解析不代表有许可。没有 FontFile 时按 `ArchivalAssessmentOptions.FontExemptionPolicy` 处理：默认 `ExemptionBasisUnverified` 为 Unknown，`NoExemptionsAccepted` 为定位到 Font 元素的 Fail。
+字体按声明它的资源表（Document 的 PublicRes/DocumentRes、页面的 PageRes，以及 Reader 和本地预检同样采用的页面同目录 `PageRes.xml`）解析，`FontFile` 相对该表的 `BaseLoc`，复用 Packaging 的 `OfdResourceBase`。已用字符与字形编号取自页面和模板中的 TextCode 与 CGTransform；无法建模的映射、范围不完整的页面为 Unknown。宿主字体从不作为证据；`fsType` 只记录，可解析不代表有许可。没有 FontFile 时按 `ArchivalAssessmentOptions.FontExemptionPolicy` 处理：默认 `ExemptionBasisUnverified` 为 Unknown，`NoExemptionsAccepted` 为定位到 Font 元素的 Fail。
 
 ## 字体验证接口的决定
 
@@ -101,7 +101,7 @@ A1c 定稿的形态：
 
 - 位置：`Ofdrw.Net.Core.Fonts`，无状态静态入口 `OfdFontPayloadInspector.Inspect(byte[] payload, OfdFontPayloadRequest request, CancellationToken)`。建在既有内部 `OpenTypeFace`、cmap 和字形轮廓代码上，没有第二套解析器。
 - 请求：需要覆盖的 Unicode 码点和 GID 集合，以及载荷字节、cmap 工作量和字形检查数预算。
-- 结果：`OfdFontPayloadReport`，含 `Status`（`Parsed`/`Unsupported`/`Malformed`/`BudgetExceeded`）、`Format`（`TrueType`/`OpenTypeCff`/`Unknown`）、稳定原因码、表清单、缺失的轮廓表和必需表、缺失码点/GID、不可读字形和 `EmbeddingPermissions`。TTC、WOFF、CFF2、可变和无法识别的格式为 `Unsupported`，归档层映射为 Unknown 而非 Fail；畸形字体返回状态，不抛出格式异常；取消照常抛出。
+- 结果：`OfdFontPayloadReport`，含 `Status`（`Parsed`/`Unsupported`/`Malformed`/`BudgetExceeded`）、`Format`（`TrueType`/`OpenTypeCff`/`Unknown`）、稳定原因码、表清单、缺失的轮廓表和必需表、缺失码点/GID、数据损坏的字形（`UnreadableGlyphIds`）、读取器不解释的有效字形特性（`UninterpretedGlyphIds`，归档层映射为 Unknown）和 `EmbeddingPermissions`。TTC、WOFF、CFF2、可变和无法识别的格式为 `Unsupported`，归档层映射为 Unknown 而非 Fail；畸形字体返回状态，不抛出格式异常；取消照常抛出。
 - 约束：不查找宿主字体，不回传字体字节，不判断嵌入许可是否构成授权；许可位只作为单独字段报告。
 
 ## 有意不声明的内容

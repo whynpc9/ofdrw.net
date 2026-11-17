@@ -13,7 +13,8 @@ internal sealed class ArchivalFontCheck : IArchivalClauseCheck
 {
     internal ArchivalFontCheck(ArchivalOwnedRuleDefinition rule) { Rule = rule; }
     public ArchivalOwnedRuleDefinition Rule { get; }
-    public string? GapCode => Rule.RuleId == ArchivalFontAnalysis.UsedTextRule.RuleId ? "FontPayloadNotAssessed" : null;
+    // All four font rules own the gap: it closes only when AC-017..AC-020 are all decided.
+    public string? GapCode => "FontPayloadNotAssessed";
     public IEnumerable<ArchivalClauseObservation> Check(ArchivalCheckContext context) =>
         context.Shared(() => ArchivalFontAnalysis.Run(context)).For(Rule);
     public bool Decided(IReadOnlyList<ArchivalClauseObservation> observations) =>
@@ -100,6 +101,9 @@ internal sealed class ArchivalFontAnalysis
             context.CancellationToken.ThrowIfCancellationRequested();
             var pns = page.Value.Name.Namespace;
             var pageFonts = new Dictionary<string, FontDeclaration?>(documentFonts, StringComparer.Ordinal);
+            // The reader and preflight treat {pageDirectory}/PageRes.xml as a fixed page resource even without a PageRes link.
+            var sibling = page.Key.Substring(0, page.Key.LastIndexOf('/') + 1) + "PageRes.xml";
+            if (context.Archive.Contains(sibling)) ReadTable(page.Key, sibling, page.Value, pageFonts);
             foreach (var reference in page.Value.Elements(pns + "PageRes")) ReadResources(page.Key, reference, pageFonts);
             foreach (var text in page.Value.Descendants(pns + "TextObject"))
             {
@@ -153,6 +157,11 @@ internal sealed class ArchivalFontAnalysis
         var location = reference.Value.Trim();
         if (reference.HasElements || ArchivalPackagePath.Unsafe(location) || !ArchivalPackagePath.TryResolve(containing, location, out var entry))
         { UnknownResources("ResourceTableUnavailable", containing, reference, "Reference=" + location); return; }
+        ReadTable(containing, entry, reference, fonts);
+    }
+
+    private void ReadTable(string containing, string entry, XElement reference, Dictionary<string, FontDeclaration?> fonts)
+    {
         if (!tables.TryGetValue(entry, out var declared))
         {
             tables[entry] = declared = new List<FontDeclaration>();
@@ -339,13 +348,7 @@ internal sealed class ArchivalFontAnalysis
         if (bytes.Length > context.Fonts.MaxTotalBytes - fontBytes) throw new ArchivalBudgetExceededException("FontBytes");
         fontBytes += bytes.Length;
 
-        var request = new OfdFontPayloadRequest { MaxPayloadBytes = context.Fonts.MaxPayloadBytes };
-        if (usage != null)
-        {
-            foreach (var value in usage.Painted.Scalars.Concat(usage.Clipping.Scalars)) request.UnicodeScalars.Add(value);
-            foreach (var value in usage.Painted.Glyphs.Concat(usage.Clipping.Glyphs)) request.GlyphIds.Add(value);
-        }
-        var report = OfdFontPayloadInspector.Inspect(bytes, request, context.CancellationToken);
+        var report = Inspect(bytes, usage == null ? Array.Empty<Codes>() : new[] { usage.Painted, usage.Clipping });
         var observed = "FontFile=" + target + "; length=" + bytes.Length + "; format=" + report.Format + "; status=" + report.Status + "; reason=" + report.Reason;
         switch (report.Status)
         {
@@ -373,6 +376,9 @@ internal sealed class ArchivalFontAnalysis
         else if (report.UnreadableGlyphIds.Count > 0)
             Add(OutlineRule, PreflightOutcome.Fail, "GlyphOutlineUnreadable", declaration.Entry, file,
                 identity + "; " + observed + "; GID " + string.Join(" ", report.UnreadableGlyphIds.Take(8)));
+        else if (report.UninterpretedGlyphIds.Count > 0)
+            Add(OutlineRule, PreflightOutcome.Unknown, "GlyphOutlineUninterpreted", declaration.Entry, file,
+                identity + "; " + observed + "; GID " + string.Join(" ", report.UninterpretedGlyphIds.Take(8)) + " use an outline feature not interpreted");
         else
             Add(OutlineRule, PreflightOutcome.Pass, "OutlineTablesRetained", declaration.Entry, file,
                 identity + "; " + observed + "; checked glyphs of used text");
@@ -381,19 +387,41 @@ internal sealed class ArchivalFontAnalysis
         if (report.MissingOutlineTables.Count == 0)
             foreach (var (rule, codes) in usedBy)
             {
-                var missingScalars = codes.Scalars.Where(report.MissingScalars.Contains).OrderBy(x => x).ToList();
-                var missingGlyphs = codes.Glyphs.Where(report.MissingGlyphIds.Contains).OrderBy(x => x).ToList();
                 var used = identity + "; " + observed + "; used by " + codes.Objects + " object(s), first at " + codes.First;
-                if (missingScalars.Count > 0 || missingGlyphs.Count > 0 || report.UnreadableGlyphIds.Count > 0)
+                // Outline results are per glyph: with both categories present, judge each category by its own glyphs only.
+                var own = usedBy.Length == 1 ? report : Inspect(bytes, new[] { codes });
+                if (own.Status != OfdFontPayloadStatus.Parsed)
+                {
+                    Add(rule, PreflightOutcome.Unknown, own.Status == OfdFontPayloadStatus.BudgetExceeded ? "FontPayloadBudgetExceeded" : "FontFormatUnsupported",
+                        declaration.Entry, file, used + "; category status=" + own.Status + "; reason=" + own.Reason);
+                    continue;
+                }
+                var missingScalars = codes.Scalars.Where(own.MissingScalars.Contains).OrderBy(x => x).ToList();
+                var missingGlyphs = codes.Glyphs.Where(own.MissingGlyphIds.Contains).OrderBy(x => x).ToList();
+                if (missingScalars.Count > 0 || missingGlyphs.Count > 0 || own.UnreadableGlyphIds.Count > 0)
                     Add(rule, PreflightOutcome.Fail, "UsedGlyphMissing", declaration.Entry, file, used + "; missing " +
                         string.Join(" ", missingScalars.Take(8).Select(x => "U+" + x.ToString("X4", CultureInfo.InvariantCulture))
                             .Concat(missingGlyphs.Take(8).Select(x => "GID " + x))
-                            .Concat(report.UnreadableGlyphIds.Take(8).Select(x => "unreadable GID " + x))));
+                            .Concat(own.UnreadableGlyphIds.Take(8).Select(x => "unreadable GID " + x))));
+                else if (own.UninterpretedGlyphIds.Count > 0)
+                    Add(rule, PreflightOutcome.Unknown, "GlyphOutlineUninterpreted", declaration.Entry, file, used + "; GID " +
+                        string.Join(" ", own.UninterpretedGlyphIds.Take(8)) + " use an outline feature not interpreted");
                 else
                     Add(rule, PreflightOutcome.Pass, "UsedGlyphsCovered", declaration.Entry, file, used + "; scalars=" + codes.Scalars.Count +
                         "; glyphIds=" + codes.Glyphs.Count + "; fsType=" + Permissions(report) + " (recorded only; licensing not assessed)");
             }
         return true;
+    }
+
+    private OfdFontPayloadReport Inspect(byte[] bytes, IEnumerable<Codes> categories)
+    {
+        var request = new OfdFontPayloadRequest { MaxPayloadBytes = context.Fonts.MaxPayloadBytes };
+        foreach (var codes in categories)
+        {
+            foreach (var value in codes.Scalars) request.UnicodeScalars.Add(value);
+            foreach (var value in codes.Glyphs) request.GlyphIds.Add(value);
+        }
+        return OfdFontPayloadInspector.Inspect(bytes, request, context.CancellationToken);
     }
 
     private void Tables(OfdFontPayloadReport report, FontDeclaration declaration, XElement file, string identity, string observed)

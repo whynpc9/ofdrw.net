@@ -88,8 +88,22 @@ public sealed class OfdFontPayloadInspectorTests
         if (variant == "corrupt-glyf")
         {
             Assert.NotEmpty(report.UnreadableGlyphIds);
+            Assert.Empty(report.UninterpretedGlyphIds);
             Assert.False(report.CanRenderRequest);
         }
+    }
+
+    // Review finding: a valid composite feature outside the outline reader's profile is undetermined, not damaged.
+    [Fact]
+    public void PointAttachedCompositeIsUninterpretedNotUnreadable()
+    {
+        var (bytes, gid) = PointAttachedComposite(NotoSans());
+        var report = Inspect(bytes, "", gid);
+        Assert.Equal(OfdFontPayloadStatus.Parsed, report.Status);
+        Assert.Equal(new[] { gid }, report.UninterpretedGlyphIds);
+        Assert.Empty(report.UnreadableGlyphIds);
+        Assert.Empty(report.MissingGlyphIds);
+        Assert.False(report.CanRenderRequest);
     }
 
     [Fact]
@@ -137,8 +151,31 @@ public sealed class OfdFontPayloadInspectorTests
         var loca = face.Table("loca");
         var offset = OpenTypeFace.U16(head, 50) == 0 ? OpenTypeFace.U16(loca, gid * 2) * 2 : (int)OpenTypeFace.U32(loca, gid * 4);
         var glyf = face.Table("glyf");
-        glyf[offset] = 0x80; glyf[offset + 1] = 0x00; // numberOfContours = -32768
+        glyf[offset] = 0x7F; glyf[offset + 1] = 0xFF; // numberOfContours = 32767: the glyph record is truncated
         return face.Build();
+    }
+
+    // Clears ARGS_ARE_XY_VALUES on the first component of the first XY-placed composite glyph: valid OpenType that the
+    // SDK outline reader does not interpret.
+    internal static (byte[] Bytes, int GlyphId) PointAttachedComposite(byte[] bytes)
+    {
+        var face = new OpenTypeFace(bytes);
+        var head = face.Table("head", 54);
+        var loca = face.Table("loca");
+        var glyf = face.Table("glyf");
+        var count = OpenTypeFace.U16(face.Table("maxp", 6), 4);
+        int Offset(int gid) => OpenTypeFace.U16(head, 50) == 0 ? OpenTypeFace.U16(loca, gid * 2) * 2 : (int)OpenTypeFace.U32(loca, gid * 4);
+        for (var gid = 1; gid < count; gid++)
+        {
+            var offset = Offset(gid);
+            if (Offset(gid + 1) - offset < 14 || OpenTypeFace.U16(glyf, offset) != 0xFFFF) continue;
+            var flags = OpenTypeFace.U16(glyf, offset + 10);
+            if ((flags & 0x0002) == 0 || (flags & 0x00C8) != 0) continue;
+            flags &= ~0x0002;
+            glyf[offset + 10] = (byte)(flags >> 8); glyf[offset + 11] = (byte)flags;
+            return (face.Build(), gid);
+        }
+        throw new InvalidOperationException("No XY-placed composite glyph in the fixture.");
     }
 
     private static byte[] NotoSans() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "testdata", "NotoSans-Regular.ttf"));

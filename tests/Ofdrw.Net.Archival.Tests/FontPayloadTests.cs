@@ -214,6 +214,74 @@ public sealed class FontPayloadTests
         Assert.Equal("FontPayloadBudgetExceeded", Assert.Single(report.GetClause(B1).Observations).ReasonCode);
     }
 
+    // Review finding 1: {pageDirectory}/PageRes.xml is a fixed page resource even without a PageRes link.
+    [Fact]
+    public async Task SiblingPageResDeclaresPageFonts()
+    {
+        var entries = Package("", Text("1", "Ofdrw"));
+        entries["Doc_0/Pages/P0/PageRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='/Doc_0/Res'><Fonts>{Font("1")}</Fonts></Res>");
+        var report = await Assess(entries);
+        var used = Assert.Single(report.GetClause(B1).Observations);
+        Assert.Equal((PreflightOutcome.Pass, "Doc_0/Pages/P0/PageRes.xml"), (used.Outcome, used.Evidence.Entry));
+        Assert.Contains("FontFile=" + FontPath, used.Evidence.Observed);
+
+        // An unusable sibling table leaves the reference Unknown, never a false UnresolvedFontReference Fail.
+        entries["Doc_0/Pages/P0/PageRes.xml"] = Utf8("<Unrelated/>");
+        report = await Assess(entries);
+        Assert.Equal(PreflightOutcome.Unknown, report.GetClause(B1).Outcome);
+        Assert.DoesNotContain(report.GetClause(B1).Observations, x => x.Outcome == PreflightOutcome.Fail);
+    }
+
+    // Review finding 2: a valid composite feature the outline reader does not interpret is Unknown, not a Fail.
+    [Fact]
+    public async Task UninterpretedCompositeGlyphIsUnknown()
+    {
+        var (bytes, gid) = TestFont.PointAttachedComposite(NotoSans());
+        var report = await Assess(Package(Font("1"), Glyphs("1", gid), bytes));
+        foreach (var clause in new[] { B1, C1 })
+        {
+            var observation = Assert.Single(report.GetClause(clause).Observations);
+            Assert.Equal((PreflightOutcome.Unknown, "GlyphOutlineUninterpreted"), (observation.Outcome, observation.ReasonCode));
+            Assert.Contains("GID " + gid, observation.Evidence.Observed);
+        }
+        Assert.Equal(PreflightOutcome.Pass, report.GetClause(C2).Outcome);
+        Assert.Contains("FontPayloadNotAssessed", report.Document.Gaps);
+    }
+
+    // Review finding 3: an unreadable glyph used only by clipping text fails AC-018, not AC-017.
+    [Fact]
+    public async Task UnreadableGlyphFailsOnlyTheCategoryThatUsesIt()
+    {
+        var bytes = TestFont.TruncateGlyph(NotoSans(), 37);
+        var clip = $"<PathObject ID='20' Boundary='0 0 10 10'><Clips><Clip><Area><Text Font='1' Size='3' Boundary='0 0 10 10'>" +
+            "<CGTransform CodePosition='0' CodeCount='1' GlyphCount='1'><Glyphs>37</Glyphs></CGTransform><TextCode X='0' Y='3'>B</TextCode>" +
+            "</Text></Area></Clip></Clips><AbbreviatedData>M 0 0 L 1 1</AbbreviatedData></PathObject>";
+        var report = await Assess(Package(Font("1"), Glyphs("1", 36) + clip, bytes));
+        Assert.Equal("UsedGlyphsCovered", Assert.Single(report.GetClause(B1).Observations).ReasonCode);
+        var failure = Assert.Single(report.GetClause(B2).Observations);
+        Assert.Equal((PreflightOutcome.Fail, "UsedGlyphMissing"), (failure.Outcome, failure.ReasonCode));
+        Assert.Contains("unreadable GID 37", failure.Evidence.Observed);
+        Assert.Equal("GlyphOutlineUnreadable", Assert.Single(report.GetClause(C1).Observations).ReasonCode);
+    }
+
+    // Review finding 4: the gap closes only when AC-017..AC-020 are all decided.
+    [Fact]
+    public async Task UndecidedClippingFontKeepsTheFontGap()
+    {
+        var entries = Package(Font("1") + Font("2", null), Text("1", "Ofdrw") + ClipText("2", "Clip"));
+        var report = await Assess(entries);
+        Assert.Equal(ArchivalExecutionState.Complete, report.ExecutionState);
+        Assert.Equal(PreflightOutcome.Pass, report.GetClause(B1).Outcome);
+        Assert.Equal(PreflightOutcome.Pass, report.GetClause(C1).Outcome);
+        Assert.Equal(PreflightOutcome.Pass, report.GetClause(C2).Outcome);
+        Assert.Equal("FontExemptionBasisUnverified", Assert.Single(report.GetClause(B2).Observations).ReasonCode);
+        Assert.Contains("FontPayloadNotAssessed", report.Document.Gaps);
+    }
+
+    private static string Glyphs(string font, int gid) =>
+        $"<TextObject ID='10' Boundary='0 0 100 10' Font='{font}' Size='3'><CGTransform CodePosition='0' CodeCount='1' GlyphCount='1'>" +
+        $"<Glyphs>{gid}</Glyphs></CGTransform><TextCode X='0' Y='3'>A</TextCode></TextObject>";
+
     private static (string, string) Pair(ArchivalAssessmentReport report, string clause)
     {
         var observation = Assert.Single(report.GetClause(clause).Observations);
@@ -273,5 +341,50 @@ public sealed class FontPayloadTests
             result[entry.FullName] = copy.ToArray();
         }
         return result;
+    }
+}
+
+// In-place sfnt edits for test-time font variants (no table checksums are validated by the reader).
+internal static class TestFont
+{
+    private static int U16(byte[] f, int o) => f[o] << 8 | f[o + 1];
+    private static int U32(byte[] f, int o) => f[o] << 24 | f[o + 1] << 16 | f[o + 2] << 8 | f[o + 3];
+
+    private static (int Glyf, Func<int, int> Offset, int Count) Layout(byte[] f)
+    {
+        var tables = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < U16(f, 4); i++)
+            tables[Encoding.ASCII.GetString(f, 12 + 16 * i, 4)] = U32(f, 12 + 16 * i + 8);
+        var head = tables["head"]; var loca = tables["loca"];
+        var longLoca = U16(f, head + 50) != 0;
+        return (tables["glyf"], gid => longLoca ? U32(f, loca + 4 * gid) : U16(f, loca + 2 * gid) * 2, U16(f, tables["maxp"] + 4));
+    }
+
+    // numberOfContours = 32767 makes the simple glyph record truncated: malformed data.
+    internal static byte[] TruncateGlyph(byte[] bytes, int gid)
+    {
+        var f = (byte[])bytes.Clone();
+        var (glyf, offset, _) = Layout(f);
+        Assert.True(U16(f, glyf + offset(gid)) < 0x8000);
+        f[glyf + offset(gid)] = 0x7F; f[glyf + offset(gid) + 1] = 0xFF;
+        return f;
+    }
+
+    // Clears ARGS_ARE_XY_VALUES on the first component of an XY-placed composite: valid, but outside the reader's profile.
+    internal static (byte[] Bytes, int GlyphId) PointAttachedComposite(byte[] bytes)
+    {
+        var f = (byte[])bytes.Clone();
+        var (glyf, offset, count) = Layout(f);
+        for (var gid = 1; gid < count; gid++)
+        {
+            var start = glyf + offset(gid);
+            if (offset(gid + 1) - offset(gid) < 14 || U16(f, start) != 0xFFFF) continue;
+            var flags = U16(f, start + 10);
+            if ((flags & 0x0002) == 0 || (flags & 0x00C8) != 0) continue;
+            flags &= ~0x0002;
+            f[start + 10] = (byte)(flags >> 8); f[start + 11] = (byte)flags;
+            return (f, gid);
+        }
+        throw new InvalidOperationException("No XY-placed composite glyph in the fixture.");
     }
 }

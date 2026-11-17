@@ -67,7 +67,7 @@ internal sealed class ArchivalCheckContext
 internal interface IArchivalClauseCheck
 {
     ArchivalOwnedRuleDefinition Rule { get; }
-    /// <summary>Document gap this check can close, or null.</summary>
+    /// <summary>Document gap this check helps close, or null. Checks sharing a gap close it only when every one of them decided.</summary>
     string? GapCode { get; }
     /// <summary>Returns at least one observation for <see cref="Rule"/>. Unknown when evidence is insufficient.</summary>
     IEnumerable<ArchivalClauseObservation> Check(ArchivalCheckContext context);

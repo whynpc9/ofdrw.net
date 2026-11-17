@@ -80,13 +80,22 @@ public sealed class OfdFontPayloadReport
     public IReadOnlyList<int> MissingScalars { get; internal set; } = NoValues;
     /// <summary>Requested glyph IDs that are zero (.notdef) or outside the font.</summary>
     public IReadOnlyList<int> MissingGlyphIds { get; internal set; } = NoValues;
-    /// <summary>Mapped or requested glyph IDs whose outline cannot be read.</summary>
+    /// <summary>Mapped or requested glyph IDs whose outline data is malformed (for example truncated or inconsistent).</summary>
     public IReadOnlyList<int> UnreadableGlyphIds { get; internal set; } = NoValues;
+    /// <summary>
+    /// Mapped or requested glyph IDs whose outline the SDK reader does not interpret, such as point-matched or transformed
+    /// composite components. Their renderability is undetermined; they are not reported as damaged.
+    /// </summary>
+    public IReadOnlyList<int> UninterpretedGlyphIds { get; internal set; } = NoValues;
     /// <summary>The OS/2 <c>fsType</c> bits recorded by the font, or null. Parseability never implies an embedding or licence right.</summary>
     public int? EmbeddingPermissions { get; internal set; }
-    /// <summary>True when parsed, outline and required tables are present, and every requested item is renderable.</summary>
+    /// <summary>
+    /// True when parsed, outline and required tables are present, and every requested item is confirmed renderable;
+    /// false while any glyph is in <see cref="UninterpretedGlyphIds"/>.
+    /// </summary>
     public bool CanRenderRequest => Status == OfdFontPayloadStatus.Parsed && CoverageChecked && MissingOutlineTables.Count == 0 &&
-        MissingRequiredTables.Count == 0 && MissingScalars.Count == 0 && MissingGlyphIds.Count == 0 && UnreadableGlyphIds.Count == 0;
+        MissingRequiredTables.Count == 0 && MissingScalars.Count == 0 && MissingGlyphIds.Count == 0 && UnreadableGlyphIds.Count == 0 &&
+        UninterpretedGlyphIds.Count == 0;
 }
 
 /// <summary>
@@ -186,11 +195,14 @@ public static class OfdFontPayloadInspector
         var missingScalars = new List<int>();
         var missingGlyphs = new List<int>();
         var unreadable = new SortedSet<int>();
+        var uninterpreted = new SortedSet<int>();
         var readable = new HashSet<int>();
         void Outline(int gid)
         {
-            if (readable.Contains(gid) || unreadable.Contains(gid)) return;
+            if (readable.Contains(gid) || unreadable.Contains(gid) || uninterpreted.Contains(gid)) return;
             try { outlines.Read(gid, cancellationToken); readable.Add(gid); }
+            // The outline readers signal features outside their profile with NotSupportedException: undetermined, not damaged.
+            catch (NotSupportedException) { uninterpreted.Add(gid); }
             catch (Exception error) when (Recoverable(error)) { unreadable.Add(gid); }
         }
         try
@@ -221,6 +233,7 @@ public static class OfdFontPayloadInspector
         result.MissingScalars = new ReadOnlyCollection<int>(missingScalars);
         result.MissingGlyphIds = new ReadOnlyCollection<int>(missingGlyphs);
         result.UnreadableGlyphIds = new ReadOnlyCollection<int>(unreadable.ToArray());
+        result.UninterpretedGlyphIds = new ReadOnlyCollection<int>(uninterpreted.ToArray());
         return result;
     }
 

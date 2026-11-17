@@ -121,7 +121,7 @@ profile 为 `ofdrw-archival-profile/self-generated-simple/1`：单一 DocBody，
 | AC-019 | 6.2.6(c)(1) | 陈述（嵌入矢量字型数据时适用） | 载荷保留 `glyf`/`loca` 或 `CFF ` 轮廓表，所用字形的轮廓可读 |
 | AC-020 | 6.2.6(c)(2) | 陈述（嵌入矢量字型数据时适用） | 载荷保留 `cmap`、`head`、`hhea`、`hmtx`、`maxp`、`name`、`OS/2`、`post` |
 
-字体按声明它的资源表解析：`Document` 的 `PublicRes`/`DocumentRes` 与页面的 `PageRes`，`FontFile` 相对该资源表的 `BaseLoc`（以 `/` 开头时相对包根）。多个 Font 资源共用一个 FontFile 时逐个报告。字节由 Core 的 `OfdFontPayloadInspector` 判断：TrueType 和 CFF 轮廓的 OpenType 可判定；字体集合（TTC）、WOFF、CFF2、可变字体和无法识别的格式为 Unknown，不判 Fail；表目录损坏为 Fail。所用字形无法建模（例如多个 TextCode 带 CGTransform）、页面作用域不完整（CompositeObject、批注等）时为 Unknown。
+字体按声明它的资源表解析：`Document` 的 `PublicRes`/`DocumentRes`、页面的 `PageRes`，以及与 Reader 相同约定的页面同目录 `PageRes.xml`（无须链接；该表无法读取时为 Unknown，不判 Fail），`FontFile` 相对该资源表的 `BaseLoc`（以 `/` 开头时相对包根）。多个 Font 资源共用一个 FontFile 时逐个报告。字节由 Core 的 `OfdFontPayloadInspector` 判断：TrueType 和 CFF 轮廓的 OpenType 可判定；字体集合（TTC）、WOFF、CFF2、可变字体和无法识别的格式为 Unknown，不判 Fail；表目录损坏或所用字形数据损坏为 Fail；字形使用了 SDK 轮廓读取器不解释的有效特性（如按点对齐或带变换的复合字形）时为 Unknown（`GlyphOutlineUninterpreted`）。填充文字与裁剪区文字共用一个字体时，各自只按自己用到的字形判断。所用字形无法建模（例如多个 TextCode 带 CGTransform）、页面作用域不完整（CompositeObject、批注等）时为 Unknown。
 
 ### 豁免策略
 

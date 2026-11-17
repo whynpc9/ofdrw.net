@@ -78,6 +78,8 @@ public sealed class ArchivalAssessmentService
         var scope = new ArchivalScopeResult();
         var owned = new List<ArchivalClauseObservation>();
         var decided = new HashSet<string>(StringComparer.Ordinal);
+        // Several checks may share one gap (AC-017..AC-020 share FontPayloadNotAssessed): it closes only when all of them decided.
+        var undecided = new HashSet<string>(StringComparer.Ordinal);
         if (archive != null)
         {
             var xml = new ArchivalXmlReader(archive, preflight, cancellationToken);
@@ -92,11 +94,12 @@ public sealed class ArchivalAssessmentService
                     if (produced.Count == 0 || produced.Any(x => x.RuleId != check.Rule.RuleId || !check.Rule.Clauses.Contains(x.Clause)))
                         throw new InvalidOperationException("Clause check " + check.Rule.RuleId + " returned an invalid observation set.");
                     owned.AddRange(produced);
-                    if (check.GapCode != null && check.Decided(produced.AsReadOnly())) decided.Add(check.GapCode);
+                    if (check.GapCode != null) (check.Decided(produced.AsReadOnly()) ? decided : undecided).Add(check.GapCode);
                 }
                 catch (ArchivalBudgetExceededException ex)
                 {
                     scope.BudgetExceeded ??= ex.Budget;
+                    if (check.GapCode != null) undecided.Add(check.GapCode);
                     owned.Add(ArchivalOwnedRules.Observation(check.Rule, PreflightOutcome.Unknown, "InspectionBudgetExceeded",
                         "<input>", "<package>", ex.Budget + " budget"));
                 }
@@ -116,6 +119,7 @@ public sealed class ArchivalAssessmentService
             (ArchivalExecutionState.Complete, "Complete");
         // A gap closes only for a complete run whose checks actually decided the question for this input.
         if (state != ArchivalExecutionState.Complete) decided.Clear();
+        decided.ExceptWith(undecided);
         return Build(profile, state, reason, identity, coverage, scope, owned, decided);
     }
 
