@@ -58,8 +58,16 @@ internal sealed class DocxFontCatalog
     private readonly Dictionary<string, string> _resolved = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _authentic = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// True under <see cref="DocxNativeFontSelfContainment.RequireEmbedded"/>: the catalog keeps only
+    /// names a face records for itself (plus same-family alias groups). File-name stems and cross-family
+    /// CJK stand-ins are not registered, so layout measures exactly the bytes that will be embedded.
+    /// </summary>
+    internal bool RequireEmbedded { get; }
+
     internal DocxFontCatalog(DocxConversionOptions options, IList<DocxConversionDiagnostic> diagnostics, CancellationToken cancellationToken)
     {
+        RequireEmbedded = options.NativeFontSelfContainment == DocxNativeFontSelfContainment.RequireEmbedded;
         PdfFontRegistry.EnsureInstalled();
         var configured = options.FontDirectories
             .Where(directory => !string.IsNullOrWhiteSpace(directory))
@@ -152,6 +160,8 @@ internal sealed class DocxFontCatalog
     internal bool ShouldEmbed(string family)
     {
         if (string.IsNullOrWhiteSpace(family)) return false;
+        // Strict self-containment embeds every font; the renderer fails when bytes are not authentic.
+        if (RequireEmbedded) return true;
         var baseName = StripStyleSuffix(family);
         if (IsViewerLocalCjkFamily(baseName)) return false;
         if (IsNotoCjkFamily(baseName)) return _authentic.Contains(baseName);
@@ -334,7 +344,7 @@ internal sealed class DocxFontCatalog
     private bool TryGetFaces(string family, out List<(byte[] Data, FontStyle Style)> faces)
     {
         if (_fonts.TryGetValue(family, out faces!)) return true;
-        if (IsViewerLocalCjkFamily(family))
+        if (!RequireEmbedded && IsViewerLocalCjkFamily(family))
         {
             foreach (var name in CjkSubstituteOrder)
             {
@@ -380,7 +390,7 @@ internal sealed class DocxFontCatalog
             }
         }
 
-        if (substitute is null) return;
+        if (substitute is null || RequireEmbedded) return;
         foreach (var group in CjkAliasGroups)
         {
             if (!IsViewerLocalCjkFamily(group[0]) || group.Any(name => _fonts.ContainsKey(name))) continue;
@@ -395,7 +405,7 @@ internal sealed class DocxFontCatalog
     {
         using var stream = new MemoryStream(bytes, writable: false);
         var description = FontDescription.LoadDescription(stream);
-        if (!string.IsNullOrWhiteSpace(fileStem))
+        if (!string.IsNullOrWhiteSpace(fileStem) && !RequireEmbedded)
             Add(fileStem, bytes, description.Style);
         Add(description.FontFamilyInvariantCulture, bytes, description.Style);
         AddLocalizedFamily(description, bytes);
@@ -412,6 +422,22 @@ internal sealed class DocxFontCatalog
         catch (CultureNotFoundException)
         {
         }
+    }
+
+    /// <summary>
+    /// Names that denote the same family as <paramref name="family"/>: its CJK alias group
+    /// (for example SimSun/NSimSun/宋体/新宋体), otherwise just the family itself.
+    /// </summary>
+    internal static IReadOnlyCollection<string> SameFamilyNames(string family)
+    {
+        var baseName = StripStyleSuffix(family).Trim();
+        foreach (var group in CjkAliasGroups)
+        {
+            if (group.Any(name => name.Equals(baseName, StringComparison.OrdinalIgnoreCase)))
+                return group;
+        }
+
+        return new[] { baseName };
     }
 
     private static bool IsKnownCjkFamily(string family)

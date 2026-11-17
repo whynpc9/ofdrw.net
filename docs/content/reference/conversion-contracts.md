@@ -59,7 +59,11 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中的真实 TTF/OTF 字体，也支持从 TTC 中抽取独立面。未配置目录时扫描平台字体目录。Native 排版和嵌入使用同一物理字体面：配置了真实 Noto CJK 字体时会嵌入，拉丁字符也使用该字体的度量，不再以宿主西文字体度量替代。等价的 Noto 家族名称可以匹配真实字体，但不会把其他中文字体伪装成 Noto。 未从目录加载的 `Noto Sans CJK*` 家族（含 JP/TC/KR 等变体）保留名称字体，不嵌入宿主解析器的替代字节；这一路径的拉丁字符仍沿用 Arial 兼容度量。
 
-宋体/黑体等系统中文族保留名称字体兼容路径：OFD 只声明 `SimSun` / `SimHei`，不嵌入替代字体，由阅读器解析本机字体；这一路径的中日韩全宽字符仍使用 1em，拉丁字符保留原兼容度量。名称字体不能保证不同机器显示一致。LibreOffice Portable 默认关闭独立 UserInstallation；仍会将配置的 CJK 字体复制到便携版用户字体目录。
+宋体/黑体等系统中文族保留名称字体兼容路径：OFD 只声明 `SimSun` / `SimHei`，不嵌入替代字体，由阅读器解析本机字体；这一路径的中日韩全宽字符仍使用 1em，拉丁字符保留原兼容度量。名称字体不能保证不同机器显示一致。
+
+字体自包含策略（main，0.4.0 之后，尚未发布）：上述两条名称字体路径是默认的 `NativeFontSelfContainment = DocxNativeFontSelfContainment.Compatibility`，输出与此前相同。设置为 `RequireEmbedded`（CLI `--native-font-self-containment require-embedded`）后，Native 写出的每个字体资源都必须带有所声明字体族自身的字节：字体来自 `FontDirectories`（未配置时为平台字体目录中按现有规则发现的文件），字体自己的 name 表须记录该族名或同族别名；文件名对应、跨族替代或宿主解析器按名称找到的字节都不接受。系统中文族因此改为嵌入，拉丁字符改用同一嵌入字体面度量，资源按请求样式分别声明（如 `SimSun|regular`、`SimSun|bold`）。字体自身 OS/2 `fsType` 为限制许可嵌入（0x0002）、仅位图嵌入（0x0200）或缺少 OS/2 表时失败；禁止子集化（0x0100）时保留完整字体，与 `NativeParagraphLayoutEngine` 的字形子集同时使用则失败。失败抛出 `InvalidDataException`，消息以 `DOCX_FONT_NOT_SELF_CONTAINED` 开头并指出字体族与原因，不写出输出。成功时返回 `DOCX_FONT_LICENSE_NOT_VERIFIED`：许可位允许嵌入不等于取得授权，字体许可仍由调用方负责。未指定字体的文字按 fallback 选择实际有字节的族，不再落到只有替代字节的系统族名。DualLayer 和 DOCX→PDF 遇到 `RequireEmbedded` 抛出 `NotSupportedException`。写出时子集字体按现有规则使用包内唯一的内部名称，`Font` 元素的 `FontName`/`FamilyName` 才是声明的字体族。
+
+LibreOffice Portable 默认关闭独立 UserInstallation；仍会将配置的 CJK 字体复制到便携版用户字体目录。
 
 OFD → PDF 根据实际选中字形文件的样式判断是否模拟粗体/斜体；对名称字体仅在请求这些样式时额外探测宿主后备面。该探测只注册独立 TTF/OTF，TTC、无效字节、读取/解析异常或可选注册预算不足会跳过注册，保留逐文本字体回退；OFD 内嵌字体失败仍严格报错。成功探测的字体会计入进程级注册预算，常规名称字体不因该探测被额外复制注册。
 

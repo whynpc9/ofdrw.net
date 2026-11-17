@@ -121,6 +121,17 @@ public sealed class DocxConversionOptions
     public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
 
     /// <summary>
+    /// Controls whether Native OFD output must be font-self-contained. The default,
+    /// <see cref="DocxNativeFontSelfContainment.Compatibility"/>, keeps the name-only policy for
+    /// system Chinese families and missing Noto Sans CJK. <see cref="DocxNativeFontSelfContainment.RequireEmbedded"/>
+    /// embeds the declared family's own bytes from <see cref="FontDirectories"/> (or the platform font
+    /// directories when none are configured) for every used font, and fails when they are unavailable or
+    /// OS/2.fsType forbids embedding. A permissive fsType is not a licence grant; licensing stays the
+    /// caller's responsibility. DualLayer OFD and DOCX-to-PDF conversion reject RequireEmbedded.
+    /// </summary>
+    public DocxNativeFontSelfContainment NativeFontSelfContainment { get; set; } = DocxNativeFontSelfContainment.Compatibility;
+
+    /// <summary>
     /// Opt-in final paragraph layout for Native OFD text. Null (the default) keeps the compatibility
     /// layout and its name-only viewer fonts. With an engine (for example
     /// <c>HarfBuzzTextPrelayout.CreateParagraphLayout()</c> from Ofdrw.Net.Text.HarfBuzz), paragraph, table

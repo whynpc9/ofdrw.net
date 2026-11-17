@@ -67,6 +67,41 @@ internal sealed class OpenTypeFace
         }
     }
 
+    /// <summary>OS/2.fsType embedding permission bits, or null when the face has no usable OS/2 table.</summary>
+    internal int? EmbeddingPermissions =>
+        Tables.TryGetValue("OS/2", out var os2) && os2.Length >= 10 ? U16(os2, 8) : null;
+
+    /// <summary>
+    /// Family names recorded by the face itself: name IDs 1 (family), 16 (typographic family)
+    /// and 21 (WWS family) in every Unicode/Windows/Macintosh-Roman record. Undecodable records are skipped.
+    /// </summary>
+    internal IReadOnlyCollection<string> FamilyNames()
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!Tables.TryGetValue("name", out var table) || table.Length < 6) return names;
+        var count = U16(table, 2);
+        var storage = U16(table, 4);
+        Require(table, 6, count * 12);
+        for (var index = 0; index < count; index++)
+        {
+            var record = 6 + index * 12;
+            var platform = U16(table, record);
+            var encoding = U16(table, record + 2);
+            var nameId = U16(table, record + 6);
+            if (nameId is not (1 or 16 or 21)) continue;
+            var length = U16(table, record + 8);
+            var offset = storage + U16(table, record + 10);
+            if (offset + (long)length > table.Length) continue;
+            string value;
+            if (platform == 0 || platform == 3 && encoding is 0 or 1 or 10) value = Encoding.BigEndianUnicode.GetString(table, offset, length);
+            else if (platform == 1 && encoding == 0) value = Encoding.ASCII.GetString(table, offset, length);
+            else continue;
+            value = value.Trim('\0', ' ');
+            if (value.Length > 0) names.Add(value);
+        }
+        return names;
+    }
+
     internal byte[] Build() => Build(Version);
 
     internal byte[] Build(uint version)

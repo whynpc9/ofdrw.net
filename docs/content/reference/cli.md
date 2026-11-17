@@ -84,6 +84,7 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 - `--docx-engine`：`auto`、`word`（macOS）、`libreoffice` 或 `built-in`；Native 不调用这些视觉渲染引擎。
 - `--font-directory` 可重复，用于提供实际字体文件。字体部署见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 - `0.2.0` 提供 `--native-embedded-bold-behavior throw`，用于要求 Native 嵌入粗体选用真实粗体字面。
+- `--native-font-self-containment`：`compatibility`（默认，系统中文族保留名称字体）或 `require-embedded`（每个用到的字体都嵌入该族自身的字节，否则失败；OS/2 `fsType` 限制嵌入的字体被拒绝）。许可位不等于授权，字体许可由调用方负责。仅用于 Native DOCX→OFD，与 `dual-layer` 或 `docx-to-pdf` 同用时报错。该参数在 main 上提供（0.4.0 之后，尚未发布），说明见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 
 ## 退出码与输出安全
 

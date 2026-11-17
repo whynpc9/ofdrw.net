@@ -89,6 +89,12 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
     {
         if (docxInput is null) throw new ArgumentNullException(nameof(docxInput));
         if (ofdOutput is null) throw new ArgumentNullException(nameof(ofdOutput));
+        if (!Enum.IsDefined(typeof(DocxNativeFontSelfContainment), _semanticOptions.NativeFontSelfContainment))
+            throw new ArgumentOutOfRangeException(nameof(DocxConversionOptions.NativeFontSelfContainment), "Unknown native font self-containment policy.");
+        if (_semanticOptions.NativeFontSelfContainment == DocxNativeFontSelfContainment.RequireEmbedded &&
+            _semanticOptions.OfdMode != DocxToOfdMode.Native)
+            throw new NotSupportedException(
+                "NativeFontSelfContainment.RequireEmbedded applies only to Native DOCX-to-OFD output; DualLayer output keeps a rendered visual layer and name-only text-layer fonts.");
         // Owner-only directory: it holds a plaintext copy of the caller's DOCX and its rendering.
         var directory = PrivateTemporaryDirectory.Create("ofdrw-docx-ofd-");
         var inputPath = Path.Combine(directory, "input.docx");

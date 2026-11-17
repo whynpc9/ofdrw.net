@@ -166,6 +166,7 @@ internal static partial class Cli
                 options.DocxEngine,
                 options.DocxOfdMode,
                 options.NativeEmbeddedBoldBehavior,
+                options.NativeFontSelfContainment,
                 options.LibreOfficePath,
                 options.FontDirectories, options.DocumentIndex ?? 0,
                 options.CopyBookmarks, options.CopyAttachments, cancellationToken).ConfigureAwait(false);
@@ -211,6 +212,7 @@ internal static partial class Cli
         DocxConversionEngine docxEngine,
         DocxToOfdMode docxOfdMode,
         DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
+        DocxNativeFontSelfContainment nativeFontSelfContainment,
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories,
         int documentIndex,
@@ -238,6 +240,7 @@ internal static partial class Cli
                 docxEngine,
                 docxOfdMode,
                 nativeEmbeddedBoldBehavior,
+                nativeFontSelfContainment,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, cancellationToken).ConfigureAwait(false);
@@ -249,6 +252,7 @@ internal static partial class Cli
                 docxEngine,
                 docxOfdMode,
                 nativeEmbeddedBoldBehavior,
+                nativeFontSelfContainment,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
@@ -280,6 +284,7 @@ internal static partial class Cli
         DocxConversionEngine engine,
         DocxToOfdMode ofdMode,
         DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
+        DocxNativeFontSelfContainment nativeFontSelfContainment,
         string? libreOfficePath,
         IEnumerable<string> fontDirectories)
     {
@@ -288,6 +293,7 @@ internal static partial class Cli
             Engine = engine,
             OfdMode = ofdMode,
             NativeEmbeddedBoldBehavior = nativeEmbeddedBoldBehavior,
+            NativeFontSelfContainment = nativeFontSelfContainment,
             LibreOfficePath = libreOfficePath
         };
         foreach (var directory in fontDirectories)
@@ -614,6 +620,11 @@ internal static partial class Cli
                     options.DocxOnlyOptions.Add(arg);
                     options.NativeEmbeddedBoldBehavior = ParseNativeEmbeddedBoldBehavior(ReadValue(args, ref i, arg));
                     break;
+                case "--native-font-self-containment":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
+                    options.NativeFontSelfContainment = ParseNativeFontSelfContainment(ReadValue(args, ref i, arg));
+                    break;
                 case "--font-directory":
                     options.DocxOnlyOptions.Add(arg);
                     options.FontDirectories.Add(ReadValue(args, ref i, arg));
@@ -758,6 +769,17 @@ internal static partial class Cli
         };
     }
 
+    private static DocxNativeFontSelfContainment ParseNativeFontSelfContainment(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "compatibility" => DocxNativeFontSelfContainment.Compatibility,
+            "require-embedded" => DocxNativeFontSelfContainment.RequireEmbedded,
+            _ => throw new ArgumentException(
+                "Invalid --native-font-self-containment value. Use compatibility or require-embedded.")
+        };
+    }
+
     private static bool IsHelp(string arg)
     {
         return arg is "-h" or "--help" or "help";
@@ -860,6 +882,9 @@ internal static partial class Cli
           --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
           --native-embedded-bold-behavior Native embedded bold: text-stroke (default) or throw.
                              throw requires a physical bold face for selected embedded text, not name-only text.
+          --native-font-self-containment Native DOCX to OFD fonts: compatibility (default) or require-embedded.
+                             require-embedded embeds every used font's own bytes (system Chinese families included)
+                             or fails; fonts restricted by OS/2.fsType are rejected. fsType is not a licence grant.
           --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
           --font-directory    Additional font directory for DOCX rendering; may be repeated.
           -h, --help    Show help.
@@ -888,6 +913,8 @@ internal static partial class Cli
         public DocxToOfdMode DocxOfdMode { get; set; } = DocxToOfdMode.Native;
 
         public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
+
+        public DocxNativeFontSelfContainment NativeFontSelfContainment { get; set; } = DocxNativeFontSelfContainment.Compatibility;
 
         public List<string> FontDirectories { get; } = new();
 
