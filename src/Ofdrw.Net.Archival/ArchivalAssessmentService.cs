@@ -70,9 +70,9 @@ public sealed class ArchivalAssessmentService
         try { archive = await new OfdPackageLoader().LoadAsync(copy, preflight.LoadOptions, cancellationToken).ConfigureAwait(false); }
         catch (InvalidDataException ex)
         {
-            // The public loader reports configured limits and malformed ZIPs with the same exception type; its limit
-            // messages are the only distinguishing signal.
-            loadFailure = ex.Message.IndexOf("limit", StringComparison.OrdinalIgnoreCase) >= 0 ? "InputBudgetExceeded" : "InputRejected";
+            // The public loader reports configured limits and malformed ZIPs with the same exception type; limit
+            // failures carry an internal marker so the classification does not depend on message text.
+            loadFailure = OfdPackageLoader.IsLimitFailure(ex) ? "InputBudgetExceeded" : "InputRejected";
         }
 
         var scope = new ArchivalScopeResult();
