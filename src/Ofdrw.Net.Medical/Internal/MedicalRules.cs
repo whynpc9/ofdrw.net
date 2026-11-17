@@ -268,7 +268,9 @@ internal static class MedicalRules
         {
             var items = s.Locations.Where(x => kinds.Contains(x.Kind)).ToList();
             var wrong = items.Where(x => x.Resolved != null && !x.Resolved.StartsWith(folder, StringComparison.Ordinal)).ToList();
-            if (items.Count == 0)
+            if (items.Count == 0 && s.DocumentUnavailable)
+                yield return O(rule, clause, PreflightOutcome.Unknown, "DocumentUnavailable", s.DocumentPath, Package, "Document.xml unreadable", folder);
+            else if (items.Count == 0)
                 yield return O(rule, clause, PreflightOutcome.NotApplicable, "NotDeclared", s.DocumentPath, Package, "None declared", folder);
             else if (wrong.Count > 0)
                 yield return O(rule, clause, PreflightOutcome.Fail, "OutsideFolder", wrong[0].DeclaredIn, wrong[0].Selector, Sample(wrong.Select(x => x.Resolved!)), folder);
@@ -392,13 +394,13 @@ internal static class MedicalRules
         var images = context.Structure.Media.Where(x => string.Equals(x.Type, "Image", StringComparison.OrdinalIgnoreCase)).ToList();
         if (images.Count == 0)
         {
-            var reason = context.Structure.Unreadable.Count > 0 ? PreflightOutcome.Unknown : PreflightOutcome.NotApplicable;
+            var reason = context.Structure.Unreadable.Count > 0 || context.Structure.DocumentUnavailable ? PreflightOutcome.Unknown : PreflightOutcome.NotApplicable;
             yield return O(rule, "7.2(c)", reason, reason == PreflightOutcome.Unknown ? "ResourceScopeIncomplete" : "NoImages", Package, Package, "No image resources", "Image payloads in the file");
             yield return O(rule, "7.2(d)", reason, reason == PreflightOutcome.Unknown ? "ResourceScopeIncomplete" : "NoImages", Package, Package, "No image resources", "Permitted image formats");
             yield break;
         }
         // An unreadable page or table may declare further images; only a confirmed violation outranks that.
-        var incomplete = context.Structure.Unreadable.Count > 0;
+        var incomplete = context.Structure.Unreadable.Count > 0 || context.Structure.DocumentUnavailable;
         var missing = images.Where(x => x.Resolved != null && !context.Package.Exists(x.Resolved)).ToList();
         var unresolved = images.Where(x => x.Resolved == null).ToList();
         yield return missing.Count > 0
@@ -406,7 +408,7 @@ internal static class MedicalRules
             : unresolved.Count > 0
                 ? O(rule, "7.2(c)", PreflightOutcome.Unknown, "UnresolvableLocation", unresolved[0].Table.Path, unresolved[0].Selector, unresolved[0].Declared, "Package-relative MediaFile")
                 : incomplete
-                    ? O(rule, "7.2(c)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Sample(context.Structure.Unreadable), "Every resource table readable")
+                    ? O(rule, "7.2(c)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable.FirstOrDefault() ?? "Doc_0/Document.xml", Package, Sample(context.Structure.Unreadable), "Every resource table readable")
                     : O(rule, "7.2(c)", PreflightOutcome.Pass, "ImagesInFile", images[0].Table.Path, Package, images.Count + " images", "Image payloads in the file");
         var formats = new List<string>(); var rejected = new List<string>();
         foreach (var image in images.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved)))
@@ -423,7 +425,7 @@ internal static class MedicalRules
                     ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ImageUnavailable", (missing.Concat(unresolved)).First().Table.Path, Package,
                         Sample(missing.Select(x => x.Resolved!).Concat(unresolved.Select(x => x.Declared))), "Every image payload inspected")
                 : incomplete
-                    ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Sample(context.Structure.Unreadable), "Every resource table readable")
+                    ? O(rule, "7.2(d)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable.FirstOrDefault() ?? "Doc_0/Document.xml", Package, Sample(context.Structure.Unreadable), "Every resource table readable")
                     : O(rule, "7.2(d)", PreflightOutcome.Pass, "PermittedImageFormats", Package, "payload signature", string.Join(", ", formats.Distinct()), "BMP, JPEG, JPEG2000, TIFF, PNG or JBIG2");
     }
 
@@ -432,11 +434,12 @@ internal static class MedicalRules
     {
         const string rule = "MH-010";
         // Declared media whose payload is missing or unresolvable, and unreadable tables, leave the scope incomplete.
-        var incomplete = context.Structure.Unreadable.Count > 0;
+        var incomplete = context.Structure.Unreadable.Count > 0 || context.Structure.DocumentUnavailable;
         var declaredMedia = context.Structure.Media;
         var media = declaredMedia.Where(x => x.Resolved != null && context.Package.Exists(x.Resolved)).ToList();
         var unavailableMedia = declaredMedia.Where(x => x.Resolved == null || !context.Package.Exists(x.Resolved)).Select(x => x.Resolved ?? x.Declared).ToList();
-        string Unread() => Sample(context.Structure.Unreadable);
+        string Unread() => context.Structure.Unreadable.Count > 0 ? Sample(context.Structure.Unreadable) : "Document.xml unavailable";
+        var firstUnread = context.Structure.Unreadable.FirstOrDefault() ?? context.Structure.DocumentPath ?? "OFD.xml";
         foreach (var (clause, type, name) in new[] { ("7.2(f)", "Audio", "MP3"), ("7.2(g)", "Video", "MP4") })
         {
             var items = media.Where(x => string.Equals(x.Type, type, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -447,7 +450,7 @@ internal static class MedicalRules
                 yield return unavailable.Count > 0
                     ? O(rule, clause, PreflightOutcome.Unknown, "MediaUnavailable", unavailable[0], Package, Sample(unavailable), name + " or another common format")
                     : incomplete
-                        ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
+                        ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", firstUnread, Package, Unread(), "Every resource table readable")
                         : O(rule, clause, PreflightOutcome.NotApplicable, "No" + type, Package, Package, "No embedded " + type.ToLowerInvariant(), name + " or another common format");
                 continue;
             }
@@ -467,7 +470,7 @@ internal static class MedicalRules
                 : unavailable.Count > 0
                     ? O(rule, clause, PreflightOutcome.Unknown, "MediaUnavailable", unavailable[0], Package, Sample(unavailable), name + " or another common format")
                 : incomplete
-                    ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
+                    ? O(rule, clause, PreflightOutcome.Unknown, "ResourceScopeIncomplete", firstUnread, Package, Unread(), "Every resource table readable")
                 : O(rule, clause, PreflightOutcome.Pass, name + "Payloads", items[0].Resolved!, "payload signature", items.Count + " payloads", name);
         }
         var limit = context.Options.MaxEmbeddedObjectBytes;
@@ -477,7 +480,7 @@ internal static class MedicalRules
             : unavailableMedia.Count > 0
                 ? O(rule, "7.2(e)", PreflightOutcome.Unknown, "MediaUnavailable", unavailableMedia[0], Package, Sample(unavailableMedia), "At most " + limit + " bytes")
             : incomplete
-                ? O(rule, "7.2(e)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", context.Structure.Unreadable[0], Package, Unread(), "Every resource table readable")
+                ? O(rule, "7.2(e)", PreflightOutcome.Unknown, "ResourceScopeIncomplete", firstUnread, Package, Unread(), "Every resource table readable")
             : media.Count == 0
                 ? O(rule, "7.2(e)", PreflightOutcome.NotApplicable, "NoEmbeddedObjects", Package, Package, "No embedded media", "At most " + limit + " bytes")
                 : O(rule, "7.2(e)", PreflightOutcome.Pass, "EmbeddedObjectsWithinLimit", Package, "uncompressed size", media.Count + " objects", "At most " + limit + " bytes");
@@ -487,6 +490,7 @@ internal static class MedicalRules
         var attachmentsUnknown = context.Structure.InternalAttachments.Where(x => !context.Package.Exists(x.Path)).Select(x => x.Path)
             .Concat(context.Structure.Locations.Where(x => x.Resolved == null && x.Kind is MedicalLocationKind.Attachment or MedicalLocationKind.Attachments).Select(x => x.Declared))
             .Concat(context.Structure.Locations.Where(x => x.Kind == MedicalLocationKind.Attachments && x.Resolved != null && context.Structure.Unreadable.Contains(x.Resolved)).Select(x => x.Resolved!))
+            .Concat(context.Structure.DocumentUnavailable ? new[] { context.Structure.DocumentPath ?? "Document.xml" } : Array.Empty<string>())
             .ToList();
         yield return attachmentsOver.Count == 0 && attachmentsUnknown.Count > 0
             ? O(rule, "7.4(c)", PreflightOutcome.Unknown, "AttachmentUnavailable", attachmentsUnknown[0], Package, Sample(attachmentsUnknown), "At most " + limit + " bytes")
@@ -552,7 +556,8 @@ internal static class MedicalRules
             .Concat(s.InternalAttachments.Select(x => (x.Path, Kind: MachineReadableKind(x.Path, x.Format))).Where(x => x.Kind != null).Select(x => (x.Path, Kind: x.Kind!)))
             .Distinct().ToList();
         // Declared but unavailable payloads, and unreadable or unresolved indexes, are not "no payload": they are unknown.
-        var unavailable = s.MachineReadableUnavailable.Concat(payloads.Where(x => !context.Package.Exists(x.Path)).Select(x => x.Path)).Distinct().ToList();
+        var unavailable = s.MachineReadableUnavailable.Concat(payloads.Where(x => !context.Package.Exists(x.Path)).Select(x => x.Path))
+            .Concat(s.DocumentUnavailable ? new[] { s.DocumentPath ?? "Document.xml" } : Array.Empty<string>()).Distinct().ToList();
         payloads = payloads.Where(x => context.Package.Exists(x.Path)).ToList();
         if (payloads.Count == 0 && unavailable.Count > 0)
         {
@@ -662,7 +667,7 @@ internal static class MedicalRules
         var unprotected = required.Where(x => !protectedEntries.Contains(x)).ToList();
         var pages = s.PagePaths.Where(x => !protectedEntries.Contains(x)).ToList();
         // The exclusion set is incomplete while an annotation index or page file location is unknown.
-        var annotationIndexUnreadable = s.AnnotationIndexUnresolved || s.AnnotationIndexPaths.Any(s.Unreadable.Contains) ||
+        var annotationIndexUnreadable = s.DocumentUnavailable || s.AnnotationIndexUnresolved || s.AnnotationIndexPaths.Any(s.Unreadable.Contains) ||
             s.Locations.Any(x => x.Kind == MedicalLocationKind.PageAnnotation && x.Resolved == null);
 
         // FileRef resolves from the package root, as OfdSignatureVerifier and archival preflight do. While any reference

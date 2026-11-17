@@ -179,6 +179,25 @@ public class MedicalAssessmentServiceTests
         Assert.Equal("StructureIncomplete", report.Single("6.2(a)", "MH-006").ReasonCode);
         Assert.Equal("ResourceScopeIncomplete", report.Single("7.1(b)", "MH-006").ReasonCode);
 
+        // An unparsable Document.xml may declare tags, attachments and annotations: unknown, not "not declared".
+        foreach (var broken in new Action<Dictionary<string, byte[]>>[]
+        {
+            e => e.Set("Doc_0/Document.xml", "<not-closed"),
+            e => e.Set("OFD.xml", e.Text("OFD.xml").Replace(">Doc_0/Document.xml<", ">../../escape.xml<")),
+        })
+        {
+            report = await Assess(Mutate(source, broken));
+            Assert.Equal(MedicalExecutionState.Complete, report.ExecutionState);
+            foreach (var clause in new[] { "7.1(d)", "7.1(e)", "7.1(f)", "7.4(c)", "7.5(a)", "7.5(b)", "7.2(c)", "7.2(e)", "7.2(f)" })
+                Assert.True(report.GetClause(clause).Outcome == PreflightOutcome.Unknown, clause + " is " + report.GetClause(clause).Outcome);
+        }
+        var signedBroken = Signed(source, MedicalRules.Sm2Oid, MedicalRules.Sm3Oid, e =>
+        {
+            e.Set("Doc_0/Document.xml", "<not-closed");
+            e.Set("Doc_0/Annots/Page_0/Annotation.xml", Open("PageAnnot") + "</ofd:PageAnnot>");
+        });
+        Assert.Equal("AnnotationIndexUnreadable", (await Assess(signedBroken)).Single("8(c)", "MH-013").ReasonCode);
+
         // An unreadable attachment index leaves attachment sizes unknown.
         report = await Assess(AddToDocument(source, "<ofd:Attachments>Attachs/Attachments.xml</ofd:Attachments>", e => e.Set("Doc_0/Attachs/Attachments.xml", "<not-closed")));
         Assert.Equal("AttachmentUnavailable", report.Single("7.4(c)", "MH-010").ReasonCode);

@@ -83,6 +83,12 @@ internal sealed class MedicalStructure
     internal List<(string Path, string? Format)> InternalAttachments = new List<(string, string?)>();
     internal List<string> TagPayloads = new List<string>();
 
+    /// <summary>
+    /// True when Document.xml could not be resolved or parsed: its tags, attachments, annotations and resources are then
+    /// unknown, not absent.
+    /// </summary>
+    internal bool DocumentUnavailable => Document?.Root == null;
+
     internal static MedicalStructure Walk(MedicalPackage package)
     {
         var result = new MedicalStructure();
