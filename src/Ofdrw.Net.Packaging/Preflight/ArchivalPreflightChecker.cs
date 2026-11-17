@@ -93,7 +93,7 @@ public sealed class ArchivalPreflightChecker
         private readonly List<PreflightRuleResult> results = new List<PreflightRuleResult>();
         private readonly HashSet<string> gaps = new HashSet<string>(StringComparer.Ordinal)
         {
-            "Standard clauses, OFD-H/OFD conformance and archival certification are not assessed.",
+            "Standard clauses, OFD conformance and archival certification are not assessed.",
             "Font format, glyph coverage, embedding rights and licensing are not assessed.",
             "Signature digests, cryptography, certificates, timestamps and legal validity are not assessed.",
             "Unknown XML, actions, nested payload contents, full resource-ID closure and XSD validation are not covered."

@@ -196,7 +196,6 @@ Console.WriteLine($"[E2E] Output directory: {outputDir}");
 var builder = new OfdDocumentBuilder();
 builder.SetOptions(new OfdDocumentOptions
 {
-    DocType = "OFD-H",
     DocumentId = "Doc_0",
     Metadata = new OfdMetadata
     {

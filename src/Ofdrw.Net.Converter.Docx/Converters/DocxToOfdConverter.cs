@@ -205,8 +205,8 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
     /// Gives the DualLayer package the same profile as Native output. The visual
     /// stage is a PDF converter whose defaults (GB/T 33190 "/2016" namespace,
     /// "PDF document" metadata) describe a PDF import, but the document is a
-    /// DOCX conversion and must open in the same readers as Native output. OFD-H
-    /// readers that only resolve the short namespace otherwise drop the page image
+    /// DOCX conversion and must open in the same readers as Native output.
+    /// Readers that only resolve the short namespace otherwise drop the page image
     /// and show a blank page.
     /// </summary>
     private void ApplyDocxPackageProfile(OfdDocumentPackage visual)

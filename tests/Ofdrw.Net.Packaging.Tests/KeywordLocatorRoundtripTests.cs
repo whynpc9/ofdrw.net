@@ -157,7 +157,7 @@ public sealed class KeywordLocatorRoundtripTests
     {
         var entries = new Dictionary<string, byte[]>();
         void Add(string path, string xml) => entries.Add(path, Encoding.UTF8.GetBytes(xml));
-        Add("OFD.xml", $"<o:OFD xmlns:o=\"{Ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>");
+        Add("OFD.xml", $"<o:OFD xmlns:o=\"{Ns}\" Version=\"1.0\" DocType=\"OFD\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>");
         Add("Doc_0/Document.xml", $"<o:Document xmlns:o=\"{Ns}\"><o:CommonData><o:MaxUnitID>1000</o:MaxUnitID><o:PageArea><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:PageArea><o:PublicRes>PublicRes.xml</o:PublicRes></o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/>{(multiple ? "<o:Page ID=\"2\" BaseLoc=\"Pages/Page_1/Content.xml\"/>" : "")}</o:Pages></o:Document>");
         Add("Doc_0/PublicRes.xml", $"<o:Res xmlns:o=\"{Ns}\"><o:Fonts><o:Font ID=\"10\" FontName=\"Fake\"><o:FontFile>Res/font.ttf</o:FontFile></o:Font></o:Fonts></o:Res>");
         for (var page = 0; page < (multiple ? 2 : 1); page++)

@@ -15,8 +15,9 @@ namespace Ofdrw.Net.Packaging.Tests;
 public sealed class WriterFailClosedTests
 {
     // SHA-256 over the sorted entry names and contents written for Package() by the writer
-    // before the fail-closed change (computed at d34d0a3). ZIP timestamps are excluded.
-    private const string ExpectedManifest = "8F07F17A0B52B28392857687F260D1BA42534B58F42ECD3FD1309413D3463595";
+    // before the fail-closed change (d34d0a3), adjusted for DocType="OFD" in OFD.xml.
+    // ZIP timestamps are excluded.
+    private const string ExpectedManifest = "3750C8D8D812C15EAF1316955B61A344131067737C0E96A98654A8C136A594DC";
 
     [Fact]
     public async Task Write_FailureMidway_LeavesNoReadableZip()
@@ -87,8 +88,6 @@ public sealed class WriterFailClosedTests
     private static OfdDocumentPackage Package()
     {
         var package = new OfdDocumentPackage();
-        // Pin the document type used by the historical writer manifest.
-        package.Options.DocType = "OFD-H";
         for (var page = 0; page < 3; page++)
         {
             var model = new OfdPage { Index = page, WidthMillimeters = 210, HeightMillimeters = 297 };

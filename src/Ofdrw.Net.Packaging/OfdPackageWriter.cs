@@ -1265,7 +1265,7 @@ public sealed partial class OfdPackageWriter
 
     /// <summary>
     /// Name-only CJK faces (SimSun/SimHei) have no bold/italic file. Spec
-    /// <c>Weight</c>/<c>Italic</c> are ignored by several OFD-H viewers, so also
+    /// <c>Weight</c>/<c>Italic</c> are ignored by some viewers, so also
     /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Fresh native
     /// DOCX may explicitly request a bold text stroke for an embedded regular
     /// face. Imported XML owns its paint/CTM, including omitted defaults;

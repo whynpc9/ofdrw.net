@@ -18,7 +18,7 @@ public sealed class PackageRoundTripTests
 {
     [Theory]
     [InlineData(null)]
-    [InlineData("OFD-H")]
+    [InlineData("OFD-A")]
     public async Task Writer_ShouldGenerateRequiredEntries_AndReaderCanParse(string? docType)
     {
         var builder = new OfdDocumentBuilder();

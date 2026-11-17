@@ -130,7 +130,7 @@ public sealed class LocateCliTests : IDisposable
         const string ns = "http://www.ofdspec.org/2016";
         var entries = new Dictionary<string, byte[]>
         {
-            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
+            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
             ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>1000</o:MaxUnitID><o:PageArea><o:PhysicalBox>0 0 200 200</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes></o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),
             ["Doc_0/DocumentRes.xml"] = Encoding.UTF8.GetBytes($"<o:Res xmlns:o=\"{ns}\"><o:Fonts><o:Font ID=\"10\" FontName=\"OriginalOFL\"><o:FontFile>Res/font.ttf</o:FontFile></o:Font></o:Fonts></o:Res>"),
             ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>0 0 200 200</o:PhysicalBox></o:Area><o:Content><o:Layer ID=\"20\"><o:TextObject ID=\"100\" Boundary=\"20 30 100 50\" Font=\"10\" Size=\"4\"><o:TextCode X=\"2\" Y=\"8\" DeltaX=\"4\">中文</o:TextCode></o:TextObject></o:Layer></o:Content></o:Page>"),

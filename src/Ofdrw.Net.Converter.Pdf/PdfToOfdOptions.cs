@@ -102,10 +102,9 @@ public sealed class PdfToOfdOptions
 
     /// <summary>
     /// Gets or sets the XML namespace written into the OFD parts. The default is the
-    /// GB/T 33190-2016 URI <see cref="OfdConstants.StandardNamespace"/>. Readers built
-    /// around the OFD-H medical profile or pre-2016 drafts only resolve
-    /// <see cref="OfdConstants.Namespace"/> (<c>http://www.ofdspec.org</c>) and show
-    /// blank pages for <c>/2016</c> packages; use that URI when targeting them.
+    /// GB/T 33190-2016 URI <see cref="OfdConstants.StandardNamespace"/>. Some older readers
+    /// only resolve <see cref="OfdConstants.Namespace"/> (<c>http://www.ofdspec.org</c>).
+    /// Use that URI when targeting readers that show blank pages for <c>/2016</c> packages.
     /// </summary>
     public string Namespace { get; set; } = OfdConstants.StandardNamespace;
 }

@@ -320,7 +320,7 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
                 (overrideCodes ?? ($"<o:TextCode X=\"2\" Y=\"8\"" + (overrideText is null ? $" DeltaX=\"{deltas}\"" : "") + $">{text}</o:TextCode>")) + "</o:TextObject>");
         var entries = new Dictionary<string, byte[]>
         {
-            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
+            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
             ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>1000</o:MaxUnitID><o:PageArea><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes>" +
                 (withTemplates ? "<o:TemplatePage ID=\"81\" BaseLoc=\"Pages/Template_Back/Content.xml\" ZOrder=\"Background\"/><o:TemplatePage ID=\"82\" BaseLoc=\"Pages/Template_Front/Content.xml\" ZOrder=\"Foreground\"/>" : "") +
                 "</o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),

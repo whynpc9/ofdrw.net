@@ -181,7 +181,7 @@ public sealed class R10ImageProfileTests
             (mask is null ? "" : $"<o:MultiMedia ID=\"21\" Type=\"Image\" Format=\"{maskFormat}\"><o:MediaFile>mask.bin</o:MediaFile></o:MultiMedia>");
         var entries = new Dictionary<string, byte[]>
         {
-            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
+            ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
             ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>100</o:MaxUnitID><o:PageArea><o:PhysicalBox>0 0 100 100</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes></o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),
             ["Doc_0/DocumentRes.xml"] = Encoding.UTF8.GetBytes($"<o:Res xmlns:o=\"{ns}\"><o:MultiMedias>{resources}</o:MultiMedias></o:Res>"),
             ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>0 0 100 100</o:PhysicalBox></o:Area><o:Content><o:Layer ID=\"2\"><o:ImageObject ID=\"3\" Boundary=\"10 10 40 35\" ResourceID=\"20\"{reference}/></o:Layer></o:Content></o:Page>"),
