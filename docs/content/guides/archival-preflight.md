@@ -8,6 +8,8 @@ sidebar:
 
 `Ofdrw.Net.Packaging.Preflight.ArchivalPreflightChecker` 使用六项有限的本地规则检查现有 OFD ZIP。其配置为 `ofdrw-local-preflight/0.1-draft`，规则修订号为 1。它不是 OFD-H、OFD 或 GB/T 42133 符合性认证，也不是归档认证。标准映射尚未验证，每个 `Clause` 均为空。
 
+需要按声明、输入范围、105 个条款、软件要求、外部认可和执行状态分开查看结果时，使用 main 上新增的可选包 `Ofdrw.Net.Archival`（尚未发布），见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)。它组合本页的接口，不改变它们的结果。
+
 ```csharp
 using Ofdrw.Net.Packaging.Preflight;
 

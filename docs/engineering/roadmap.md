@@ -12,7 +12,7 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 | 排版、表格、图片与 Canvas | [Flow](../content/guides/flow-layout.md)、[公共表格](../content/guides/public-tables.md)、[原生绘图](../content/guides/graphics.md) |
 | 文档、附件和多文档操作 | [文档工具](../content/guides/document-tools.md)、[附件](../content/reference/core-model.md)、[多 DocBody](../content/guides/multi-docbody.md) |
 | 字体与塑形增量 | [字体出口表](../validation/r08-four-outlet-ledger.md)、[预排版](../content/reference/text-prelayout.md)、[typed 输出](../content/reference/text-shaped-output.md)、[混排查询](../content/reference/text-mixed-paragraph.md) |
-| 签名、加密与归档 | [签名保护范围](../content/reference/signature-scope-v12.md)、[可选加密](../content/reference/password-crypto.md)、[归档预检](../content/guides/archival-preflight.md)、[标准覆盖账本](../content/reference/archival-standard-coverage.md) |
+| 签名、加密与归档 | [签名保护范围](../content/reference/signature-scope-v12.md)、[可选加密](../content/reference/password-crypto.md)、[归档预检](../content/guides/archival-preflight.md)、[标准覆盖账本](../content/reference/archival-standard-coverage.md)、[归档评估](../content/guides/archival-assessment.md)及其[设计记录](../architecture/archival-assessment-package.md) |
 
 ## 遗留问题与独立候选
 

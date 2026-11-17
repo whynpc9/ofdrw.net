@@ -102,6 +102,17 @@ export NUGET_PACKAGES="$TASK_DIR/packages"
 CONSUMER="$TASK_DIR/consumer/Consumer.csproj"
 dotnet restore "$CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet build "$CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+# The Converter/Layout/Signatures consumer must not receive opt-in packages (Ofdrw.Net.Archival) transitively.
+python3 - "$TASK_DIR/consumer/bin/Release/net10.0/Consumer.deps.json" "$ROOT_DIR/scripts" <<'PY_OPT_IN'
+import json, sys
+sys.path.insert(0, sys.argv[2])
+from importlib import import_module
+deps = json.load(open(sys.argv[1]))
+resolved = {key.split('/', 1)[0] for key in deps['targets'][deps['runtimeTarget']['name']]}
+leaked = sorted(resolved & import_module('verify-package-artifacts').OPT_IN_PACKAGES)
+assert not leaked, f'Ordinary consumer resolved opt-in package(s) transitively: {leaked}'
+assert 'Ofdrw.Net.Converter' in resolved, 'Consumer did not resolve the Converter meta-package'
+PY_OPT_IN
 dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERSION" --configfile "$TASK_DIR/NuGet.Config"
 python3 - "$RESULT_DIR/cli-plain-text.txt" <<'PY_TEXT'
 import pathlib, sys

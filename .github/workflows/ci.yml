@@ -226,7 +226,7 @@ jobs:
       - name: Pack candidate from the tested Release build
         run: ./scripts/run-converter-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} --pack-only --no-build
 
-      # Optional package: kept out of the twelve-package default candidate feed.
+      # Optional package: kept out of the thirteen-package default candidate feed.
       - name: Pack optional SES interop package from the tested Release build
         run: dotnet pack src/Ofdrw.Net.Signatures.SesInterop/Ofdrw.Net.Signatures.SesInterop.csproj -c Release --no-build --no-restore -o artifacts/ses-interop-candidate -p:Version=${{ env.OFDRW_CI_PACKAGE_VERSION }} -p:PackageVersion=${{ env.OFDRW_CI_PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --nologo
 

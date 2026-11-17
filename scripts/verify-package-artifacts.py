@@ -19,7 +19,32 @@ PACKAGES = (
     'Ofdrw.Net.Core', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Text.HarfBuzz', 'Ofdrw.Net.Reader',
     'Ofdrw.Net.Converter.Abstractions', 'Ofdrw.Net.Converter.Docx', 'Ofdrw.Net.Converter.Pdf',
     'Ofdrw.Net.Converter.Svg', 'Ofdrw.Net.Signatures', 'Ofdrw.Net.Converter', 'Ofdrw.Net.Cli',
+    'Ofdrw.Net.Archival',
 )
+# Shipped in the default feed, but consumers must reference them explicitly: no other
+# package may depend on them, directly or transitively.
+OPT_IN_PACKAGES = {'Ofdrw.Net.Archival'}
+# Allowed direct Ofdrw.Net dependencies of opt-in packages (dependency direction Archival -> Packaging -> Core);
+# anything outside this set, such as Reader or a converter, is rejected.
+OPT_IN_DEPENDENCIES = {'Ofdrw.Net.Archival': {'Ofdrw.Net.Packaging'}}
+
+
+def verify_opt_in_closure(dependencies):
+    """Reject any package whose transitive Ofdrw.Net dependency closure reaches an opt-in package."""
+    def closure(name, seen):
+        for dependency in dependencies.get(name, set()):
+            if dependency not in seen:
+                seen.add(dependency)
+                closure(dependency, seen)
+        return seen
+    for name in dependencies:
+        if name in OPT_IN_PACKAGES:
+            if not dependencies[name] <= OPT_IN_DEPENDENCIES[name]:
+                raise ValueError(f'{name} may depend only on {sorted(OPT_IN_DEPENDENCIES[name])}: {sorted(dependencies[name])}')
+            continue
+        reached = closure(name, set()) & OPT_IN_PACKAGES
+        if reached:
+            raise ValueError(f'{name} transitively depends on opt-in package(s) {sorted(reached)}')
 
 
 def inspect(directory: Path, version: str):
@@ -31,6 +56,7 @@ def inspect(directory: Path, version: str):
     if expected != actual:
         raise ValueError(f'Package set mismatch. Missing={sorted(expected-actual)}, unexpected={sorted(actual-expected)}')
     packages = []
+    dependencies = {}
     for name in PACKAGES:
         path = directory / f'{name}.{version}.nupkg'
         if path.is_symlink():
@@ -48,10 +74,13 @@ def inspect(directory: Path, version: str):
             license_node = next((node for node in root.iter() if node.tag.rsplit('}', 1)[-1] == 'license'), None)
             if license_node is None or license_node.get('type') != 'expression' or license_node.text != 'MIT':
                 raise ValueError(f'Missing or mismatched MIT license expression: {path.name}')
+            dependencies[name] = set()
             for dependency in root.iter():
                 if dependency.tag.rsplit('}', 1)[-1] == 'dependency' and dependency.get('id', '').lower().startswith('ofdrw.net.'):
                     if dependency.get('version') != f'[{version}]':
                         raise ValueError(f'SDK dependency must be the exact range [{version}] in {path.name}: {dependency.attrib}')
+                    dependencies[name].add(next((item for item in PACKAGES if item.lower() == dependency.get('id').lower()),
+                                                dependency.get('id')))
             required = (['tools/net10.0/any/Ofdrw.Net.Cli.dll'] if name == 'Ofdrw.Net.Cli'
                         else [] if name == 'Ofdrw.Net.Converter'
                         else [f'lib/{framework}/{name}{extension}' for framework in ('netstandard2.0', 'netstandard2.1') for extension in ('.dll', '.xml')])
@@ -66,6 +95,7 @@ def inspect(directory: Path, version: str):
             if name in NATIVE_SUPERVISOR_PACKAGES and package.read(MUSL_COPYRIGHT_ENTRY) != (ROOT / MUSL_COPYRIGHT_ENTRY).read_bytes():
                 raise ValueError(f'musl copyright differs from the reviewed source: {path.name}')
         packages.append({'id': name, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+    verify_opt_in_closure(dependencies)
     return {'version': version, 'packages': packages}
 
 

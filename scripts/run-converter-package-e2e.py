@@ -109,6 +109,10 @@ def main():
             bin_dir = project.parent / 'bin/Release/net10.0'
             deps = json.loads((bin_dir / 'Consumer.deps.json').read_text(encoding='utf-8'))
             target = deps['targets'][deps['runtimeTarget']['name']]
+            # Ordinary consumers (Converter, Layout, Signatures, Reader...) must not receive opt-in packages.
+            opt_in = sorted({key.split('/', 1)[0] for key in target} & validator.OPT_IN_PACKAGES)
+            if opt_in:
+                raise RuntimeError(f'Ordinary consumer resolved opt-in package(s) transitively: {opt_in}')
             manifest = {item['id']: item for item in
                         json.loads((feed / 'package-manifest.json').read_text(encoding='utf-8'))['packages']}
             items = []

@@ -162,3 +162,7 @@ R18 的 `OfdDocumentPackage.RemoveAttachment(..., Physical)` 和写出器执行�
 `ArchivalClauseCatalog` 固化以上 105 个条款/附录项目，关联现有 AR/AC 规则与已存在的副本处理器。`ArchivalDossierService` 为稳定源/结果快照、正反例、不确定例、资源/附件/转换、阅读器/视觉、政策、PKI 和独立核准材料建立带大小及 SHA-256 的证据索引；同时检查材料声明的源/结果身份。摘要与身份错配会明确失败，外部核准仍为 `NotAuthenticated`。未提供的标准版本及条款基础控制材料显式列出；条款特定缺口仍以上表为准。
 
 这补充了可追溯证据管理，未新增媒体/字体有效性谓词或附件转换处理器，也不改变上述完整符合性门禁。`StandardOutcome` 仍不能 Pass。使用方式见[本地归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)，实现及后续工作见[设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/f07-archival-dossier.md)。
+
+## 分维度只读评估（main，尚未发布）
+
+0.4.0 之后的 main 新增可选包 `Ofdrw.Net.Archival`。它以本账本的 105 项为条款维度，按[条款强度与适用性矩阵](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/baselines/gbt42133-2022-clause-applicability.md)为每项标注规范强度和首批 profile 适用类别，并把声明、输入范围、软件要求、外部认可和执行状态分开报告。它沿用上表的规则映射和 `StandardOutcome` 门禁，不改变本账本内容或修订号；“宜/可”类条款的规则未满足只作为 advisory，不计为 Fail。用法见[归档评估指南](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)，设计见[设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/archival-assessment-package.md)。
