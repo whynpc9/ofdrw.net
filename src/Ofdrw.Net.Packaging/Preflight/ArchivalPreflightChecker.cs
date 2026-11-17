@@ -415,7 +415,7 @@ public sealed class ArchivalPreflightChecker
             else if (baseLoc.IndexOfAny(new[] { '?', '#', '%', '\\' }) >= 0) Add(2, PreflightOutcome.Unknown, "AmbiguousResourceBase", entry, res);
             else
             {
-                try { resourceBase = OfdPackagePath.Resolve(entry, (baseLoc.Length == 0 ? "_payload_" : baseLoc.TrimEnd('/') + "/_payload_")); }
+                try { resourceBase = OfdResourceBase.Containing(entry, baseLoc); }
                 catch (InvalidDataException) { Add(2, PreflightOutcome.Fail, "RootEscape", entry, res); }
             }
             var declarations = Children(res, "Fonts").SelectMany(x => Children(x, "Font")).ToList();

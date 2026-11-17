@@ -33,9 +33,23 @@ internal sealed class ArchivalOwnedRuleDefinition
 /// <summary>Read-only inputs available to a package-owned clause check.</summary>
 internal sealed class ArchivalCheckContext
 {
+    private readonly Dictionary<Type, object> shared = new Dictionary<Type, object>();
+
     internal ArchivalCheckContext(ArchivalXmlReader xml, ArchivalPreflightOptions options, ArchivalScopeResult scope,
-        CancellationToken token)
-    { Xml = xml; Options = options; Scope = scope; CancellationToken = token; }
+        CancellationToken token, ArchivalFontPolicy? fonts = null)
+    {
+        Xml = xml; Options = options; Scope = scope; CancellationToken = token;
+        Fonts = fonts ?? new ArchivalAssessmentOptions().SnapshotFonts();
+    }
+    internal ArchivalFontPolicy Fonts { get; }
+
+    /// <summary>One analysis shared by several checks; a failure (such as a budget overrun) is replayed to each of them.</summary>
+    internal T Shared<T>(Func<T> create) where T : class
+    {
+        if (!shared.TryGetValue(typeof(T), out var value))
+            shared[typeof(T)] = value = new Lazy<T>(create, LazyThreadSafetyMode.None);
+        return ((Lazy<T>)value).Value;
+    }
     /// <summary>Bounded XML access; budget overruns throw ArchivalBudgetExceededException.</summary>
     internal ArchivalXmlReader Xml { get; }
     internal OfdPackageArchive Archive => Xml.Archive;
@@ -71,7 +85,11 @@ internal static class ArchivalOwnedRules
     /// <summary>Registered checks, in report order.</summary>
     internal static IReadOnlyList<IArchivalClauseCheck> Registered { get; } = Array.AsReadOnly(new IArchivalClauseCheck[]
     {
-        new KnownCustomTagClosureCheck()
+        new KnownCustomTagClosureCheck(),
+        new ArchivalFontCheck(ArchivalFontAnalysis.UsedTextRule),
+        new ArchivalFontCheck(ArchivalFontAnalysis.ClippingTextRule),
+        new ArchivalFontCheck(ArchivalFontAnalysis.OutlineRule),
+        new ArchivalFontCheck(ArchivalFontAnalysis.TablesRule)
     });
 
     internal static IReadOnlyList<IArchivalClauseCheck> Validate(IEnumerable<IArchivalClauseCheck> checks)

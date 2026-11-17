@@ -97,11 +97,14 @@ public class ArchivalAssessmentServiceTests
         Assert.Equal(new[] { "6.2.1(a)" }, FailedClauses(report));
         Assert.Equal(PreflightOutcome.Fail, report.Document.StandardOutcome);
         Assert.Equal(report.Coverage!.StandardOutcome, report.Document.StandardOutcome);
-        // 17 Packaging observations plus AC-016 on 6.11: Layout output declares no CustomTags.
-        Assert.Equal(18, report.Clauses.Sum(x => x.Observations.Count));
+        // 17 Packaging observations, AC-016 on 6.11 (Layout output declares no CustomTags) and AC-017..AC-020.
+        Assert.Equal(22, report.Clauses.Sum(x => x.Observations.Count));
         Assert.Equal("NoCustomTagsInResult", Assert.Single(report.GetClause("6.11").Observations).ReasonCode);
         Assert.DoesNotContain("CustomTagClosureNotAssessed", report.Document.Gaps);
-        Assert.Equal(87, report.Document.UncheckedClauses.Count);
+        // Plain Layout output names its font without a payload: exemption basis unverified by default.
+        Assert.Equal("FontExemptionBasisUnverified", Assert.Single(report.GetClause("6.2.6(b)(1)").Observations).ReasonCode);
+        Assert.Contains("FontPayloadNotAssessed", report.Document.Gaps);
+        Assert.Equal(83, report.Document.UncheckedClauses.Count);
         Assert.All(report.Document.UncheckedClauses, x => Assert.Equal(PreflightOutcome.Unknown, report.GetClause(x).Outcome));
         Assert.Equal(new[] { "7.1(1)", "7.1(2)", "7.2(1)", "7.2(2)" }, report.SoftwareRequirements.Clauses);
         var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } });

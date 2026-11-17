@@ -64,6 +64,23 @@ public sealed class ArchivalAssessmentOptions
     public ArchivalPreflightOptions Preflight { get; set; } = new ArchivalPreflightOptions();
     /// <summary>Input profile identity; currently only <see cref="ArchivalInputProfile.SelfGeneratedSimpleId"/>.</summary>
     public string ProfileId { get; set; } = ArchivalInputProfile.SelfGeneratedSimpleId;
+    /// <summary>
+    /// How a used font without an embedded FontFile is judged for 6.2.6(b)(1)/(b)(2). The default,
+    /// <see cref="ArchivalFontExemptionPolicy.ExemptionBasisUnverified"/>, reports Unknown because the edition of
+    /// GB/T 33190 that defines font exemptions is not fixed.
+    /// </summary>
+    public ArchivalFontExemptionPolicy FontExemptionPolicy { get; set; } = ArchivalFontExemptionPolicy.ExemptionBasisUnverified;
+    /// <summary>Maximum bytes of one FontFile payload; larger payloads are reported Unknown.</summary>
+    public int MaxFontPayloadBytes { get; set; } = 32 * 1024 * 1024;
+    /// <summary>Maximum cumulative font payload bytes inspected in one assessment; exceeding it makes the run BudgetExhausted.</summary>
+    public long MaxTotalFontPayloadBytes { get; set; } = 128L * 1024 * 1024;
+
+    internal ArchivalFontPolicy SnapshotFonts()
+    {
+        if (!Enum.IsDefined(typeof(ArchivalFontExemptionPolicy), FontExemptionPolicy) || MaxFontPayloadBytes <= 0 ||
+            MaxTotalFontPayloadBytes <= 0) throw new ArgumentOutOfRangeException(nameof(FontExemptionPolicy));
+        return new ArchivalFontPolicy(FontExemptionPolicy, MaxFontPayloadBytes, MaxTotalFontPayloadBytes);
+    }
 
     internal ArchivalInputProfile ResolveProfile() =>
         ArchivalInputProfile.All.FirstOrDefault(x => x.Id == ProfileId) ??
@@ -95,3 +112,23 @@ public sealed class ArchivalAssessmentOptions
     }
 }
 
+/// <summary>How a used font with no embedded FontFile is judged. Host-installed fonts are never evidence.</summary>
+public enum ArchivalFontExemptionPolicy
+{
+    /// <summary>
+    /// Default. A missing payload is Unknown with reason <c>FontExemptionBasisUnverified</c>: GB/T 33190's font exemption
+    /// and its edition are not fixed, so neither a Fail nor an exemption is asserted.
+    /// </summary>
+    ExemptionBasisUnverified,
+    /// <summary>No exemption is accepted: a used font without a payload is a located Fail on 6.2.6(b)(1) or (b)(2).</summary>
+    NoExemptionsAccepted
+}
+
+internal sealed class ArchivalFontPolicy
+{
+    internal ArchivalFontPolicy(ArchivalFontExemptionPolicy exemption, int maxPayloadBytes, long maxTotalBytes)
+    { Exemption = exemption; MaxPayloadBytes = maxPayloadBytes; MaxTotalBytes = maxTotalBytes; }
+    internal ArchivalFontExemptionPolicy Exemption { get; }
+    internal int MaxPayloadBytes { get; }
+    internal long MaxTotalBytes { get; }
+}

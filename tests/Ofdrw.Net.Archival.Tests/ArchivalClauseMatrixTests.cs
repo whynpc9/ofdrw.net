@@ -104,7 +104,7 @@ public class ArchivalClauseMatrixTests
     {
         Assert.Equal(15, ArchivalCoverageRuleCatalog.Rules.Count);
         Assert.Equal("AC-015", ArchivalCoverageRuleCatalog.Rules[^1].RuleId);
-        Assert.Equal(new[] { "AC-016" }, ArchivalOwnedRules.Registered.Select(x => x.Rule.RuleId));
+        Assert.Equal(new[] { "AC-016", "AC-017", "AC-018", "AC-019", "AC-020" }, ArchivalOwnedRules.Registered.Select(x => x.Rule.RuleId));
         Assert.False(ArchivalOwnedRules.IsOwnedId("AC-015"));
         Assert.False(ArchivalOwnedRules.IsOwnedId("AR-016"));
         Assert.True(ArchivalOwnedRules.IsOwnedId("AC-016"));

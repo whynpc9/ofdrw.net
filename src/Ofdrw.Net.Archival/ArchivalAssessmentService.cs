@@ -51,6 +51,7 @@ public sealed class ArchivalAssessmentService
             throw new ArgumentException("A readable, seekable input at position zero is required.", nameof(input));
         var profile = options.ResolveProfile();
         var preflight = options.SnapshotPreflight();
+        var fonts = options.SnapshotFonts();
         cancellationToken.ThrowIfCancellationRequested();
 
         byte[]? bytes;
@@ -81,7 +82,7 @@ public sealed class ArchivalAssessmentService
         {
             var xml = new ArchivalXmlReader(archive, preflight, cancellationToken);
             scope = new ArchivalScopeInspector(xml).Inspect();
-            var context = new ArchivalCheckContext(xml, preflight, scope, cancellationToken);
+            var context = new ArchivalCheckContext(xml, preflight, scope, cancellationToken, fonts);
             foreach (var check in checks)
             {
                 cancellationToken.ThrowIfCancellationRequested();
