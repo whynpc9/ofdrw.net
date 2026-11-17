@@ -284,9 +284,12 @@ public sealed class PackageRoundTripTests
 
         var customTags = XDocument.Parse(archive.ReadUtf8Text("Doc_0/Tags/CustomTags.xml"));
         var customTag = customTags.Descendants().Single(x => x.Name.LocalName == "CustomTag");
-        Assert.Equal("EMR", customTag.Attribute("TypeID")?.Value);
+        Assert.Equal("ofdrw-kv", customTag.Attribute("TypeID")?.Value);
+        Assert.Equal("urn:ofdrw-net:custom-tags:kv:1", customTag.Attribute("NameSpace")?.Value);
         Assert.Null(customTag.Attribute("FileLoc"));
-        Assert.Equal("CustomTag_EMR.xml", customTag.Elements().Single(x => x.Name.LocalName == "FileLoc").Value);
+        Assert.Equal("CustomTag_KeyValue.xml", customTag.Elements().Single(x => x.Name.LocalName == "FileLoc").Value);
+        var payload = XDocument.Parse(archive.ReadUtf8Text("Doc_0/Tags/CustomTag_KeyValue.xml")).Root!;
+        Assert.Equal(XName.Get("Tags", customTag.Attribute("NameSpace")!.Value), payload.Name);
 
         stream.Position = 0;
         var parsed = await new OfdReader().ReadAsync(stream);

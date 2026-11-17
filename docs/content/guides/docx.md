@@ -19,6 +19,8 @@ sidebar:
 
 两种模式的依赖和版面能力不同。复杂浮动对象、复杂域和任意 Word 版式不在通用保真承诺内。
 
+两种模式都在 `package.CustomTags` 中记录来源信息，例如 `source-text-origin = DOCX/OpenXML`、`source-text-kind = machine-readable` 和 `docx-ofd-mode`。main（0.4.0 之后，尚未发布）起这些标签经中性通道（`TypeID="ofdrw-kv"`）写出，0.4.0 写出的 EMR 通道仍可读取；包内结构见[模型与读取](https://whynpc9.github.io/ofdrw.net/reference/core-model/)的“自定义标签”一节。
+
 ## Native：转换并读取诊断
 
 ```csharp

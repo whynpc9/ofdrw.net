@@ -97,7 +97,9 @@ for name, count in expected.items():
         vendor_references=[node for node in page if node.tag=='{urn:vendor}Template']
         assert len(vendor_references)==1 and vendor_references[0].attrib['TemplateID']==standard_templates[0].attrib['ID']
     if name in ('mix-custom-tags','cli-mix-custom-tags'):
-        tags={node.attrib['Key']:node.attrib['Value'] for node in ET.fromstring(data['Doc_0/Tags/CustomTag_EMR.xml']) if local(node)=='Tag'}
+        payload=ET.fromstring(data['Doc_0/Tags/CustomTag_KeyValue.xml'])
+        assert payload.tag=='{urn:ofdrw-net:custom-tags:kv:1}Tags' and 'Doc_0/Tags/CustomTag_EMR.xml' not in data, (name, 'neutral tag channel')
+        tags={node.attrib['Key']:node.attrib['Value'] for node in payload if node.tag=='{urn:ofdrw-net:custom-tags:kv:1}Tag'}
         assert tags['fixture']=='public' and tags['source-text-kind']=='machine-readable' and tags['source-text-origin']=='DOCX/OpenXML' and tags['docx-ofd-mode']=='Native'
     if name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
         assert sum(texts(data, page).count('DRAFT 草稿') for page in selected) == 1, (name, 'duplicate watermark')

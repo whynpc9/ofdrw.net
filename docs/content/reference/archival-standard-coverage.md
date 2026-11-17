@@ -162,3 +162,21 @@ R18 的 `OfdDocumentPackage.RemoveAttachment(..., Physical)` 和写出器执行�
 `ArchivalClauseCatalog` 固化以上 105 个条款/附录项目，关联现有 AR/AC 规则与已存在的副本处理器。`ArchivalDossierService` 为稳定源/结果快照、正反例、不确定例、资源/附件/转换、阅读器/视觉、政策、PKI 和独立核准材料建立带大小及 SHA-256 的证据索引；同时检查材料声明的源/结果身份。摘要与身份错配会明确失败，外部核准仍为 `NotAuthenticated`。未提供的标准版本及条款基础控制材料显式列出；条款特定缺口仍以上表为准。
 
 这补充了可追溯证据管理，未新增媒体/字体有效性谓词或附件转换处理器，也不改变上述完整符合性门禁。`StandardOutcome` 仍不能 Pass。使用方式见[本地归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)，实现及后续工作见[设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/f07-archival-dossier.md)。
+
+## 分维度只读评估（main，尚未发布）
+
+0.4.0 之后的 main 新增可选包 `Ofdrw.Net.Archival`。它以本账本的 105 项为条款维度，按[条款强度与适用性矩阵](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/baselines/gbt42133-2022-clause-applicability.md)为每项标注规范强度和首批 profile 适用类别，并把声明、输入范围、软件要求、外部认可和执行状态分开报告。它沿用上表的规则映射和 `StandardOutcome` 门禁，不改变本账本内容或修订号；“宜/可”类条款的规则未满足只作为 advisory，不计为 Fail。用法见[归档评估指南](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)，设计见[设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/archival-assessment-package.md)。
+
+### Archival 包自有规则（AC-016 起）
+
+以下规则只由 `Ofdrw.Net.Archival` 执行，编号接在 Packaging 的 AC-001～AC-015 之后。它们**不改变**上方账本各行的覆盖状态、Packaging 的规则目录或账本修订号：上表是 Packaging 证据档案的契约，这些规则只在分维度评估报告中出现。每条规则只为所映射的条款提供有界证据，不使任何条款闭合；所列“剩余证据”仍然有效。
+
+| 规则 | 条款（强度） | 可执行条件 | 不能证明 |
+| --- | --- | --- | --- |
+| AC-016 | 6.11（宜，矩阵未确认）；6.1（第一段）（陈述） | 已知 CustomTags 的引用链按 XML 字段语义闭合：本库中性键值通道，或本库历史写出的 EMR 形状。目标为空、外部、越出根目录或缺失在 6.1（第一段）为 Fail；6.11 上的问题只作 advisory | EMR 载荷是否符合 GB/T 33190 或任何领域标准；未知 schema 标签的闭包；标签内容的正确性 |
+| AC-017 | 6.2.6(b)(1)（陈述） | 填充或描边的 TextObject 所用字体经声明资源表及其 BaseLoc 解析到包内载荷，载荷可解析且覆盖实际使用的 Unicode 字符和 CGTransform 字形编号。无 FontFile 时按豁免策略为 Unknown 或 Fail | 引用标准中的字体豁免条件；字形视觉是否正确；许可与授权 |
+| AC-018 | 6.2.6(b)(2)（陈述，条件适用） | 同 AC-017，针对裁剪区中的文字 | 同上 |
+| AC-019 | 6.2.6(c)(1)（陈述，条件适用） | 嵌入载荷保留 `glyf`/`loca` 或 `CFF ` 轮廓表，所用字形轮廓可读 | 轮廓是否与原字体一致；TTC、WOFF、CFF2、可变字体为 Unknown |
+| AC-020 | 6.2.6(c)(2)（陈述，条件适用） | 嵌入载荷保留 `cmap`、`head`、`hhea`、`hmtx`、`maxp`、`name`、`OS/2`、`post`；程序表只记录，不判断是否必需 | 表内容是否完整正确；程序表（`fpgm`、`prep`、`cvt `）的必要性 |
+
+无法解释的输入（未建模的字形映射、页面作用域不完整、未支持的字体格式）一律为 Unknown，不判 Fail。宿主机字体从不作为证据。6.2.6(a)、(d)–(g) 仍未覆盖。

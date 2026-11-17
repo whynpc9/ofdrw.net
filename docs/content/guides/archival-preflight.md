@@ -8,6 +8,8 @@ sidebar:
 
 `Ofdrw.Net.Packaging.Preflight.ArchivalPreflightChecker` 使用六项有限的本地规则检查现有 OFD ZIP。其配置为 `ofdrw-local-preflight/0.1-draft`，规则修订号为 1。它不是 OFD-H、OFD 或 GB/T 42133 符合性认证，也不是归档认证。标准映射尚未验证，每个 `Clause` 均为空。
 
+需要按声明、输入范围、105 个条款、软件要求、外部认可和执行状态分开查看结果时，使用 main 上新增的可选包 `Ofdrw.Net.Archival`（尚未发布），见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)。它组合本页的接口，不改变它们的结果。
+
 ```csharp
 using Ofdrw.Net.Packaging.Preflight;
 
@@ -48,6 +50,18 @@ ofdrw preflight input.ofd --json > report.json     # 标准输出仅包含 JSON 
 ofdrw preflight input.ofd --json --output report.json --allow-multiple-documents
 ```
 
+## 已知 CustomTags（可选，main 开发版本）
+
+0.4.0 之后的 main（尚未发布）为 `ArchivalPreflightOptions` 增加了 `RecognizeKnownCustomTags`，**默认关闭**。默认关闭时结果逐字节不变：Document 中含 `CustomTags` 声明仍按 `UnsupportedResourceScope` 使 APF-002、003、005、006（`RequireNoEncryption` 时连同 APF-004）为 Unknown，`ProfileVersion` 仍为 `ofdrw-local-preflight/0.1-draft`，回归测试固定了这一输出。
+
+```csharp
+var report = await new ArchivalPreflightChecker().CheckAsync(input,
+    new ArchivalPreflightOptions { RecognizeKnownCustomTags = true }, cancellationToken);
+// report.ProfileVersion == ArchivalPreflightReport.KnownCustomTagsProfileVersion
+```
+
+开启后，报告的 `ProfileVersion` 为 `ofdrw-local-preflight/0.1-draft+known-custom-tags.1`，以便与默认 profile 区分。只有当 Document 下的 `CustomTags` 是纯文本声明、且整个引用链按 XML 字段语义闭合到已知形状时，才视为受支持：本库的中性键值通道（`ofdrw-kv`）或历史 EMR 形状的通道。EMR 只是“本库写出的已知形状”，没有对照 GB/T 33190 核验，`CoverageGaps` 中会如实记录。闭合时在 APF-002 记 Pass；目标为空、外部、越出根目录或缺失时在 APF-002 记 Fail；未知 schema、外来命名空间、歧义或循环仍为 Unknown。`ofdrw preflight` CLI 不开启此选项。[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)入口在内部开启它。
+
 现有 `ValidationReport` 和宽松的 `OfdPackageStructureChecker` 保持原有约定；不存在隐式的有损布尔适配。
 
 可执行边界示例位于 `ArchivalPreflightTests`。其中四字节字体和 SignedValue 哨兵仅用于证明存在性，绝不可用作渲染或签名有效性证据。预检不生成或修改页面，因此页面渲染、PNG 检查和 Preview 验收不适用于此实现。
@@ -72,6 +86,8 @@ using (var input = File.OpenRead("source.ofd"))
 var copy = await new ArchivalCopyConverter().ConvertAsync("source.ofd", "archive-copy.ofd", options);
 // 同时保留 copy.OutputPath 和 copy.AuditPath。
 ```
+
+预检、规则检查和副本转换不修改输入，对声明 OFD-A 的输入照常可用；副本转换另有自身的审计和后检。`main`（尚未发布）上的重排、删页、拆合、水印、签名清理等改变内容的入口会拒绝声明 OFD-A 的原件，需要先用 `OfdOrdinaryDerivation.CreateAsync` 或 `ofdrw derive-ofd` 创建普通 OFD 派生副本，见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。
 
 ## 按版本维护的覆盖清单
 

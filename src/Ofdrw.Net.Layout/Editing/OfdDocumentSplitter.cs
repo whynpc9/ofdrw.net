@@ -13,10 +13,12 @@ namespace Ofdrw.Net.Layout.Editing;
 /// <summary>Selects pages into an independent package. Save with OfdPackageWriter to prune deleted private resources and invalidate signatures.</summary>
 public static class OfdDocumentSplitter
 {
-    /// <summary>Copies selected zero-based pages in list order. Empty/duplicate/out-of-range selections and multi-document packages are rejected.</summary>
+    /// <summary>Copies selected zero-based pages in list order. Empty/duplicate/out-of-range selections and multi-document packages are rejected.
+    /// A source declaring <c>DocType="OFD-A"</c> throws <see cref="OfdArchivalOriginalException"/>.</summary>
     public static OfdDocumentPackage Split(OfdDocumentPackage source, IReadOnlyList<int> pages, CancellationToken cancellationToken = default)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
+        OfdArchivalEditGuard.ThrowIfArchival(source, OfdDocumentMerger.SplitOperation);
         var material = new OfdModelMaterialization(new OfdModelLimits());
         material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
         OfdCompositeGraph.Validate(source, material, cancellationToken);

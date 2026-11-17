@@ -66,6 +66,30 @@ OFD 是 ZIP 容器：`OFD.xml` 指向一个或多个 `DocBody`，文档再引用
 
 无法证明安全时，相关操作会拒绝或保留并报告诊断；不要把“未知 XML 被保留”理解为“任意内容都能编辑和导出”。
 
+## 自定义标签（CustomTags）
+
+`OfdDocumentPackage.CustomTags` 是字符串键值字典，DOCX 转换写入的 `source-text-origin`、`docx-ofd-mode` 等来源信息以及命名区域索引都存放在这里。调用方式不变；以下为包内写出形态。
+
+**main（0.4.0 之后，尚未发布）**：新生成的文档（Layout、DOCX Native/默认/DualLayer、纯文本等）经中性通道写出，不再使用 EMR 标记：
+
+| 层级 | 位置 | 内容 |
+| --- | --- | --- |
+| 声明 | `Document.xml` | `<ofd:CustomTags>Tags/CustomTags.xml</ofd:CustomTags>` |
+| 索引 | `Tags/CustomTags.xml` | `<ofd:CustomTag TypeID="ofdrw-kv" NameSpace="urn:ofdrw-net:custom-tags:kv:1">`，子元素 `<ofd:FileLoc>CustomTag_KeyValue.xml</ofd:FileLoc>` |
+| 载荷 | `Tags/CustomTag_KeyValue.xml` | 根元素 `Tags`，子元素 `Tag`（`Key`、`Value` 属性），均位于 `urn:ofdrw-net:custom-tags:kv:1` 命名空间，与索引声明一致 |
+
+索引不写 `SchemaLoc`：本库没有发布对应的 schema 文件，该结构也未对照 GB/T 33190 核实为符合标准的自定义标引。
+
+0.4.0 及更早版本写出的历史 EMR 通道（`TypeID="EMR"`、`NameSpace="urn:ofdrw-net:custom-tags:emr"`，载荷根为 OFD 命名空间下的 `EMRTags`）继续可读，读到的键值与以前相同。规则如下：
+
+- 标签未改动时原样保存，EMR 声明、索引和载荷不被改写。
+- 修改或删除已在 EMR 载荷中的键，在原位置更新；载荷中其他内容保留。
+- 新增的键写入中性通道：已有中性载荷时追加到其中，否则新建 `CustomTag_KeyValue.xml` 并在现有索引中追加一条记录。EMR 载荷不会再收到新键。
+- 读取时合并两个通道；同一键在多处出现时，按索引中的记录顺序以后者为准。
+- 索引记录的 `TypeID`/`NameSpace` 与载荷根元素不匹配时，该载荷按未知内容保留，不读入 `CustomTags`。
+
+拆分保留来源包的标签结构；混合（mix）生成的新文档统一写为中性通道。
+
 ## 单位、页号与文档选择
 
 - 页面坐标和尺寸通常使用**毫米**，Y 轴向下；文字定位还涉及基线。

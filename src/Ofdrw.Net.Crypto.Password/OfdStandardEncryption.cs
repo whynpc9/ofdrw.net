@@ -19,7 +19,8 @@ public static class OfdStandardEncryption
     private const string ManifestPath = "OFDEntries.xml";
     private const string SignedValuePath = "signedvalue.dat";
 
-    /// <summary>Encrypt every entry of one OFD into the explicit Java-compatible profile.</summary>
+    /// <summary>Encrypt every entry of one OFD into the explicit Java-compatible profile.
+    /// An input declaring <c>DocType="OFD-A"</c> throws <see cref="Ofdrw.Net.Core.Models.OfdArchivalOriginalException"/> (encryption contradicts GB/T 42133 6.16).</summary>
     public static async Task<byte[]> EncryptAsync(Stream source, OfdStandardEncryptionOptions options,
         CancellationToken cancellationToken = default)
     {
@@ -42,6 +43,7 @@ public static class OfdStandardEncryption
         var entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
         OfdPasswordEnvelope.AdoptAndValidateEntries(entries, owned);
         if (entries.Keys.Any(Reserved)) throw new InvalidDataException("Source already has encryption or integrity metadata.");
+        OfdPasswordEnvelope.RejectArchivalOriginal(entries, settings, "OfdStandardEncryption.EncryptAsync");
         _ = OfdPasswordEnvelope.ValidateDocument(entries, settings);
         var original = entries.Keys.OrderBy(x => x, StringComparer.Ordinal).ToArray();
         var fek = RandomNumberGenerator.GetBytes(16); var iv = RandomNumberGenerator.GetBytes(16);

@@ -16,7 +16,8 @@ namespace Ofdrw.Net.Packaging;
 public static class OfdPackageSignatureCleaner
 {
     /// <summary>Loads with explicit budgets, removes declarations and proven unreferenced signature payloads, and writes a new package.
-    /// Stream callers must stage output if atomic publication is required. Input and output must be distinct streams.</summary>
+    /// Stream callers must stage output if atomic publication is required. Input and output must be distinct streams.
+    /// An input whose OFD.xml declares <c>DocType="OFD-A"</c> throws <see cref="OfdArchivalOriginalException"/> before anything is written.</summary>
     public static async Task<OfdPackageWriteResult> CleanAsync(Stream source, Stream destination,
         OfdPackageLoadOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -36,6 +37,8 @@ public static class OfdPackageSignatureCleaner
                 (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace) ||
                 !root.Elements(root.Name.Namespace + "DocBody").Any())
                 throw new InvalidDataException("Input has no recognizable OFD root and DocBody.");
+            // Removing signatures changes an archival original; refuse before any output is written.
+            OfdArchivalEditGuard.ThrowIfArchival(root.Attribute("DocType")?.Value, "OfdSignatureCleaner.CleanAsync");
         }
         var entries = new Dictionary<string, byte[]>(original, StringComparer.OrdinalIgnoreCase);
         var result = new OfdPackageWriteResult();

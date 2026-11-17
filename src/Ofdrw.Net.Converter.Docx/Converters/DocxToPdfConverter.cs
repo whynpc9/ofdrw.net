@@ -100,6 +100,12 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             throw new ArgumentNullException(nameof(pdfOutput));
         }
 
+        if (_options.NativeFontSelfContainment != DocxNativeFontSelfContainment.Compatibility)
+        {
+            throw new NotSupportedException(
+                "NativeFontSelfContainment.RequireEmbedded applies only to Native DOCX-to-OFD output; DOCX-to-PDF conversion cannot guarantee font self-containment.");
+        }
+
         if (!docxInput.CanRead)
         {
             throw new ArgumentException("The DOCX input stream must be readable.", nameof(docxInput));

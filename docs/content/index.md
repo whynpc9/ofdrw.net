@@ -27,7 +27,7 @@ Ofdrw.Net 是 .NET OFD SDK 与命令行工具，支持文档生成、读取、�
 | PDF、SVG、图片或 HTML 预览 | [格式转换](https://whynpc9.github.io/ofdrw.net/guides/conversion/)、[图片](https://whynpc9.github.io/ofdrw.net/guides/images/)、[HTML](https://whynpc9.github.io/ofdrw.net/guides/html-preview/) |
 | 用代码生成报表 | [流式排版](https://whynpc9.github.io/ofdrw.net/guides/flow-layout/)、[表格](https://whynpc9.github.io/ofdrw.net/guides/public-tables/)、[原生绘图](https://whynpc9.github.io/ofdrw.net/guides/graphics/) |
 | 读取文本与编辑已有 OFD | [模型与读取](https://whynpc9.github.io/ofdrw.net/reference/core-model/)、[文档工具](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)、[文字替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/) |
-| 处理签名、加密或归档 | [签名完整性](https://whynpc9.github.io/ofdrw.net/guides/signatures/)、[可选口令加密](https://whynpc9.github.io/ofdrw.net/reference/password-crypto/)、[归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/) |
+| 处理签名、加密或归档 | [签名完整性](https://whynpc9.github.io/ofdrw.net/guides/signatures/)、[可选口令加密](https://whynpc9.github.io/ofdrw.net/reference/password-crypto/)、[归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)、[归档评估（main）](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/) |
 | 处理多文档和标准对象 | [Multi-DocBody](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/)、[标准对象编辑](https://whynpc9.github.io/ofdrw.net/guides/standard-object-editing/) |
 
 ## 当前版本与适用范围

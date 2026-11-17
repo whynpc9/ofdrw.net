@@ -76,6 +76,7 @@ public sealed class ArgumentStrictnessTests : IAsyncLifetime, IDisposable
     [InlineData("--docx-engine", "word")]
     [InlineData("--docx-ofd-mode", "native")]
     [InlineData("--native-embedded-bold-behavior", "throw")]
+    [InlineData("--native-font-self-containment", "require-embedded")]
     [InlineData("--libreoffice", "/x")]
     [InlineData("--font-directory", "/x")]
     public Task DocxOptionsApplyOnlyToDocxInput(string option, string value) =>

@@ -24,7 +24,8 @@ public sealed class OfdDocumentMergeOptions
 /// <summary>
 /// Merges pages into a self-contained document model. Template content is
 /// flattened into each destination page so source package paths and IDs cannot
-/// become dangling references.
+/// become dangling references. If any source declares <c>DocType="OFD-A"</c>, at any position,
+/// the merge throws <see cref="OfdArchivalOriginalException"/> before producing a document.
 /// </summary>
 public static class OfdDocumentMerger
 {
@@ -56,15 +57,19 @@ public static class OfdDocumentMerger
         CancellationToken cancellationToken) => MergeCore(sources, options, cancellationToken);
 
     internal static OfdDocumentPackage MergeForSplit(OfdDocumentPackage source, OfdModelMaterialization material, CancellationToken token)
-        => MergeCore(new[] { source }, null, token, material, preserveAttachmentIdsForSplit: true).Package;
+        => MergeCore(new[] { source }, null, token, material, preserveAttachmentIdsForSplit: true, operation: SplitOperation).Package;
 
     internal static OfdDocumentPackage MergeForMix(IReadOnlyList<OfdMixSource> sources, OfdDocumentMergeOptions options, OfdModelMaterialization material, CancellationToken token)
         => MergeCore(sources.Select(source => source.Package), options, token, material,
-            selectedPages: sources.Select(source => source.Package.Pages[source.PageIndex]).ToArray()).Package;
+            selectedPages: sources.Select(source => source.Package.Pages[source.PageIndex]).ToArray(), operation: MixOperation).Package;
+
+    internal const string MergeOperation = "OfdDocumentMerger.Merge";
+    internal const string SplitOperation = "OfdDocumentSplitter.Split";
+    internal const string MixOperation = "OfdDocumentMixer.Mix";
 
     private static OfdDocumentMergeResult MergeCore(IEnumerable<OfdDocumentPackage> sources,
         OfdDocumentMergeOptions? options, CancellationToken cancellationToken, OfdModelMaterialization? material = null,
-        bool preserveAttachmentIdsForSplit = false, IReadOnlyList<OfdPage>? selectedPages = null)
+        bool preserveAttachmentIdsForSplit = false, IReadOnlyList<OfdPage>? selectedPages = null, string operation = MergeOperation)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (sources is null)
@@ -86,6 +91,8 @@ public static class OfdDocumentMerger
                 var source = enumerator.Current;
                 cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1); material.Structure.Reference();
                 if (source is null) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
+                // Any archival input, at any position, rejects the whole operation.
+                OfdArchivalEditGuard.ThrowIfArchival(source, operation);
                 material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
                 OfdAnnotationContract.Validate(source, material, cancellationToken);
                 OfdCompositeGraph.Validate(source, material, cancellationToken, rejectRepeatedOwners: true);

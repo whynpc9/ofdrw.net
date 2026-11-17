@@ -1400,7 +1400,18 @@ public sealed partial class OfdPackageWriter
         if (source is not null)
             foreach (var declaration in source.Declarations) result.Declarations.Add(OfdXmlEnvelope.Parse(declaration));
         if (source?.IsUnchanged(package) == true) return result;
-        var modeledPaths = new HashSet<string>(source?.DetailPaths ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+        // Precedence: keys already present in a modeled payload (EMR or neutral)
+        // are updated or removed in place; keys without such a home are appended
+        // to the first modeled neutral payload, or to a fresh neutral payload.
+        // Historical EMR payloads never receive new keys.
+        var details = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
+        var channels = new Dictionary<string, OfdCustomTagChannel>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in source?.DetailPaths ?? Enumerable.Empty<string>())
+        {
+            token.ThrowIfCancellationRequested();
+            var xml = material.ReadXml(path, entries[path], token);
+            details.Add(path, xml); channels.Add(path, OfdCustomTagChannels.Payload(xml.Root, ns));
+        }
         foreach (var indexPath in source?.IndexPaths ?? Enumerable.Empty<string>())
         {
             if (!entries.TryGetValue(indexPath, out var indexBytes)) continue;
@@ -1409,19 +1420,16 @@ public sealed partial class OfdPackageWriter
             {
                 var location = declaration.Elements().FirstOrDefault(node => node.Name.LocalName == "FileLoc")?.Value ?? declaration.Attribute("FileLoc")?.Value;
                 if (string.IsNullOrWhiteSpace(location)) continue;
-                if (modeledPaths.Contains(material.ResolvePath(indexPath, location!, token)) &&
-                    (declaration.Name != ns + "CustomTag" || declaration.Attribute("TypeID")?.Value != "EMR" ||
-                     declaration.Attribute("NameSpace")?.Value != OfdCustomTagSource.EmrNamespace))
-                    throw new NotSupportedException("Cannot rewrite an EMR payload also referenced by an opaque custom tag schema.");
+                if (channels.TryGetValue(material.ResolvePath(indexPath, location!, token), out var modeled) &&
+                    (declaration.Name != ns + "CustomTag" || OfdCustomTagChannels.Declared(declaration) != modeled))
+                    throw new NotSupportedException("Cannot rewrite a key/value tag payload also referenced by an opaque custom tag schema.");
             }
         }
         var emitted = new HashSet<string>(StringComparer.Ordinal);
-        var details = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in source?.DetailPaths ?? Enumerable.Empty<string>())
+        foreach (var pair in details)
         {
             token.ThrowIfCancellationRequested();
-            var xml = material.ReadXml(path, entries[path], token);
-            foreach (var tag in xml.Root!.Elements(ns + "Tag").ToArray())
+            foreach (var tag in pair.Value.Root!.Elements(OfdCustomTagChannels.TagName(channels[pair.Key], ns)).ToArray())
             {
                 var key = tag.Attribute("Key")?.Value;
                 if (string.IsNullOrWhiteSpace(key) || tag.Attribute("Value") is null) continue;
@@ -1437,44 +1445,41 @@ public sealed partial class OfdPackageWriter
                     if (!tag.HasElements && !tag.Nodes().Any() && !tag.Attributes().Any(a => !a.IsNamespaceDeclaration)) tag.Remove();
                 }
             }
-            details.Add(path, xml);
         }
         var additions = package.CustomTags.Where(pair => !emitted.Contains(pair.Key)).ToArray();
-        if (additions.Length > 0)
+        var neutralPath = details.Keys.FirstOrDefault(path => channels[path] == OfdCustomTagChannel.KeyValue);
+        // A legacy EMR payload found without any declaration gains a compatible index on an actual edit.
+        var undeclared = source is not null && !source.Declarations.Any() && package.CustomTags.Count > 0
+            ? details.Keys.ToArray() : Array.Empty<string>();
+        if ((additions.Length > 0 && neutralPath is null) || undeclared.Length > 0)
         {
-            var detailPath = details.Keys.FirstOrDefault();
-            if (detailPath is null)
+            var listPath = source?.IndexPaths.FirstOrDefault(path => entries.ContainsKey(path) &&
+                material.ReadXml(path, entries[path], token).Root?.Name == ns + "CustomTags");
+            XDocument list;
+            if (listPath is null)
+            {
+                listPath = Fresh("Tags/CustomTags", ".xml");
+                list = new XDocument(new XElement(ns + "CustomTags", new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName)));
+                result.Declarations.Add(new XElement(ns + "CustomTags", material.RelativePath(documentPath, listPath, token)));
+            }
+            else list = material.ReadXml(listPath, entries[listPath], token);
+            foreach (var legacy in undeclared)
+                list.Root!.Add(Record(OfdCustomTagChannels.EmrTypeId, OfdCustomTagChannels.EmrNamespace, legacy));
+            if (additions.Length > 0 && neutralPath is null)
             {
                 // Never overwrite an opaque payload, even at the SDK's conventional path.
-                detailPath = Fresh("Tags/CustomTag_EMR", ".xml");
-                details.Add(detailPath, new XDocument(new XElement(ns + "EMRTags", new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName))));
-                var listPath = source?.IndexPaths.FirstOrDefault(path => entries.ContainsKey(path) &&
-                    material.ReadXml(path, entries[path], token).Root?.Name == ns + "CustomTags");
-                XDocument list;
-                if (listPath is null)
-                {
-                    listPath = Fresh("Tags/CustomTags", ".xml");
-                    list = new XDocument(new XElement(ns + "CustomTags", new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName)));
-                    result.Declarations.Add(new XElement(ns + "CustomTags", material.RelativePath(documentPath, listPath, token)));
-                }
-                else list = material.ReadXml(listPath, entries[listPath], token);
-                list.Root!.Add(new XElement(ns + "CustomTag", new XAttribute("TypeID", "EMR"),
-                    new XAttribute("NameSpace", OfdCustomTagSource.EmrNamespace),
-                    new XElement(ns + "FileLoc", material.RelativePath(listPath, detailPath, token))));
-                result.Entries.Add(listPath, ToUtf8Bytes(list));
+                neutralPath = Fresh(OfdCustomTagChannels.KeyValuePayloadStem, ".xml");
+                details.Add(neutralPath, new XDocument(new XElement(OfdCustomTagChannels.KeyValueRoot)));
+                list.Root!.Add(Record(OfdCustomTagChannels.KeyValueTypeId, OfdCustomTagChannels.KeyValueNamespace, neutralPath));
             }
-            foreach (var pair in additions) details[detailPath].Root!.Add(new XElement(ns + "Tag", new XAttribute("Key", pair.Key), new XAttribute("Value", pair.Value)));
-        }
-        // A legacy payload without an active declaration gains a compatible index on an actual edit.
-        if (details.Count > 0 && result.Declarations.Count == 0 && package.CustomTags.Count > 0)
-        {
-            var listPath = Fresh("Tags/CustomTags", ".xml");
-            var list = new XDocument(new XElement(ns + "CustomTags", new XElement(ns + "CustomTag",
-                new XAttribute("TypeID", "EMR"), new XAttribute("NameSpace", OfdCustomTagSource.EmrNamespace),
-                new XElement(ns + "FileLoc", material.RelativePath(listPath, details.Keys.First(), token)))));
             result.Entries.Add(listPath, ToUtf8Bytes(list));
-            result.Declarations.Add(new XElement(ns + "CustomTags", material.RelativePath(documentPath, listPath, token)));
+
+            XElement Record(string typeId, string declaredNamespace, string detailPath) =>
+                new(ns + "CustomTag", new XAttribute("TypeID", typeId), new XAttribute("NameSpace", declaredNamespace),
+                    new XElement(ns + "FileLoc", material.RelativePath(listPath!, detailPath, token)));
         }
+        foreach (var pair in additions)
+            details[neutralPath!].Root!.Add(new XElement(OfdCustomTagChannels.KeyValueTag, new XAttribute("Key", pair.Key), new XAttribute("Value", pair.Value)));
         foreach (var pair in details) result.Entries.Add(pair.Key, ToUtf8Bytes(pair.Value));
         return result;
 

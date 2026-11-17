@@ -1,0 +1,1706 @@
+{
+  "standard": "GB/T 42133-2022 信息技术 OFD 档案应用指南",
+  "sourceUrl": "https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf",
+  "sourceSha256": "7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82",
+  "ledgerRevision": "ofdrw-archival-ledger/1",
+  "profile": {
+    "id": "first-profile",
+    "description": "本库生成的文档（简单 Layout 输出，或使用受控嵌入字体的 Native DOCX→OFD）；单一 DocBody；未签名；未加密；无附件；无 Versions 历史；无动作、注释或扩展；保留来源自定义标引。"
+  },
+  "method": "以 200 dpi 渲染公开副本全部 14 页并按图像逐条阅读，必要时以 400 dpi 放大，未采用 PDF 可提取文本，逐项记录页面上实际出现的情态词。",
+  "reviewedOn": "2026-11-17",
+  "strengthOrder": [
+    "Shall",
+    "Statement",
+    "Should",
+    "May"
+  ],
+  "items": [
+    {
+      "clause": "5.1(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 6,
+      "printedPage": "2",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "适用场景说明，不是逐包要求。"
+    },
+    {
+      "clause": "5.1(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 6,
+      "printedPage": "2",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "适用场景说明，不是逐包要求。"
+    },
+    {
+      "clause": "5.1(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 6,
+      "printedPage": "2",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "适用场景说明，不是逐包要求。"
+    },
+    {
+      "clause": "5.2(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 7,
+      "printedPage": "3",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [
+        "DA/T 47"
+      ],
+      "editionFixed": false,
+      "note": "处理原则；引导语位于 PDF 第 6 页。"
+    },
+    {
+      "clause": "5.2(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 7,
+      "printedPage": "3",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 18894"
+      ],
+      "editionFixed": false,
+      "note": "处理原则；引导语位于 PDF 第 6 页。"
+    },
+    {
+      "clause": "6.1（第一段）",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 7,
+      "printedPage": "3",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1b",
+        "A1c"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.1（第二段）",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 7,
+      "printedPage": "3",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1b"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "许可：附加元数据、签名、标引和附件；未附加不构成不满足。"
+    },
+    {
+      "clause": "6.2.1(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 7,
+      "printedPage": "3",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AC-001"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.1(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "Should",
+          "part": "GB/T 33190 允许以包内独立文件记录元数据时，宜使用该方式"
+        }
+      ],
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [
+        "DA/T 46",
+        "DA/T 54",
+        "GB/T 33190"
+      ],
+      "editionFixed": false,
+      "note": "前半句（自定义元数据存储与命名）起于 PDF 第 7 页，“宜”位于第 8 页。"
+    },
+    {
+      "clause": "6.2.1(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AC-002"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "第二句（拆解或合并）仅在原文件使用多文档机制时适用，需来源证据。"
+    },
+    {
+      "clause": "6.2.1(d)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "文档含多版本（Versions）信息时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.1(e)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1b"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "需完整可达性证明，A1b 仅闭合已知边。"
+    },
+    {
+      "clause": "6.2.2(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AR-001"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.2(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AR-002"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.2(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-003"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.2(d)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "存在不予保留的附件时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.2(e)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "目录未映射规则（AC-014 映射 6.12(a)）；第二句为条件性陈述，需来源外观证据。"
+    },
+    {
+      "clause": "6.2.3(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.3(b)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "页面设置与文档默认设置相同时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.3(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-004"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.3(d)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "页面内容存在同名图层时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AC-011"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.3(e)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "Should",
+          "part": "不可避免时嵌套“不宜”超过 3 层（条件性）"
+        }
+      ],
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.4(a)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "“主要内容一般安排在正文层和背景层”带“一般”限定，属说明"
+        }
+      ],
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "SourceEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "此项以“宜”为主；按“最强者”规则会得到 Statement，此处有意不采用，因所附陈述带“一般”限定。"
+    },
+    {
+      "clause": "6.2.4(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "文档经扫描加工时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "SourceEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.4(c)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "SourceEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.5(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-005"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.5(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "大纲跳转目标书签或页面不存在时",
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-006"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.6(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 8,
+      "printedPage": "4",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.6(b)(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1c"
+      ],
+      "referencedStandards": [
+        "GB/T 33190"
+      ],
+      "editionFixed": false,
+      "note": "主句“都嵌入子集化字型数据”无情态词；(1)(2) 为“页面图元使用”的定义情形。"
+    },
+    {
+      "clause": "6.2.6(b)(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "存在裁剪区中的文字对象时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1c"
+      ],
+      "referencedStandards": [
+        "GB/T 33190"
+      ],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.6(c)(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "嵌入矢量字型数据时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1c"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "按 OpenType 规范子集化；该规范不在第 2 章引用文件中。"
+    },
+    {
+      "clause": "6.2.6(c)(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "嵌入矢量字型数据时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1c"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.6(c)(3)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "嵌入矢量字型数据时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.6(d)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [
+        "GB 18030",
+        "GB/T 13000"
+      ],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.2.6(e)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.6(f)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.2.6(g)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "存在音频、视频资源时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "首批生成路径不产生音视频资源，仍需完整资源作用域证明。"
+    },
+    {
+      "clause": "6.3.1(a)",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "许可条款，不定义不构成不满足；包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.1(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.1(c)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.2(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "裁剪区实际生效区域包含图元外接矩形时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.2(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "裁剪区实际生效区域面积为 0 时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.3(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "句中含“除特殊情况外”，例外范围未定义。"
+    },
+    {
+      "clause": "6.3.3(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-010"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.3.3(c)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "Stroke 取值为 false 时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.3(d)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.3.3(e)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.4(a)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "颜色在多个图形对象间重复时",
+      "pdfPage": 9,
+      "printedPage": "5",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.4(b)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "绘制属性在多个图形对象间重复时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.5(a)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "栅格图像跨页或页内共用时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.5(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "图像对象使用了 Interpolate 属性时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AC-007"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.6(a)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "SourceEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.6(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "使用需阅读软件自带字型且有字符超出范围时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 33190"
+      ],
+      "editionFixed": false,
+      "note": "首批字体全部嵌入时条件不成立，需 A1c 证明所有已用字型均嵌入。"
+    },
+    {
+      "clause": "6.6(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "AC-008"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.6(d)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "文字对象仅使用横向缩放变换时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.6(e)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "文字颜色在多个文字对象间重复时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.7",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "存在视频对象时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.8",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "矢量图像资源跨页或页内共用时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "PackageDecidable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "包内字节可判定，但 A1 未规划对应检查。"
+    },
+    {
+      "clause": "6.9(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-013"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "关键词为“不保留”，是否定陈述，不是“不应”。"
+    },
+    {
+      "clause": "6.9(b)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "去除动作时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "SourceEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.10.1(a)(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.10.1 引导语“可使用下列方式之一”：a) 与 b) 为可选的两种保留方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "以注释对象形式保留已有注释时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.10.1(a)(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.10.1 引导语“可使用下列方式之一”：a) 与 b) 为可选的两种保留方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "以注释对象形式保留已有注释时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-012"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.10.1(a)(3)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.10.1 引导语“可使用下列方式之一”：a) 与 b) 为可选的两种保留方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "以注释对象形式保留已有注释时",
+      "pdfPage": 10,
+      "printedPage": "6",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-009"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.10.1(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.10.1 引导语“可使用下列方式之一”：a) 与 b) 为可选的两种保留方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "选择将注释外观合并到页面时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "与 a) 互为可选方式；引导语位于 PDF 第 10 页。"
+    },
+    {
+      "clause": "6.10.2",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "归档后管理部门需添加归档章等内容时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.11",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "“不依赖于外部内容或资源”与“宜保留”并列，是否受“宜”约束不确定"
+        }
+      ],
+      "conditional": true,
+      "condition": "归档前已存在自定义标引时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Unverified",
+      "firstProfile": "PackageDecidable",
+      "rules": [
+        "A1b"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "“宜”清楚可见；后半句的规范强度存在两种读法。"
+    },
+    {
+      "clause": "6.12(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-014"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.12(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "扩展信息对图元、图层或页面显示或打印效果有影响时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.1(a)",
+      "strength": "May",
+      "modalKeyword": "可不",
+      "conditional": true,
+      "condition": "保留未去技术化的签名时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Unverified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 35275"
+      ],
+      "editionFixed": false,
+      "note": "子项本身无情态词，是引导语“可不去技术化”这一许可的满足条件。"
+    },
+    {
+      "clause": "6.13.1(b)",
+      "strength": "May",
+      "modalKeyword": "可不",
+      "conditional": true,
+      "condition": "保留未去技术化的签章时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Unverified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 38540"
+      ],
+      "editionFixed": false,
+      "note": "子项本身无情态词，是引导语“可不去技术化”这一许可的满足条件。"
+    },
+    {
+      "clause": "6.13.1(c)",
+      "strength": "May",
+      "modalKeyword": "可不",
+      "conditional": true,
+      "condition": "保留未去技术化的签名或签章时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Unverified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "子项本身无情态词，是引导语“可不去技术化”这一许可的满足条件。"
+    },
+    {
+      "clause": "6.13.2(a)(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "签名被注释引用且保留注释对象时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.2(a)(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "签名被注释引用且保留注释对象时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.2(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "签名被注释引用且不保留注释对象时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.2(c)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "对签名去技术化时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.3(a)(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.13.3(a) 引导语“可按以下方式之一”：(1) 与 (2) 为可选方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "对签章去技术化时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.3(a)(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "mixedStrengths": [
+        {
+          "strength": "May",
+          "part": "6.13.3(a) 引导语“可按以下方式之一”：(1) 与 (2) 为可选方式"
+        }
+      ],
+      "conditional": true,
+      "condition": "对签章去技术化时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.13.3(b)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "对签章去技术化时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.14",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "OFD 文件含多版本信息时",
+      "pdfPage": 11,
+      "printedPage": "7",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.15.1(a)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "OFD 文件含附件时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "“宜”位于 6.15.1 引导语。"
+    },
+    {
+      "clause": "6.15.1(b)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "OFD 文件含附件时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "“宜”位于 6.15.1 引导语。"
+    },
+    {
+      "clause": "6.15.1(c)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "OFD 文件含已签名附件时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "“按照国家标准组织”未指明具体标准。"
+    },
+    {
+      "clause": "6.15.2(a)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件不予保留且按附录 A 可转换为版式文档时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "条件中的“可转换”表示能否转换，不是许可用语。"
+    },
+    {
+      "clause": "6.15.2(b)(1)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "附件不予保留且为音频或视频文件时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.15.2(b)(2)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "附件不予保留且为超大尺寸非查阅用途图像时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.15.2(b)(3)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "附件不予保留且为数据类电子表格时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "6.15.2(b)(4)",
+      "strength": "Should",
+      "modalKeyword": "宜",
+      "conditional": true,
+      "condition": "附件不予保留且为含较多动画、三维效果的网页或演示文稿时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "条件内的“不宜丢失”描述附件特征，不是本项的推荐用语。"
+    },
+    {
+      "clause": "6.16",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "AbsenceProvable",
+      "rules": [
+        "AC-015"
+      ],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "后半句（已含加密选项的，归档前解密）为条件性陈述，需来源证据。"
+    },
+    {
+      "clause": "7.1(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "对合格生成软件的功能陈述。"
+    },
+    {
+      "clause": "7.1(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "合格生成软件将 OFD 处理为适于长期保存时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "7.2(1)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": false,
+      "condition": null,
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "对合格阅读软件的功能陈述。"
+    },
+    {
+      "clause": "7.2(2)",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "合格阅读软件打开 DocType 为 OFD-A 的文件时",
+      "pdfPage": 12,
+      "printedPage": "8",
+      "confidence": "Verified",
+      "firstProfile": "ExternalEvidence",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/1",
+      "strength": "Shall",
+      "modalKeyword": "还应",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "按本文件处理后的 ofd"
+        }
+      ],
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "带 * 号类别“还应根据内容和应用目标综合判断”。"
+    },
+    {
+      "clause": "A.1/2",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/3",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/4",
+      "strength": "Shall",
+      "modalKeyword": "还应",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "按本文件处理后的 ofd"
+        }
+      ],
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "带 * 号类别“还应根据内容和应用目标综合判断”。"
+    },
+    {
+      "clause": "A.1/5",
+      "strength": "Shall",
+      "modalKeyword": "还应",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "按本文件处理后的 ofd"
+        }
+      ],
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "带 * 号类别“还应根据内容和应用目标综合判断”。"
+    },
+    {
+      "clause": "A.1/6",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/7",
+      "strength": "Shall",
+      "modalKeyword": "还应",
+      "mixedStrengths": [
+        {
+          "strength": "Statement",
+          "part": "按本文件处理后的 ofd"
+        }
+      ],
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false,
+      "note": "带 * 号类别“还应根据内容和应用目标综合判断”。"
+    },
+    {
+      "clause": "A.1/8",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 20090"
+      ],
+      "editionFixed": false,
+      "note": "GB/T 20090 在附录 A 注 2 和参考文献中出现，不在第 2 章规范性引用文件中。"
+    },
+    {
+      "clause": "A.1/9",
+      "strength": "Statement",
+      "modalKeyword": "none",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [
+        "GB/T 20090"
+      ],
+      "editionFixed": false,
+      "note": "GB/T 20090 在附录 A 注 2 和参考文献中出现，不在第 2 章规范性引用文件中。"
+    },
+    {
+      "clause": "A.1/10",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换且主要用途是查阅和输出时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/11",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/12",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    },
+    {
+      "clause": "A.1/13",
+      "strength": "May",
+      "modalKeyword": "可",
+      "conditional": true,
+      "condition": "附件按 6.15.2(a) 转换时",
+      "pdfPage": 13,
+      "printedPage": "9",
+      "confidence": "Verified",
+      "firstProfile": "OutOfProfile",
+      "rules": [],
+      "referencedStandards": [],
+      "editionFixed": false
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Opt-in, read-only GB/T 42133-2022 (OFD-A) assessment for Ofdrw.Net. Reports declaration, input scope, per-clause and execution dimensions separately; never certifies compliance or produces OFD-A.</Description>
+    <PackageTags>OFD;OFD-A;archival;GB-T-42133;preflight</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Dependency direction: Archival -> Packaging -> Core. Converter, Layout, Reader and Cli must not reference this project. -->
+    <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Archival.Tests" />
+  </ItemGroup>
+</Project>

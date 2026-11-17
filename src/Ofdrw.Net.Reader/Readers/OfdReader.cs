@@ -512,13 +512,13 @@ public sealed class OfdReader : IOfdReader
             foreach (var customTag in list.Root.Elements(docNs + "CustomTag") ?? Enumerable.Empty<XElement>())
             {
                 // Other schemas may use Tag/Key/Value too; their payloads remain opaque.
-                if (customTag.Attribute("TypeID")?.Value != "EMR" ||
-                    customTag.Attribute("NameSpace")?.Value != OfdCustomTagSource.EmrNamespace) continue;
+                var channel = OfdCustomTagChannels.Declared(customTag);
+                if (channel == OfdCustomTagChannel.None) continue;
                 var locationNode = customTag.Element(docNs + "FileLoc");
                 var detailLoc = ReadValue(locationNode, material, cancellationToken) ?? customTag.Attribute("FileLoc")?.Value;
                 if (string.IsNullOrWhiteSpace(detailLoc)) continue;
                 var detailPath = material.ResolvePath(listPath, detailLoc!, cancellationToken);
-                if (ReadKeyValueCustomTags(archive, detailPath, package.CustomTags, docNs, material, cancellationToken))
+                if (ReadKeyValueCustomTags(archive, detailPath, channel, package.CustomTags, docNs, material, cancellationToken))
                     customTagDetails.Add(detailPath);
             }
         }
@@ -526,7 +526,7 @@ public sealed class OfdReader : IOfdReader
         {
             var directory = OfdPackagePath.GetDirectory(docRoot);
             var legacyPath = (directory.Length == 0 ? "" : directory + "/") + "Tags/CustomTag_EMR.xml";
-            if (ReadKeyValueCustomTags(archive, legacyPath, package.CustomTags, docNs, material, cancellationToken))
+            if (ReadKeyValueCustomTags(archive, legacyPath, OfdCustomTagChannel.Emr, package.CustomTags, docNs, material, cancellationToken))
                 customTagDetails.Add(legacyPath);
         }
         if (customTagDeclarations.Length > 0 || customTagDetails.Count > 0) package.CustomTagSource = new OfdCustomTagSource(package,
@@ -1584,7 +1584,7 @@ public sealed class OfdReader : IOfdReader
 
     private static bool ReadKeyValueCustomTags(
         OfdPackageArchive archive,
-        string detailPath,
+        string detailPath, OfdCustomTagChannel channel,
         IDictionary<string, string> destination, XNamespace ns, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         if (!archive.Contains(detailPath))
@@ -1592,9 +1592,10 @@ public sealed class OfdReader : IOfdReader
             return false;
         }
 
+        // A payload is modeled only when its root matches the declared channel.
         var tagsXml = material.ReadXml(detailPath, archive.GetBytes(detailPath), cancellationToken);
-        if (tagsXml.Root?.Name != ns + "EMRTags") return false;
-        foreach (var tag in tagsXml.Root.Elements(ns + "Tag"))
+        if (OfdCustomTagChannels.Payload(tagsXml.Root, ns) != channel) return false;
+        foreach (var tag in tagsXml.Root!.Elements(OfdCustomTagChannels.TagName(channel, ns)))
         {
             var key = tag.Attribute("Key")?.Value;
             var value = tag.Attribute("Value")?.Value;

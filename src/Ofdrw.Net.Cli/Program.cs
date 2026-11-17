@@ -33,7 +33,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "areas" or "locate"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "areas" or "locate" or "derive-ofd"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -61,6 +61,8 @@ internal static partial class Cli
                 return await AreasAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "locate")
                 return await LocateAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "derive-ofd")
+                return await DeriveOfdAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -164,6 +166,7 @@ internal static partial class Cli
                 options.DocxEngine,
                 options.DocxOfdMode,
                 options.NativeEmbeddedBoldBehavior,
+                options.NativeFontSelfContainment,
                 options.LibreOfficePath,
                 options.FontDirectories, options.DocumentIndex ?? 0,
                 options.CopyBookmarks, options.CopyAttachments, cancellationToken).ConfigureAwait(false);
@@ -174,6 +177,11 @@ internal static partial class Cli
         {
             Console.Error.WriteLine("Conversion canceled.");
             return 130;
+        }
+        catch (Ofdrw.Net.Core.Models.OfdArchivalOriginalException ex)
+        {
+            Console.Error.WriteLine($"Error: {TerminalText.Escape(ex.Message)}");
+            return ArchivalOriginalExitCode;
         }
         catch (Exception ex)
         {
@@ -204,6 +212,7 @@ internal static partial class Cli
         DocxConversionEngine docxEngine,
         DocxToOfdMode docxOfdMode,
         DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
+        DocxNativeFontSelfContainment nativeFontSelfContainment,
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories,
         int documentIndex,
@@ -231,6 +240,7 @@ internal static partial class Cli
                 docxEngine,
                 docxOfdMode,
                 nativeEmbeddedBoldBehavior,
+                nativeFontSelfContainment,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, cancellationToken).ConfigureAwait(false);
@@ -242,6 +252,7 @@ internal static partial class Cli
                 docxEngine,
                 docxOfdMode,
                 nativeEmbeddedBoldBehavior,
+                nativeFontSelfContainment,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
@@ -273,6 +284,7 @@ internal static partial class Cli
         DocxConversionEngine engine,
         DocxToOfdMode ofdMode,
         DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
+        DocxNativeFontSelfContainment nativeFontSelfContainment,
         string? libreOfficePath,
         IEnumerable<string> fontDirectories)
     {
@@ -281,6 +293,7 @@ internal static partial class Cli
             Engine = engine,
             OfdMode = ofdMode,
             NativeEmbeddedBoldBehavior = nativeEmbeddedBoldBehavior,
+            NativeFontSelfContainment = nativeFontSelfContainment,
             LibreOfficePath = libreOfficePath
         };
         foreach (var directory in fontDirectories)
@@ -607,6 +620,11 @@ internal static partial class Cli
                     options.DocxOnlyOptions.Add(arg);
                     options.NativeEmbeddedBoldBehavior = ParseNativeEmbeddedBoldBehavior(ReadValue(args, ref i, arg));
                     break;
+                case "--native-font-self-containment":
+                    Once(arg);
+                    options.DocxOnlyOptions.Add(arg);
+                    options.NativeFontSelfContainment = ParseNativeFontSelfContainment(ReadValue(args, ref i, arg));
+                    break;
                 case "--font-directory":
                     options.DocxOnlyOptions.Add(arg);
                     options.FontDirectories.Add(ReadValue(args, ref i, arg));
@@ -751,6 +769,17 @@ internal static partial class Cli
         };
     }
 
+    private static DocxNativeFontSelfContainment ParseNativeFontSelfContainment(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "compatibility" => DocxNativeFontSelfContainment.Compatibility,
+            "require-embedded" => DocxNativeFontSelfContainment.RequireEmbedded,
+            _ => throw new ArgumentException(
+                "Invalid --native-font-self-containment value. Use compatibility or require-embedded.")
+        };
+    }
+
     private static bool IsHelp(string arg)
     {
         return arg is "-h" or "--help" or "help";
@@ -796,6 +825,7 @@ internal static partial class Cli
           ofdrw areas list <input.ofd> [--document 2] [--json]
           ofdrw areas fill <input.ofd> <output.ofd> --name NAME (--text TEXT | --image FILE) [--font NAME] [--font-size MM] [--document 2]
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
+          ofdrw derive-ofd <input.ofd> <output.ofd> [--json]
 
         Commands:
           convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
@@ -823,6 +853,8 @@ internal static partial class Cli
           mix          Overlay source/page pairs in input order, first page dimensions.
           clean-signatures Remove all declarations and unreferenced owned signature payloads.
           merge        Merge OFD pages into a self-contained output document.
+          derive-ofd   Copy an OFD-A original to a new ordinary OFD (root DocType only) for editing.
+                       Content-changing commands refuse OFD-A input with exit code 5.
 
         Options:
           text-to-ofd: positional paths or --input/--output; no mixing or duplicate options.
@@ -850,6 +882,9 @@ internal static partial class Cli
           --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
           --native-embedded-bold-behavior Native embedded bold: text-stroke (default) or throw.
                              throw requires a physical bold face for selected embedded text, not name-only text.
+          --native-font-self-containment Native DOCX to OFD fonts: compatibility (default) or require-embedded.
+                             require-embedded embeds every used font's own bytes (system Chinese families included)
+                             or fails; fonts restricted by OS/2.fsType are rejected. fsType is not a licence grant.
           --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
           --font-directory    Additional font directory for DOCX rendering; may be repeated.
           -h, --help    Show help.
@@ -878,6 +913,8 @@ internal static partial class Cli
         public DocxToOfdMode DocxOfdMode { get; set; } = DocxToOfdMode.Native;
 
         public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
+
+        public DocxNativeFontSelfContainment NativeFontSelfContainment { get; set; } = DocxNativeFontSelfContainment.Compatibility;
 
         public List<string> FontDirectories { get; } = new();
 

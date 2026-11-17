@@ -13,7 +13,8 @@ namespace Ofdrw.Net.Layout.Editing;
 /// <summary>Replaces genuine keyword hits with conservative original-font geometry and fixed source slots.</summary>
 /// <remarks>Supports literal simple scalars, horizontal positive progression and translation only.
 /// Unsupported sources, overlapping requests or insufficient original space reject the entire batch.
-/// Keep input models stable through result consumption; the service never mutates the input.</remarks>
+/// Keep input models stable through result consumption; the service never mutates the input.
+/// Sources declaring <c>DocType="OFD-A"</c> are rejected with <see cref="OfdArchivalOriginalException"/>.</remarks>
 public sealed class OfdTextReplacer
 {
     private readonly IOfdGlyphGeometryProvider provider;
@@ -107,6 +108,7 @@ public sealed class OfdTextReplacer
         OfdTextReplacementOptions? options = null, CancellationToken cancellationToken = default)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
+        OfdArchivalEditGuard.ThrowIfArchival(source, "OfdTextReplacer.Replace");
         var policies = options ?? new OfdTextReplacementOptions();
         var operation = new OfdTextReplacementOperation(source, policies, cancellationToken);
         try { return Prepare(operation, Freeze(replacements, policies.Limits, operation.Context.Material, cancellationToken), cancellationToken); }
@@ -127,6 +129,7 @@ public sealed class OfdTextReplacer
         string keyword, string replacementText, OfdTextReplacementOptions? options, CancellationToken cancellationToken)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
+        OfdArchivalEditGuard.ThrowIfArchival(source, "OfdTextReplacer.Replace");
         if (keyword is null) throw new ArgumentNullException(nameof(keyword));
         if (keyword.Length == 0) throw new ArgumentException("Keyword cannot be empty.", nameof(keyword));
         if (replacementText is null) throw new ArgumentNullException(nameof(replacementText));

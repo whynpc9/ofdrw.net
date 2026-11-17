@@ -95,8 +95,8 @@ public sealed class Audit008RegressionTests
         var bytes = await Write(package);
         Assert.Equal("value", (await Read(bytes)).CustomTags["new"]);
         var index = Xml(bytes, "Doc_0/Tags/CustomTags.xml");
-        Assert.Equal("EMR", index.Root!.Elements().Single().Attribute("TypeID")!.Value);
-        Assert.Equal(EmrNamespace, index.Root.Elements().Single().Attribute("NameSpace")!.Value);
+        Assert.Equal("ofdrw-kv", index.Root!.Elements().Single().Attribute("TypeID")!.Value);
+        Assert.Equal("urn:ofdrw-net:custom-tags:kv:1", index.Root.Elements().Single().Attribute("NameSpace")!.Value);
         Assert.Empty((await Read(await Write(new OfdDocumentPackage()))).CustomTags);
     }
 

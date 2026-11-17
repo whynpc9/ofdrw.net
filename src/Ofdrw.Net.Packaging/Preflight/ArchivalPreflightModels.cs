@@ -49,6 +49,16 @@ public sealed class ArchivalPreflightOptions
     public int MaxReferences { get; set; } = 100_000;
     /// <summary>Maximum results, including six reserved interruption diagnostics; must be at least twelve.</summary>
     public int MaxResults { get; set; } = 10_000;
+    /// <summary>
+    /// Opt-in, default off. When true, a Document whose only unsupported-scope trigger is text-only <c>CustomTags</c>
+    /// declarations is decided by following the known tag chain (index, <c>CustomTag</c> with a known TypeID/NameSpace pair,
+    /// <c>FileLoc</c>, plain Key/Value payload) instead of being marked <c>UnsupportedResourceScope</c>. Unknown schemas,
+    /// foreign elements and unreadable entries stay Unknown; missing, escaping or external tag targets fail APF-002.
+    /// Extensions, Annotations and CompositeGraphicUnits stay unsupported. The report then carries
+    /// <see cref="ArchivalPreflightReport.KnownCustomTagsProfileVersion"/>; with the option off, results and
+    /// <see cref="ArchivalPreflightReport.DefaultProfileVersion"/> are unchanged.
+    /// </summary>
+    public bool RecognizeKnownCustomTags { get; set; }
 
     internal ArchivalPreflightOptions Snapshot()
     {
@@ -61,6 +71,7 @@ public sealed class ArchivalPreflightOptions
             RequireSingleDocument = RequireSingleDocument, RequireNoEncryption = RequireNoEncryption,
             MaxXmlBytes = MaxXmlBytes, MaxSingleXmlBytes = MaxSingleXmlBytes, MaxXmlDepth = MaxXmlDepth,
             MaxXmlNodes = MaxXmlNodes, MaxReferences = MaxReferences, MaxResults = MaxResults,
+            RecognizeKnownCustomTags = RecognizeKnownCustomTags,
             LoadOptions = new OfdPackageLoadOptions
             {
                 MaxInputBytes = load.MaxInputBytes, MaxEntryCount = load.MaxEntryCount,
@@ -145,10 +156,15 @@ public sealed class ArchivalPreflightReport
         RuleResults = sorted.AsReadOnly(); CoverageGaps = gaps.Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList().AsReadOnly();
         EntryCount = entryCount; DocumentCount = documentCount;
         RequireSingleDocument = options.RequireSingleDocument; RequireNoEncryption = options.RequireNoEncryption;
+        ProfileVersion = options.RecognizeKnownCustomTags ? KnownCustomTagsProfileVersion : DefaultProfileVersion;
         BudgetDescription = $"XML bytes={options.MaxXmlBytes}; single XML={options.MaxSingleXmlBytes}; depth={options.MaxXmlDepth}; nodes={options.MaxXmlNodes}; references={options.MaxReferences}; results={options.MaxResults}; input={options.LoadOptions.MaxInputBytes}; entries={options.LoadOptions.MaxEntryCount}; entry bytes={options.LoadOptions.MaxEntryUncompressedBytes}; expanded bytes={options.LoadOptions.MaxTotalUncompressedBytes}; ratio={options.LoadOptions.MaxCompressionRatio}";
     }
+    /// <summary>Local policy version reported when <see cref="ArchivalPreflightOptions.RecognizeKnownCustomTags"/> is off.</summary>
+    public const string DefaultProfileVersion = "ofdrw-local-preflight/0.1-draft";
+    /// <summary>Distinct local policy version reported when <see cref="ArchivalPreflightOptions.RecognizeKnownCustomTags"/> is on.</summary>
+    public const string KnownCustomTagsProfileVersion = "ofdrw-local-preflight/0.1-draft+known-custom-tags.1";
     /// <summary>Version of this local policy, not an OFD or archival standard version.</summary>
-    public string ProfileVersion => "ofdrw-local-preflight/0.1-draft";
+    public string ProfileVersion { get; }
     /// <summary>Execution integrity, independent of rule outcomes.</summary>
     public PreflightRunState RunState { get; }
     /// <summary>Finite inspected scope and package lookup semantics.</summary>

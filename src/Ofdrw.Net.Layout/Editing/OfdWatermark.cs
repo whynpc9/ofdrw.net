@@ -34,7 +34,8 @@ public sealed class OfdWatermarkOptions
     public long MaxDecodedImagePixels { get; set; } = 40_000_000;
 }
 
-/// <summary>Adds ordinary text/image objects, without signature declarations or cryptographic validity claims.</summary>
+/// <summary>Adds ordinary text/image objects, without signature declarations or cryptographic validity claims.
+/// Packages declaring <c>DocType="OFD-A"</c> are rejected with <see cref="OfdArchivalOriginalException"/>.</summary>
 public static class OfdWatermark
 {
     /// <summary>Adds one text object per selected zero-based page. All validation precedes mutation.</summary>
@@ -42,6 +43,7 @@ public static class OfdWatermark
         OfdWatermarkOptions? options = null, string fontName = "SimSun", double fontSizeMillimeters = 8,
         OfdColor? color = null, CancellationToken cancellationToken = default)
     {
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdWatermark.AddText");
         if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("Watermark text is required.", nameof(text));
         if (string.IsNullOrWhiteSpace(fontName)) throw new ArgumentException("Font name is required.", nameof(fontName));
         if (!Finite(fontSizeMillimeters) || fontSizeMillimeters <= 0) throw new ArgumentOutOfRangeException(nameof(fontSizeMillimeters));
@@ -60,6 +62,7 @@ public static class OfdWatermark
     public static void AddImage(OfdDocumentPackage package, IReadOnlyList<int> pages, byte[] data,
         string mediaType, OfdWatermarkOptions? options = null, int alpha = 160, CancellationToken cancellationToken = default)
     {
+        OfdArchivalEditGuard.ThrowIfArchival(package, "OfdWatermark.AddImage");
         options ??= new OfdWatermarkOptions();
         if (data is null) throw new ArgumentNullException(nameof(data));
         if (data.Length == 0 || data.Length > options.MaxImageBytes) throw new ArgumentException("Watermark image exceeds its encoded byte budget or is empty.", nameof(data));

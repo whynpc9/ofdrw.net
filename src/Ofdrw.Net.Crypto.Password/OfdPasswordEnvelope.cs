@@ -5,6 +5,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Crypto.Password.Internal;
 using Ofdrw.Net.Packaging.Archive;
 
@@ -23,7 +24,8 @@ public static class OfdPasswordEnvelope
     private static readonly XNamespace Profile = "urn:ofdrw-net:password-profile:2";
 
     /// <summary>Encrypts an explicitly selected set of entries and returns a complete ZIP. Leaves input open.
-    /// On failure no result is returned. The caller owns and should clear returned bytes when no longer needed.</summary>
+    /// On failure no result is returned. The caller owns and should clear returned bytes when no longer needed.
+    /// An input declaring <c>DocType="OFD-A"</c> throws <see cref="OfdArchivalOriginalException"/> (encryption contradicts GB/T 42133 6.16).</summary>
     public static Task<byte[]> EncryptAsync(Stream source, string password, OfdPasswordOptions options,
         CancellationToken cancellationToken = default) => TransformAsync(source, password, options, true, cancellationToken);
 
@@ -55,6 +57,7 @@ public static class OfdPasswordEnvelope
             var archive = await LoadRawValidatedAsync(source, settings, token).ConfigureAwait(false);
             entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
             AdoptAndValidateEntries(entries, owned);
+            if (encrypt) RejectArchivalOriginal(entries, settings, "OfdPasswordEnvelope.EncryptAsync");
             var salt = encrypt ? RandomNumberGenerator.GetBytes(32) : ReadKdfSalt(entries, settings);
             owned.Add(salt);
             if (settings.KdfMemory < PasswordPrimitives.KdfMemoryBudget || settings.KdfWork < PasswordPrimitives.KdfWorkUnits)
@@ -307,6 +310,14 @@ public static class OfdPasswordEnvelope
         var iv = record[..16]; owned.Add(iv);
         var cipher = record[16..]; owned.Add(cipher);
         return PasswordPrimitives.Cbc(false, cipher, key, iv, token);
+    }
+
+    /// <summary>An encrypted OFD-A contradicts GB/T 42133 clause 6.16; refuse archival originals before any key work.</summary>
+    internal static void RejectArchivalOriginal(Dictionary<string, byte[]> entries, Settings settings, string operation)
+    {
+        if (!entries.ContainsKey("OFD.xml")) return; // ValidateDocument reports the missing root.
+        var root = Parse(Get(entries, "OFD.xml"), settings);
+        if (OfdDocTypes.IsArchival(root.Attribute("DocType")?.Value)) throw new OfdArchivalOriginalException(operation);
     }
 
     internal static XElement ValidateDocument(Dictionary<string, byte[]> entries, Settings settings)

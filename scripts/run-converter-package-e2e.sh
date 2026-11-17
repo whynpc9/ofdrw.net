@@ -102,6 +102,17 @@ export NUGET_PACKAGES="$TASK_DIR/packages"
 CONSUMER="$TASK_DIR/consumer/Consumer.csproj"
 dotnet restore "$CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet build "$CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+# The Converter/Layout/Signatures consumer must not receive opt-in packages (Ofdrw.Net.Archival) transitively.
+python3 - "$TASK_DIR/consumer/bin/Release/net10.0/Consumer.deps.json" "$ROOT_DIR/scripts" <<'PY_OPT_IN'
+import json, sys
+sys.path.insert(0, sys.argv[2])
+from importlib import import_module
+deps = json.load(open(sys.argv[1]))
+resolved = {key.split('/', 1)[0] for key in deps['targets'][deps['runtimeTarget']['name']]}
+leaked = sorted(resolved & import_module('verify-package-artifacts').OPT_IN_PACKAGES)
+assert not leaked, f'Ordinary consumer resolved opt-in package(s) transitively: {leaked}'
+assert 'Ofdrw.Net.Converter' in resolved, 'Consumer did not resolve the Converter meta-package'
+PY_OPT_IN
 dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERSION" --configfile "$TASK_DIR/NuGet.Config"
 python3 - "$RESULT_DIR/cli-plain-text.txt" <<'PY_TEXT'
 import pathlib, sys
@@ -120,6 +131,23 @@ PY_TEXT_CHECK
 "$TASK_DIR/tools/ofdrw" image-to-ofd "$RESULT_DIR/cli-image.png" "$RESULT_DIR/cli-image.ofd" --ppm 2 --page-width 220 --page-height 307
 OFDRW_REPO_ROOT="$ROOT_DIR" OFDRW_E2E_OUTPUT_DIR="$RESULT_DIR" dotnet run \
   --project "$CONSUMER" -c Release --no-build --no-restore
+# The opt-in archival package: a consumer that references Ofdrw.Net.Archival explicitly runs a read-only
+# assessment from the packed bytes, while the Converter consumer above stays free of it.
+mkdir -p "$TASK_DIR/archival-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Archival.E2E/Program.cs" "$TASK_DIR/archival-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Archival.E2E/Ofdrw.Net.Archival.E2E.csproj" "$TASK_DIR/archival-consumer/Consumer.csproj"
+ARCHIVAL_CONSUMER="$TASK_DIR/archival-consumer/Consumer.csproj"
+dotnet restore "$ARCHIVAL_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet build "$ARCHIVAL_CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+python3 - "$TASK_DIR/archival-consumer/bin/Release/net10.0/Consumer.deps.json" "$VERSION" <<'PY_ARCHIVAL'
+import json, sys
+deps = json.load(open(sys.argv[1]))
+resolved = {key for key in deps['targets'][deps['runtimeTarget']['name']] if key.startswith('Ofdrw.Net.')}
+assert f'Ofdrw.Net.Archival/{sys.argv[2]}' in resolved, resolved
+assert all(key.endswith('/' + sys.argv[2]) for key in resolved), resolved
+assert not any(key.startswith('Ofdrw.Net.Converter') for key in resolved), resolved
+PY_ARCHIVAL
+dotnet run --project "$ARCHIVAL_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/archival"
 # Exercise the production subset backend from the newly packed SDK as well.
 mkdir -p "$TASK_DIR/font-consumer"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.FontSubset.E2E/Program.cs" "$TASK_DIR/font-consumer/Program.cs"

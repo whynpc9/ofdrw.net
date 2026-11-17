@@ -58,6 +58,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     {
         if (!Enum.IsDefined(typeof(DocxEmbeddedBoldBehavior), options.NativeEmbeddedBoldBehavior))
             throw new ArgumentOutOfRangeException(nameof(options), "Unknown native embedded bold behavior.");
+        if (!Enum.IsDefined(typeof(DocxNativeFontSelfContainment), options.NativeFontSelfContainment))
+            throw new ArgumentOutOfRangeException(nameof(options), "Unknown native font self-containment policy.");
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
@@ -91,6 +93,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             _sectionPages = counts;
             return stable;
         });
+        if (_configuredFonts.RequireEmbedded)
+            RequireSelfContainedPackage(result!);
         return result!;
     }
 
@@ -410,7 +414,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private string DeclaredFontName(BuiltInTextFormat format)
     {
         var family = NormalizeFontFamily(format.FontFamily);
-        if (DocxFontCatalog.IsViewerLocalCjkFamily(family))
+        // Embedded resources are keyed per requested style so each binds its own physical face.
+        if (DocxFontCatalog.IsViewerLocalCjkFamily(family) && !_configuredFonts.RequireEmbedded)
             return family;
         return FontKey(format);
     }
@@ -440,9 +445,14 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         };
         if (embedded)
         {
-            var resolveFamily = DocxFontCatalog.IsViewerLocalCjkFamily(declaredName)
+            var resolveFamily = DocxFontCatalog.IsViewerLocalCjkFamily(declaredName) && !_configuredFonts.RequireEmbedded
                 ? declaredName
                 : NormalizeFontFamily(format.FontFamily);
+            // Strict mode embeds only catalog faces (FontDirectories, or the platform CJK files when none
+            // are configured), never bytes a host resolver or process-wide registration supplies by name.
+            if (_configuredFonts.RequireEmbedded && _configuredFonts.Faces(resolveFamily) is null)
+                throw NotSelfContained(resource.FamilyName!,
+                    "no font file whose own name table records this family was found in FontDirectories (or the platform font directories when none are configured)");
             // Use the same physical style selection as GetFont (layout).
             var resolveBold = format.Bold;
             var resolver = GlobalFontSettings.FontResolver;
@@ -450,6 +460,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             if (!_fontFiles.TryGetValue(face.FaceName, out var file))
             {
                 var data = PdfFontRegistry.GetOriginalFont(face.FaceName);
+                if (_configuredFonts.RequireEmbedded)
+                    RequireSelfContainedFace(resource.FamilyName!, data, typedGlyphs: false);
                 using var hash = SHA256.Create();
                 var digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty).ToLowerInvariant();
                 var physicalStyle = new OpenTypeFace(data).Style;
@@ -475,6 +487,87 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         return resource;
     }
 
+    private readonly Dictionary<string, string?> _selfContainedChecks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _finalRejections = new(StringComparer.OrdinalIgnoreCase);
+    private bool _licenseNoticeReported;
+
+    private static InvalidDataException NotSelfContained(string family, string reason) =>
+        new($"DOCX_FONT_NOT_SELF_CONTAINED: font family '{family}' cannot be embedded under NativeFontSelfContainment.RequireEmbedded: {reason}.");
+
+    private void RequireSelfContainedFace(string family, byte[] data, bool typedGlyphs)
+    {
+        if (!IsSelfContainedFace(family, data, typedGlyphs, out var reason))
+            throw NotSelfContained(family, reason!);
+    }
+
+    // The declared family must be the face's own name-table family (or a same-family alias),
+    // and OS/2.fsType must allow embedding. Results are cached per family and content.
+    private bool IsSelfContainedFace(string family, byte[] data, bool typedGlyphs, out string? reason)
+    {
+        string digest;
+        using (var hash = SHA256.Create())
+            digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty);
+        var key = family + "\u001f" + digest + (typedGlyphs ? "\u001ftyped" : string.Empty);
+        if (!_selfContainedChecks.TryGetValue(key, out reason))
+        {
+            reason = CheckSelfContainedFace(family, data, typedGlyphs);
+            _selfContainedChecks[key] = reason;
+            if (reason is null) ReportLicenseResponsibility();
+        }
+        return reason is null;
+    }
+
+    private static string? CheckSelfContainedFace(string family, byte[] data, bool typedGlyphs)
+    {
+        if (data.Length == 0) return "no font bytes are available";
+        OpenTypeFace face;
+        try { face = new OpenTypeFace(data); }
+        catch (InvalidDataException exception) { return "the resolved font bytes are not a parseable OpenType face (" + exception.Message + ")"; }
+        var expected = DocxFontCatalog.SameFamilyNames(family);
+        var actual = face.FamilyNames();
+        if (!actual.Any(name => expected.Contains(name, StringComparer.OrdinalIgnoreCase)))
+        {
+            var recorded = actual.Count == 0 ? "no family name" : "family " + string.Join(", ", actual.Select(name => "'" + name + "'"));
+            return "no authentic font bytes for this family were found in FontDirectories (or the platform font directories when none are configured); " +
+                   "the only resolvable face records " + recorded + ", and another family's bytes are never embedded under this name";
+        }
+        if (face.EmbeddingPermissions is not { } fsType)
+            return "the face has no OS/2 table, so its embedding permission (OS/2.fsType) cannot be read";
+        if ((fsType & 0x0002) != 0)
+            return FormattableString.Invariant($"OS/2.fsType 0x{fsType:X4} marks restricted-licence embedding, which forbids embedding");
+        if ((fsType & 0x0200) != 0)
+            return FormattableString.Invariant($"OS/2.fsType 0x{fsType:X4} permits bitmap embedding only, but OFD text needs outline font data");
+        if ((fsType & 0x0100) != 0 && typedGlyphs)
+            return FormattableString.Invariant($"OS/2.fsType 0x{fsType:X4} forbids subsetting, but the paragraph layout engine writes glyph-ID subsets; omit NativeParagraphLayoutEngine so the full face is embedded");
+        return null;
+    }
+
+    private void ReportLicenseResponsibility()
+    {
+        if (_licenseNoticeReported) return;
+        _licenseNoticeReported = true;
+        _diagnostics.Add(new DocxConversionDiagnostic("DOCX_FONT_LICENSE_NOT_VERIFIED",
+            "NativeFontSelfContainment.RequireEmbedded embeds font bytes after reading each face's OS/2.fsType. " +
+            "A permissive fsType is not a licence grant: the converter does not verify font licences, and licensing of embedded fonts remains the caller's responsibility.",
+            DocxConversionDiagnosticSeverity.Information));
+    }
+
+    // Final guard: every font resource text can bind carries the declared family's own permitted bytes.
+    private void RequireSelfContainedPackage(OfdDocumentPackage package)
+    {
+        var typed = new HashSet<string>(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
+            .Where(text => text.FontResourceId is not null && text.Runs.Any(run => run.PositionedGlyphs is not null))
+            .Select(text => text.FontResourceId!), StringComparer.Ordinal);
+        foreach (var font in package.Fonts)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            var family = string.IsNullOrWhiteSpace(font.FamilyName) ? font.FontName : font.FamilyName!;
+            if (font.Data.Length == 0)
+                throw NotSelfContained(family, "the font resource would be written without font bytes");
+            RequireSelfContainedFace(family, font.Data, typed.Contains(font.Id));
+        }
+    }
+
     private XFont GetFont(BuiltInTextFormat format)
     {
         var key = FontKey(format);
@@ -495,8 +588,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         // Name-only CJK output retains compatibility metrics. In particular,
         // missing Noto must not measure a host resolver's unrelated stand-in.
         // Configured embedded faces measure Latin with their own bytes.
-        var nameOnlyCjk = DocxFontCatalog.IsViewerLocalCjkFamily(family) ||
-            DocxFontCatalog.IsNotoCjkFamily(family) && !_configuredFonts.ShouldEmbed(family);
+        var nameOnlyCjk = !_configuredFonts.RequireEmbedded && (DocxFontCatalog.IsViewerLocalCjkFamily(family) ||
+            DocxFontCatalog.IsNotoCjkFamily(family) && !_configuredFonts.ShouldEmbed(family));
         if (!nameOnlyCjk)
         {
             return GetFont(format);
@@ -660,6 +753,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var family = NormalizeFontFamily(format.FontFamily);
         var chain = new List<TextFontFamily>();
         if (FinalFamily(family) is { } requested) chain.Add(requested);
+        else if (_configuredFonts.RequireEmbedded)
+            throw NotSelfContained(family, _finalRejections.TryGetValue(family, out var rejected) ? rejected :
+                "no font file whose own name table records this family was found in FontDirectories (or the platform font directories when none are configured)");
         _finalFallback ??= _configuredFonts.FallbackOrder(_options.FontFallbackFamilies)
             .Select(FinalFamily).Where(value => value is not null).Select(value => value!).ToArray();
         foreach (var candidate in _finalFallback)
@@ -693,7 +789,16 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             {
                 if (!_finalFaces.TryGetValue(data, out var face))
                 {
-                    try { face = new TextFontFace(family, data); }
+                    try
+                    {
+                        face = new TextFontFace(family, data);
+                        // Strict mode keeps only the family's own faces whose fsType permits GID subsets.
+                        if (_configuredFonts.RequireEmbedded && !IsSelfContainedFace(family, face.GetFaceBytes(), typedGlyphs: true, out var rejected))
+                        {
+                            _finalRejections[family] = rejected!;
+                            face = null;
+                        }
+                    }
                     catch (TextLayoutException exception)
                     {
                         face = null;

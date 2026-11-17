@@ -37,7 +37,7 @@ internal static partial class Cli
             var targets = selected ?? Enumerable.Range(0, ordered.Count).ToArray();
             if (targets.Any(index => index >= ordered.Count))
                 throw new ArgumentOutOfRangeException(nameof(options.Pages), "A selected page does not exist in the document.");
-            foreach (var index in targets) OfdDocumentEditor.CropPage(ordered[index], box[0], box[1], box[2], box[3]);
+            foreach (var index in targets) OfdDocumentEditor.CropPage(package, ordered[index], box[0], box[1], box[2], box[3]);
             cropped = targets.Length;
         }, token).ConfigureAwait(false);
         WriteSuccessNotification($"Cropped {cropped} page(s) {options.InputPath} -> {options.OutputPath}");

@@ -12,7 +12,7 @@ internal static class BoundedStreamCopy
         if (maximumBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumBytes));
         cancellationToken.ThrowIfCancellationRequested();
         if (input.CanSeek && input.Length - input.Position > maximumBytes)
-            throw new InvalidDataException($"{description} exceeds the configured {maximumBytes} byte limit.");
+            throw OfdLimitExceeded.Create($"{description} exceeds the configured {maximumBytes} byte limit.");
         var buffer = new byte[81920];
         long total = 0;
         while (true)
@@ -22,7 +22,7 @@ internal static class BoundedStreamCopy
             var count = remaining >= buffer.Length ? buffer.Length : (int)remaining + 1;
             var read = input.Read(buffer, 0, count);
             if (read == 0) return total;
-            if (read > remaining) throw new InvalidDataException($"{description} exceeds the configured {maximumBytes} byte limit.");
+            if (read > remaining) throw OfdLimitExceeded.Create($"{description} exceeds the configured {maximumBytes} byte limit.");
             output.Write(buffer, 0, read);
             total += read;
         }
@@ -43,7 +43,7 @@ internal static class BoundedStreamCopy
         cancellationToken.ThrowIfCancellationRequested();
         if (input.CanSeek && input.Length - input.Position > maximumBytes)
         {
-            throw new InvalidDataException($"{description} exceeds the configured {maximumBytes} byte limit.");
+            throw OfdLimitExceeded.Create($"{description} exceeds the configured {maximumBytes} byte limit.");
         }
 
         var buffer = new byte[81920];
@@ -62,7 +62,7 @@ internal static class BoundedStreamCopy
 
             if (read > remaining)
             {
-                throw new InvalidDataException($"{description} exceeds the configured {maximumBytes} byte limit.");
+                throw OfdLimitExceeded.Create($"{description} exceeds the configured {maximumBytes} byte limit.");
             }
 
             await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);

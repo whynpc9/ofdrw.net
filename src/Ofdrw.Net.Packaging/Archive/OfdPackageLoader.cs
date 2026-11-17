@@ -11,6 +11,9 @@ namespace Ofdrw.Net.Packaging.Archive;
 
 public sealed partial class OfdPackageLoader
 {
+    /// <summary>True when a load failure was caused by a configured limit rather than malformed input.</summary>
+    internal static bool IsLimitFailure(Exception exception) => OfdLimitExceeded.IsLimit(exception);
+
     public async Task<OfdPackageArchive> LoadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {
         return await LoadAsync(ofdStream, new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
@@ -45,7 +48,7 @@ public sealed partial class OfdPackageLoader
         }
         else if (ofdStream.Length > options.MaxInputBytes)
         {
-            throw new InvalidDataException("OFD input exceeds the configured compressed input size limit.");
+            throw OfdLimitExceeded.Create("OFD input exceeds the configured compressed input size limit.");
         }
 
         var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
@@ -53,7 +56,7 @@ public sealed partial class OfdPackageLoader
         using var zip = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
         if (zip.Entries.Count > options.MaxEntryCount)
         {
-            throw new InvalidDataException(
+            throw OfdLimitExceeded.Create(
                 $"OFD package contains {zip.Entries.Count} entries, exceeding the configured limit of {options.MaxEntryCount}.");
         }
 
@@ -74,20 +77,20 @@ public sealed partial class OfdPackageLoader
 
             if (entry.Length > options.MaxEntryUncompressedBytes)
             {
-                throw new InvalidDataException(
+                throw OfdLimitExceeded.Create(
                     $"OFD package entry '{normalizedName}' exceeds the configured uncompressed size limit.");
             }
 
             totalUncompressedBytes = checked(totalUncompressedBytes + entry.Length);
             if (totalUncompressedBytes > options.MaxTotalUncompressedBytes)
             {
-                throw new InvalidDataException("OFD package exceeds the configured total uncompressed size limit.");
+                throw OfdLimitExceeded.Create("OFD package exceeds the configured total uncompressed size limit.");
             }
 
             if (entry.CompressedLength > 0 &&
                 entry.Length / (double)entry.CompressedLength > options.MaxCompressionRatio)
             {
-                throw new InvalidDataException(
+                throw OfdLimitExceeded.Create(
                     $"OFD package entry '{normalizedName}' exceeds the configured compression ratio limit.");
             }
 
