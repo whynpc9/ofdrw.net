@@ -32,10 +32,11 @@ D1、D2 改变转换输出的字节（标签文件、可选的字体嵌入），
 
 - **自动渲染检查**：用最终代码与 main 构建的 CLI 分别转换 `generated-layout.docx`（SHA-256 `17bea68d…d7bb6`），覆盖显式 `native`、默认模式，以及 `require-embedded` + 固定 Noto Sans CJK SC 字体目录。三种配置的 2 页 PNG 均与 main 逐字节相同，提取文本相同；包内标签改为 `CustomTag_KeyValue.xml`。
 - **PNG 视觉复查**：逐页查看 `require-embedded` 的 2 页：中文标题与正文、英文间距、斜体副标题、表头底色与边框、红色粗体局部样式、分页与右对齐日期均正常，无缺字、裁切、重叠或异常空白页。各子任务另有自己的逐页复查记录（含宋体改名字体变体）。
-- **macOS Preview**：**未完成**。本环境为无 GUI 的 WSL2，无法打开 Preview。须在 macOS 上以 `DOCX → native OFD → PDF → Preview` 补验，补验前视觉验收保持未完成。
+- **macOS Preview 补验**：在 macOS 26.6.2、Preview 11.0、.NET SDK 10.0.401，以 PR 代码 `e7fbb07922ab63f34e0addb0a2caf1a6e2ea1a83` 重新生成上述样例。默认、显式 `native` 和显式 `native` + `require-embedded` 各自经 `DOCX → OFD → PDF → Preview` 查看全部 2 页，并关闭文档窗口。中英文、斜体、表格底纹与边框、红色粗体、右对齐和分页未见明显视觉缺陷；未见明显缺字、重叠、裁切或异常空白页。样例不含图片、页眉页脚和页码，这些项目未覆盖。
+- **macOS 功能与文本检查**：Release CLI 构建成功；三种模式生成的 OFD 和 PDF 提取文本分别与源 DOCX 去除空白后相同。默认与显式 native 的同页 PNG 字节相同。`require-embedded` 在默认字体目录下因找不到 Noto Sans CJK SC 报 `DOCX_FONT_NOT_SELF_CONTAINED`；显式提供仓库固定字体包及系统 Supplemental 字体目录后转换成功，提示字体许可未验证和模拟粗体。此次 macOS 补验未重跑完整回归或本地包消费 E2E。
 
 结论仅限上述样例、页面与配置，不推断任意 Word 文档完整保真，也不构成任何 GB/T 42133 符合性结论。
 
 ## 证据
 
-运行产物在已忽略的 `artifacts/roadmap-impl/`（`final/`、`d1/`、`d2/`、`a1a-matrix/`），未上传。`final/sha256.txt` 的 SHA-256 为 `9ecc57884fefe2ba08a02a956543cd261bf966534ee25655516c8685fd0b4d7c`。条款矩阵所据标准副本 SHA-256 为 `7d76c086…1b82`，副本与页面图不入库。
+运行产物在已忽略的 `artifacts/roadmap-impl/`（`final/`、`d1/`、`d2/`、`a1a-matrix/`），未上传。`final/sha256.txt` 的 SHA-256 为 `9ecc57884fefe2ba08a02a956543cd261bf966534ee25655516c8685fd0b4d7c`。macOS 补验的 OFD、PDF、逐页 PNG、日志、哈希清单与详细记录保存在本机忽略目录 `artifacts/pr146-visual-e7fbb079/`，未上传。条款矩阵所据标准副本 SHA-256 为 `7d76c086…1b82`，副本与页面图不入库。
