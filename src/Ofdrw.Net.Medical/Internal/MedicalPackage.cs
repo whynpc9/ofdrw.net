@@ -53,6 +53,16 @@ internal sealed class MedicalPackage : IDisposable
     {
         this.budgets = budgets; this.token = token;
         Directory = ReadCentralDirectory(bytes, budgets.LoadOptions.MaxEntryCount);
+        // The same ZIP loading limits the embedded archival assessment applies, enforced before any entry is opened.
+        var load = budgets.LoadOptions; long total = 0;
+        foreach (var entry in Directory)
+        {
+            if (entry.UncompressedSize > load.MaxEntryUncompressedBytes) throw new MedicalBudgetExceededException("EntryUncompressedBytes");
+            total += entry.UncompressedSize;
+            if (total > load.MaxTotalUncompressedBytes) throw new MedicalBudgetExceededException("TotalUncompressedBytes");
+            if (entry.UncompressedSize > 0 && entry.UncompressedSize > load.MaxCompressionRatio * Math.Max(1, entry.CompressedSize))
+                throw new MedicalBudgetExceededException("CompressionRatio");
+        }
         try { zip = new ZipArchive(new MemoryStream(bytes, false), ZipArchiveMode.Read); }
         catch (InvalidDataException) { throw new MedicalInputRejectedException("MalformedZip"); }
         byName = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
@@ -145,8 +155,8 @@ internal sealed class MedicalPackage : IDisposable
         return document;
     }
 
-    /// <summary>Lexical XML facts XLinq does not keep: element prefixes and qualified attributes in the OFD namespace.</summary>
-    internal (bool WellFormed, int UnprefixedOfdElements, int QualifiedOfdAttributes) Lexical(string name, string ofdNamespace)
+    /// <summary>Lexical XML facts XLinq does not keep: OFD-namespace elements not written with the <c>ofd</c> prefix, and qualified attributes.</summary>
+    internal (bool WellFormed, int NonOfdPrefixedElements, int QualifiedOfdAttributes) Lexical(string name, string ofdNamespace)
     {
         var data = Bytes(name);
         if (data == null) return (false, 0, 0);
@@ -158,7 +168,7 @@ internal sealed class MedicalPackage : IDisposable
             {
                 token.ThrowIfCancellationRequested();
                 if (reader.NodeType != XmlNodeType.Element) continue;
-                if (reader.NamespaceURI == ofdNamespace && reader.Prefix.Length == 0) unprefixed++;
+                if (reader.NamespaceURI == ofdNamespace && reader.Prefix != "ofd") unprefixed++;
                 if (reader.MoveToFirstAttribute())
                 {
                     do

@@ -137,24 +137,33 @@ internal static class MedicalRules
         string? expected = version.StartsWith("1.", StringComparison.Ordinal) ? MedicalPackage.Namespace2016 : null;
         var wrongNamespace = new List<string>(); var undeclared = new List<string>(); var malformed = new List<string>();
         var unprefixed = new List<string>(); var qualified = new List<string>();
+        // Entries the OFD structure points at must use the OFD namespace; only other XML (tag payloads, attachments) is exempt.
+        var structural = new HashSet<string>(context.Structure.Locations
+            .Where(x => x.Resolved != null && x.Kind is not (MedicalLocationKind.Attachment or MedicalLocationKind.CustomTag or
+                MedicalLocationKind.Extensions or MedicalLocationKind.ResourcePayload))
+            .Select(x => x.Resolved!), StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
         foreach (var name in context.Package.EntryNames.Where(x => x.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).OrderBy(x => x, StringComparer.Ordinal))
         {
             context.Package.Visit();
             var document = context.Package.Xml(name)?.Root;
             if (document == null) { malformed.Add(name); continue; }
             var ns = document.Name.NamespaceName;
-            if (!ns.StartsWith(MedicalPackage.ShortNamespace, StringComparison.Ordinal)) continue; // custom tag payloads etc.
+            if (!Supported(ns))
+            {
+                if (structural.Contains(name)) wrongNamespace.Add(name);
+                continue; // custom tag payloads, XML attachments etc.
+            }
             if (expected != null && ns != expected) wrongNamespace.Add(name);
             var declared = document.Attributes().Any(a => a.IsNamespaceDeclaration && a.Name.Namespace == XNamespace.Xmlns && a.Name.LocalName == "ofd" && a.Value == ns);
             if (!declared) undeclared.Add(name);
             var lexical = context.Package.Lexical(name, ns);
-            if (lexical.UnprefixedOfdElements > 0) unprefixed.Add(name);
+            if (lexical.NonOfdPrefixedElements > 0) unprefixed.Add(name);
             if (lexical.QualifiedOfdAttributes > 0) qualified.Add(name);
         }
-        if (expected == null)
+        if (expected == null && wrongNamespace.Count == 0)
             yield return O(rule, "6.2(c)", PreflightOutcome.Unknown, "EditionNotPinned", "OFD.xml", "/OFD/@Version", version, "Version 1.x with http://www.ofdspec.org/2016");
         else if (wrongNamespace.Count > 0)
-            yield return O(rule, "6.2(c)", PreflightOutcome.Fail, "NamespaceNotStandard", wrongNamespace[0], "/*", wrongNamespace.Count + " entries: " + Sample(wrongNamespace), expected);
+            yield return O(rule, "6.2(c)", PreflightOutcome.Fail, "NamespaceNotStandard", wrongNamespace[0], "/*", wrongNamespace.Count + " entries: " + Sample(wrongNamespace), expected ?? MedicalPackage.Namespace2016);
         else if (undeclared.Count > 0)
             yield return O(rule, "6.2(c)", PreflightOutcome.Fail, "OfdPrefixNotDeclared", undeclared[0], "/*/@xmlns:ofd", undeclared.Count + " entries: " + Sample(undeclared), "Root declares xmlns:ofd");
         else if (malformed.Count > 0)
@@ -162,7 +171,7 @@ internal static class MedicalRules
         else
             yield return O(rule, "6.2(c)", PreflightOutcome.Pass, "StandardNamespaceDeclared", "OFD.xml", "/OFD/@Version", version, expected);
         if (unprefixed.Count > 0)
-            yield return O(rule, "6.2(d)", PreflightOutcome.Fail, "ElementsUnprefixed", unprefixed[0], Package, unprefixed.Count + " entries: " + Sample(unprefixed), "Elements use the ofd prefix");
+            yield return O(rule, "6.2(d)", PreflightOutcome.Fail, "ElementsNotOfdPrefixed", unprefixed[0], Package, unprefixed.Count + " entries: " + Sample(unprefixed), "Elements use the ofd prefix");
         if (qualified.Count > 0)
             yield return O(rule, "6.2(d)", PreflightOutcome.Fail, "AttributesQualified", qualified[0], Package, qualified.Count + " entries: " + Sample(qualified), "Unqualified attributes");
         if (unprefixed.Count == 0 && qualified.Count == 0)

@@ -89,6 +89,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             {
                 DocType = source.Options.DocType, Namespace = source.Options.Namespace, DocumentId = source.Options.DocumentId,
                 EnableDeflateCompression = source.Options.EnableDeflateCompression,
+                LinearizedEntryOrder = source.Options.LinearizedEntryOrder,
                 FontEmbedding = new OfdFontEmbeddingOptions
                 {
                     Mode = source.Options.FontEmbedding.Mode,

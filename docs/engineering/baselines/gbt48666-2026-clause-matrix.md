@@ -103,7 +103,7 @@ title: "GB/T 48666-2026 条款强度与可判定性矩阵"
 | --- | --- | --- | --- |
 | MH-001 | 7.1(a) | 根节点无限定 `DocType` 恰为 ASCII `OFD-H` | 文件内容是否为病历 |
 | MH-002 | 6.1.1、6.1.2(a) | OFD.xml 可识别；只有一个 DocBody；DocRoot 解析为 `Doc_0/Document.xml` | 多文档拆分来源 |
-| MH-003 | 6.2(c)、6.2(d) | `Version` 为 1.x 时所有 OFD XML 根命名空间为 `http://www.ofdspec.org/2016` 并在根上声明 `xmlns:ofd`；元素带前缀、属性无限定（宜） | 后续 GB/T 33190 版本的命名空间（Version 非 1.x 时为 Unknown） |
+| MH-003 | 6.2(c)、6.2(d) | `Version` 为 1.x 时所有 OFD XML 根命名空间为 `http://www.ofdspec.org/2016` 并在根上声明 `xmlns:ofd`（结构所指条目使用其他命名空间时为 Fail，仅标签载荷与附件豁免）；元素使用 `ofd` 前缀、属性无限定（宜） | 后续 GB/T 33190 版本的命名空间（Version 非 1.x 时为 Unknown） |
 | MH-004 | 6.1.3(b) | 中央目录中压缩方法只为 0 或 8，且 XML 条目不以存储方式写入 | ZIP 6.2.0 规范的全部条款 |
 | MH-005 | 6.1.3(a) | 本地文件头物理顺序：OFD.xml 第一，文档在页面前，页面按顺序 | 网络加载性能；ZIP 中央目录仍在文件尾 |
 | MH-006 | 6.2(a)、7.1(b)、7.1(d)–(f) | 声明位置落在图 3 目录（`Doc_0`、`Pages/Page_N`、`Signs/Sign_N`、`Attachs`、`Tags`、`Annots`、`Res`、`Temps`）；FontFile/MediaFile 载荷在包内且位于 Res 目录 | 典型文件名；未声明的游离条目 |

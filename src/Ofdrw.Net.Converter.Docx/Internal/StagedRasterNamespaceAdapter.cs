@@ -93,6 +93,7 @@ internal static class StagedRasterNamespaceAdapter
             {
                 Namespace = targetNamespace ?? options.Namespace, DocType = options.DocType, DocumentId = options.DocumentId,
                 EnableDeflateCompression = options.EnableDeflateCompression,
+                LinearizedEntryOrder = options.LinearizedEntryOrder,
                 DefaultPageWidthMillimeters = options.DefaultPageWidthMillimeters, DefaultPageHeightMillimeters = options.DefaultPageHeightMillimeters,
                 Metadata = new OfdMetadata { Title = metadata.Title, Author = metadata.Author, Subject = metadata.Subject,
                     Keywords = metadata.Keywords, Creator = metadata.Creator, CreationDate = creationDate, ModificationDate = modificationDate }

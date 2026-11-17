@@ -137,6 +137,35 @@ public class MedicalAssessmentServiceTests
     }
 
     [Fact]
+    public async Task StructuralEntriesMustUseTheOfdNamespaceAndTheOfdPrefix()
+    {
+        var source = await LayoutOfd(true);
+        // A structural entry in an unrelated namespace is not exempt like a custom tag payload.
+        var wrong = await Assess(Mutate(source, e => e.Set("Doc_0/Document.xml", e.Text("Doc_0/Document.xml").Replace(MedicalPackage.Namespace2016, "urn:wrong"))));
+        Assert.Equal("NamespaceNotStandard", wrong.Single("6.2(c)", "MH-003").ReasonCode);
+        Assert.Contains("Doc_0/Document.xml", wrong.Single("6.2(c)", "MH-003").Evidence.Observed);
+
+        // Declaring xmlns:ofd but writing every element with another prefix still violates 6.2(d).
+        var other = await Assess(Mutate(source, e =>
+        {
+            var text = e.Text("Doc_0/Document.xml").Replace("<ofd:", "<o:").Replace("</ofd:", "</o:");
+            e.Set("Doc_0/Document.xml", text.Replace("xmlns:ofd=", "xmlns:o=\"" + MedicalPackage.Namespace2016 + "\" xmlns:ofd="));
+        }));
+        Assert.Equal("ElementsNotOfdPrefixed", other.Single("6.2(d)", "MH-003").ReasonCode);
+    }
+
+    [Fact]
+    public async Task ZipLoadingBudgetsBoundMedicalInspection()
+    {
+        var package = await LayoutOfd(true);
+        var options = new MedicalAssessmentOptions();
+        options.Archival.Preflight.LoadOptions.MaxEntryUncompressedBytes = 1024;
+        var report = await Assess(package, options);
+        Assert.Equal(MedicalExecutionState.BudgetExhausted, report.ExecutionState);
+        Assert.All(report.Clauses, x => Assert.Equal(PreflightOutcome.Unknown, x.Outcome));
+    }
+
+    [Fact]
     public async Task RereadingXmlIsChargedOnceAgainstTheBudget()
     {
         var package = await LayoutOfd(true);
