@@ -14,7 +14,7 @@ sidebar:
 
 固定配置使用静态 Noto Sans CJK SC 400 / 700 及 Noto Sans Regular。来源、SHA-256、face index 与具体适用范围见[发布字体配置](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)。部署时保留字体许可证；字体不加入 NuGet 包。
 
-`DocxConversionOptions` 提供 FontDirectories、FontFallbackFamilies、UseInstalledMicrosoftOfficeFonts 与 NativeEmbeddedBoldBehavior；main 另有 NativeFontSelfContainment（见下文）。明确字体目录后，应确认输出实际嵌入的 face，而不是只检查配置名称。
+`DocxConversionOptions` 提供 FontDirectories、FontFallbackFamilies、UseInstalledMicrosoftOfficeFonts 与 NativeEmbeddedBoldBehavior；自 0.5.0 起另提供 NativeFontSelfContainment（见下文）。明确字体目录后，应确认输出实际嵌入的 face，而不是只检查配置名称。
 
 - 真实粗体缺失时，严格配置使用 `NativeEmbeddedBoldBehavior=Throw`。
 - 清空 fallback 后按所需顺序添加受控家族。
@@ -42,7 +42,7 @@ var converter = new DocxToOfdConverter(options);
 
 省略 `OfdMode` 即检查默认 Native。字体配置成功仍须核对输出页面及实际字体资源。
 
-## 要求字体自包含（main，0.4.0 之后，尚未发布）
+## 要求字体自包含（自 0.5.0 起）
 
 默认情况下，宋体、黑体、等线、楷体、仿宋、微软雅黑等系统中文族只写字体名称，不写 FontFile；未从字体目录加载到 `Noto Sans CJK*` 时也是如此。这是阅读器本机字体的兼容路径，默认值不变。
 

@@ -1,11 +1,25 @@
 ---
 title: "已知问题与版本差异"
-description: "核对 0.4.0、0.3.x、0.2.0 与 preview.10 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
+description: "核对 0.5.0、0.4.0、0.3.x、0.2.0 与 preview.10 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
 sidebar:
   order: 10
 ---
 
-当前公开版本为 **0.4.0**。见[0.4.0 发布说明](/releases/040/)。
+当前文档以 **0.5.0** 为基线。见[0.5.0 发布说明](/releases/050/)。
+
+## 从 0.4.0 升级到 0.5.0
+
+同系列 NuGet 包继续采用精确的同批版本依赖，请一起升级所有 `Ofdrw.Net.*` 直接引用。默认发布集合由 12 包增至 14 包，新增的 Archival、Medical 仍需显式安装，不会由 Converter 传递带入。
+
+| 项目 | 0.4.0 及更早版本 | 0.5.0 与升级操作 |
+| --- | --- | --- |
+| 新文档默认 `DocType` | 默认 `OFD-H` | 默认普通 `OFD`。需要 OFD-H 时显式安装 Medical 并应用 `MedicalDocumentProfile`；不要把标签当作标准符合性证明 |
+| OFD-A 内容修改 | 编辑、拆分和合并会把源声明带到输出 | 改变内容的通用入口拒绝原始 `DocType="OFD-A"`，CLI 返回 `5` 且不写输出。先用 `derive-ofd` 或 `OfdOrdinaryDerivation.CreateAsync` 创建新普通 OFD；已签名或已加密输入不能派生，派生副本不继承归档结论或签名效力 |
+| Native DOCX 字体 | 系统中文族等可只声明名称，由阅读器解析本机字体 | 默认 `Compatibility` 不变；可显式选择 `RequireEmbedded`，要求实际使用的字体都嵌入该族自身字节。缺字节、跨族替代或嵌入受限会失败；不适用于 DualLayer 或 DOCX→PDF，许可仍由调用方核对 |
+| 新写出的自定义标签 | 使用历史 EMR 通道 | 新内容使用中性 `ofdrw-kv` 通道。旧 EMR 内容仍可读，未修改结构继续保留；该形态不代表已核验 GB/T 33190 符合性 |
+| 归档与电子病历扩展 | 未随 0.4.0 交付 Archival、Medical 包 | 自 0.5.0 起提供两个显式可选包。Archival 只读评估且不生成 OFD-A；Medical 提供 OFD-H 写出 profile 和只读评估。两者都不会给出整部标准的整体 `Pass`，不等于合规认证 |
+
+OFD-A 只读读取、提取、定位、验签、预检和格式导出不受编辑保护影响。底层模型赋值与 `OfdPackageWriter` 原样写出不经过全部通用入口保护；完整操作矩阵见[页面与文档工具](/guides/document-tools/)。Archival 和 Medical 的未交付扩展、评估边界及外部证据要求见各自指南。
 
 ## 从 0.3.1 升级到 0.4.0
 

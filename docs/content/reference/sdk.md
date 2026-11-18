@@ -31,6 +31,16 @@ sidebar:
 | `OfdPackageWriter` | `Ofdrw.Net.Packaging` / `Ofdrw.Net.Packaging` | OFD 包写出及写包结果 |
 | `OfdDocumentEditor`、`OfdDocumentSplitter`、`OfdDocumentMerger` | `Ofdrw.Net.Layout` / `Ofdrw.Net.Layout.Editing` | [页面重组、拆分与合并](https://whynpc9.github.io/ofdrw.net/guides/document-tools/) |
 
+## 归档与电子病历（自 0.5.0 起）
+
+| 入口 | 包 / 命名空间 | 用途与指南 |
+| --- | --- | --- |
+| `OfdOrdinaryDerivation` | `Ofdrw.Net.Packaging` / `Ofdrw.Net.Packaging` | [从 OFD-A 原件显式派生普通 OFD](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护) |
+| `ArchivalAssessmentService` | `Ofdrw.Net.Archival` / `Ofdrw.Net.Archival` | [只读、分维度归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)；不生成 OFD-A，不给出整体标准 `Pass` |
+| `MedicalDocumentProfile`、`MedicalAssessmentService` | `Ofdrw.Net.Medical` / `Ofdrw.Net.Medical` | [OFD-H 写出 profile 与只读评估](https://whynpc9.github.io/ofdrw.net/guides/medical-ofd-h/)；不等于合规认证 |
+
+Archival 和 Medical 均为显式可选包，不会由 Converter 传递带入。安装命令见[包选择](https://whynpc9.github.io/ofdrw.net/getting-started/installation/)。
+
 ## 签名与高级文字
 
 | 入口 | 包 / 命名空间 | 用途与指南 |

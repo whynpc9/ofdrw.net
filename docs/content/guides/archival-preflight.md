@@ -8,7 +8,7 @@ sidebar:
 
 `Ofdrw.Net.Packaging.Preflight.ArchivalPreflightChecker` 使用六项有限的本地规则检查现有 OFD ZIP。其配置为 `ofdrw-local-preflight/0.1-draft`，规则修订号为 1。它不是 OFD-H、OFD 或 GB/T 42133 符合性认证，也不是归档认证。标准映射尚未验证，每个 `Clause` 均为空。
 
-需要按声明、输入范围、105 个条款、软件要求、外部认可和执行状态分开查看结果时，使用 main 上新增的可选包 `Ofdrw.Net.Archival`（尚未发布），见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)。它组合本页的接口，不改变它们的结果。
+需要按声明、输入范围、105 个条款、软件要求、外部认可和执行状态分开查看结果时，使用自 0.5.0 起提供的可选包 `Ofdrw.Net.Archival`，见[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)。它组合本页的接口，不改变它们的结果。
 
 ```csharp
 using Ofdrw.Net.Packaging.Preflight;
@@ -50,9 +50,9 @@ ofdrw preflight input.ofd --json > report.json     # 标准输出仅包含 JSON 
 ofdrw preflight input.ofd --json --output report.json --allow-multiple-documents
 ```
 
-## 已知 CustomTags（可选，main 开发版本）
+## 已知 CustomTags（可选，自 0.5.0 起）
 
-0.4.0 之后的 main（尚未发布）为 `ArchivalPreflightOptions` 增加了 `RecognizeKnownCustomTags`，**默认关闭**。默认关闭时结果逐字节不变：Document 中含 `CustomTags` 声明仍按 `UnsupportedResourceScope` 使 APF-002、003、005、006（`RequireNoEncryption` 时连同 APF-004）为 Unknown，`ProfileVersion` 仍为 `ofdrw-local-preflight/0.1-draft`，回归测试固定了这一输出。
+0.5.0 为 `ArchivalPreflightOptions` 增加了 `RecognizeKnownCustomTags`，**默认关闭**。默认关闭时结果逐字节不变：Document 中含 `CustomTags` 声明仍按 `UnsupportedResourceScope` 使 APF-002、003、005、006（`RequireNoEncryption` 时连同 APF-004）为 Unknown，`ProfileVersion` 仍为 `ofdrw-local-preflight/0.1-draft`，回归测试固定了这一输出。
 
 ```csharp
 var report = await new ArchivalPreflightChecker().CheckAsync(input,
@@ -87,7 +87,7 @@ var copy = await new ArchivalCopyConverter().ConvertAsync("source.ofd", "archive
 // 同时保留 copy.OutputPath 和 copy.AuditPath。
 ```
 
-预检、规则检查和副本转换不修改输入，对声明 OFD-A 的输入照常可用；副本转换另有自身的审计和后检。`main`（尚未发布）上的重排、删页、拆合、水印、签名清理等改变内容的入口会拒绝声明 OFD-A 的原件，需要先用 `OfdOrdinaryDerivation.CreateAsync` 或 `ofdrw derive-ofd` 创建普通 OFD 派生副本，见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。
+预检、规则检查和副本转换不修改输入，对声明 OFD-A 的输入照常可用；副本转换另有自身的审计和后检。自 0.5.0 起，重排、删页、拆合、水印、签名清理等改变内容的入口会拒绝声明 OFD-A 的原件，需要先用 `OfdOrdinaryDerivation.CreateAsync` 或 `ofdrw derive-ofd` 创建普通 OFD 派生副本，见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护)。
 
 ## 按版本维护的覆盖清单
 

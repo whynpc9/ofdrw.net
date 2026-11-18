@@ -17,7 +17,7 @@ Ofdrw.Net 是 .NET OFD SDK 与命令行工具，支持文档生成、读取、�
 | --- | --- | --- |
 | NuGet SDK | 在 .NET 应用中生成、读取、编辑或转换 OFD | [包选择](https://whynpc9.github.io/ofdrw.net/getting-started/installation/)、[SDK 入口索引](https://whynpc9.github.io/ofdrw.net/reference/sdk/) |
 | `ofdrw` CLI | 在终端或脚本中完成常见转换和文档操作 | [CLI 命令](https://whynpc9.github.io/ofdrw.net/reference/cli/) |
-| 可选源码扩展 | 使用 PDF Vector、Skia、SES interop 或 Password 等独立能力 | [能力契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/) |
+| 可选扩展 | 显式安装 Archival、Medical，或使用 PDF Vector、Skia、SES interop、Password 等独立源码扩展 | [包选择](https://whynpc9.github.io/ofdrw.net/getting-started/installation/)、[能力契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/) |
 
 ## 按任务阅读
 
@@ -27,14 +27,14 @@ Ofdrw.Net 是 .NET OFD SDK 与命令行工具，支持文档生成、读取、�
 | PDF、SVG、图片或 HTML 预览 | [格式转换](https://whynpc9.github.io/ofdrw.net/guides/conversion/)、[图片](https://whynpc9.github.io/ofdrw.net/guides/images/)、[HTML](https://whynpc9.github.io/ofdrw.net/guides/html-preview/) |
 | 用代码生成报表 | [流式排版](https://whynpc9.github.io/ofdrw.net/guides/flow-layout/)、[表格](https://whynpc9.github.io/ofdrw.net/guides/public-tables/)、[原生绘图](https://whynpc9.github.io/ofdrw.net/guides/graphics/) |
 | 读取文本与编辑已有 OFD | [模型与读取](https://whynpc9.github.io/ofdrw.net/reference/core-model/)、[文档工具](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)、[文字替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/) |
-| 处理签名、加密或归档 | [签名完整性](https://whynpc9.github.io/ofdrw.net/guides/signatures/)、[可选口令加密](https://whynpc9.github.io/ofdrw.net/reference/password-crypto/)、[归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)、[归档评估（main）](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/) |
+| 处理签名、加密、归档或电子病历 | [签名完整性](https://whynpc9.github.io/ofdrw.net/guides/signatures/)、[可选口令加密](https://whynpc9.github.io/ofdrw.net/reference/password-crypto/)、[归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)、[归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)、[电子病历 OFD-H](https://whynpc9.github.io/ofdrw.net/guides/medical-ofd-h/) |
 | 处理多文档和标准对象 | [Multi-DocBody](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/)、[标准对象编辑](https://whynpc9.github.io/ofdrw.net/guides/standard-object-editing/) |
 
 ## 当前版本与适用范围
 
-当前公开版本为 **0.4.0**，安装命令和快速开始均以该版本为基线。[发布说明](/releases/040/)记录该版本的依赖、能力及验收范围。
+当前公开版本为 **0.5.0**。安装命令和快速开始以该版本为基线。[发布说明](/releases/050/)记录该版本相对 0.4.0 的变更、依赖、能力及验收范围。
 
-从 0.3.1 或更早版本升级时，可在[已知问题与版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)核对已修复的行为及仍有效的限制。
+从 0.4.0 或更早版本升级时，可在[已知问题与版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)核对默认 `DocType`、OFD-A 编辑保护、严格字体嵌入、可选包及仍有效的限制。
 
 > 完整国家/行业标准符合性、厂商互认、签章法律效力和任意复杂 Word 文档保真均超出本版承诺范围。请使用自己的输入、字体、部署方式和目标阅读器验证实际结果。
 

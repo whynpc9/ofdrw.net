@@ -19,7 +19,7 @@ sidebar:
 
 两种模式的依赖和版面能力不同。复杂浮动对象、复杂域和任意 Word 版式不在通用保真承诺内。
 
-两种模式都在 `package.CustomTags` 中记录来源信息，例如 `source-text-origin = DOCX/OpenXML`、`source-text-kind = machine-readable` 和 `docx-ofd-mode`。main（0.4.0 之后，尚未发布）起这些标签经中性通道（`TypeID="ofdrw-kv"`）写出，0.4.0 写出的 EMR 通道仍可读取；包内结构见[模型与读取](https://whynpc9.github.io/ofdrw.net/reference/core-model/)的“自定义标签”一节。
+两种模式都在 `package.CustomTags` 中记录来源信息，例如 `source-text-origin = DOCX/OpenXML`、`source-text-kind = machine-readable` 和 `docx-ofd-mode`。自 0.5.0 起，这些标签经中性通道（`TypeID="ofdrw-kv"`）写出，0.4.0 及更早版本写出的 EMR 通道仍可读取；包内结构见[模型与读取](https://whynpc9.github.io/ofdrw.net/reference/core-model/)的“自定义标签”一节。
 
 ## Native：转换并读取诊断
 
@@ -50,7 +50,7 @@ foreach (var diagnostic in result.Diagnostics)
 
 字体名称、实际字体文件和回退选择会影响字形、分页和粗体表现。生产部署应显式准备许可明确的 Regular/Bold 等字体，并按[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)设置 `FontDirectories` 与 `FontFallbackFamilies`。
 
-默认 `UnsupportedFeatureBehavior=Placeholder` 会保留部分不支持内容的诊断信息；如果业务不允许降级，可设置 `UnsupportedDocxFeatureBehavior.Throw`。Native 嵌入文字要求真实粗体时，使用 `NativeEmbeddedBoldBehavior=DocxEmbeddedBoldBehavior.Throw`。
+默认 `UnsupportedFeatureBehavior=Placeholder` 会保留部分不支持内容的诊断信息；如果业务不允许降级，可设置 `UnsupportedDocxFeatureBehavior.Throw`。Native 嵌入文字要求真实粗体时，使用 `NativeEmbeddedBoldBehavior=DocxEmbeddedBoldBehavior.Throw`。自 0.5.0 起，如需每个实际使用的 Native 字体资源都嵌入所声明字体族自身的字节，可设置 `NativeFontSelfContainment=DocxNativeFontSelfContainment.RequireEmbedded`；默认 `Compatibility` 不变。适用条件、许可检查和失败诊断见[字体自包含](https://whynpc9.github.io/ofdrw.net/guides/fonts/#要求字体自包含自-050-起)。
 
 ## DualLayer：显式使用渲染页
 

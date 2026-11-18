@@ -9,7 +9,7 @@ sidebar:
 CLI 需要 **.NET 10**。安装并查看所安装版本的完整帮助：
 
 ```sh
-dotnet tool install --global Ofdrw.Net.Cli --version 0.4.0
+dotnet tool install --global Ofdrw.Net.Cli --version 0.5.0
 ofdrw --help
 ```
 
@@ -44,7 +44,7 @@ ofdrw --help
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
 | 清理签名 | `ofdrw clean-signatures input.ofd unsigned.ofd` |
-| 从 OFD-A 原件派生普通 OFD（main，尚未发布） | `ofdrw derive-ofd archive.ofd working.ofd --json` |
+| 从 OFD-A 原件派生普通 OFD（自 0.5.0 起） | `ofdrw derive-ofd archive.ofd working.ofd --json` |
 
 文档操作的更多示例见[页面重组、水印与附件](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。文字替换需要显式可信原字体身份，见[文字定位与替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/)。
 
@@ -84,7 +84,7 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 - `--docx-engine`：`auto`、`word`（macOS）、`libreoffice` 或 `built-in`；Native 不调用这些视觉渲染引擎。
 - `--font-directory` 可重复，用于提供实际字体文件。字体部署见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 - `0.2.0` 提供 `--native-embedded-bold-behavior throw`，用于要求 Native 嵌入粗体选用真实粗体字面。
-- `--native-font-self-containment`：`compatibility`（默认，系统中文族保留名称字体）或 `require-embedded`（每个用到的字体都嵌入该族自身的字节，否则失败；OS/2 `fsType` 限制嵌入的字体被拒绝）。许可位不等于授权，字体许可由调用方负责。仅用于 Native DOCX→OFD，与 `dual-layer` 或 `docx-to-pdf` 同用时报错。该参数在 main 上提供（0.4.0 之后，尚未发布），说明见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
+- `--native-font-self-containment`（自 0.5.0 起）：`compatibility`（默认，系统中文族保留名称字体）或 `require-embedded`（每个用到的字体都嵌入该族自身的字节，否则失败；OS/2 `fsType` 限制嵌入的字体被拒绝）。许可位不等于授权，字体许可由调用方负责。仅用于 Native DOCX→OFD，与 `dual-layer` 或 `docx-to-pdf` 同用时报错。说明见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 
 ## 退出码与输出安全
 
@@ -94,13 +94,13 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `1` | 参数、输入、转换或输出失败 |
 | `130` | 用户取消，例如 Ctrl-C |
 
-改变内容的命令（`replace-text`、`reorder`、`delete-pages`、`crop`、`attachments remove`、`areas fill`、`watermark`、`split`、`mix`、`clean-signatures`、`merge`）另有专用退出码（main，尚未发布）：
+自 0.5.0 起，改变内容的命令（`replace-text`、`reorder`、`delete-pages`、`crop`、`attachments remove`、`areas fill`、`watermark`、`split`、`mix`、`clean-signatures`、`merge`）另有专用退出码：
 
 | 退出码 | 含义 |
 | --- | --- |
 | `5` | 输入（`merge`、`mix` 为任一输入）的 `OFD.xml` 声明 `DocType="OFD-A"`，命令拒绝修改归档原件，未写输出；先用 `derive-ofd` 创建普通 OFD 派生副本 |
 
-`derive-ofd <input.ofd> <output.ofd> [--json]` 成功返回 `0`；输入未声明 OFD-A、已签名或已加密、输出已存在或与输入相同时返回 `1` 且不写输出；取消返回 `130`。`--json` 时标准输出只有 `ofdrw-cli-derive-ofd/1` JSON（`operation`、`source`/`output` 的 `path`/`bytes`/`sha256`/`docType`、`changedEntry`、`inheritsArchivalConclusion`）。行为矩阵和边界见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护main尚未发布)。
+`derive-ofd <input.ofd> <output.ofd> [--json]` 成功返回 `0`；输入未声明 OFD-A、已签名或已加密、输出已存在或与输入相同时返回 `1` 且不写输出；取消返回 `130`。`--json` 时标准输出只有 `ofdrw-cli-derive-ofd/1` JSON（`operation`、`source`/`output` 的 `path`/`bytes`/`sha256`/`docType`、`changedEntry`、`inheritsArchivalConclusion`）。行为矩阵和边界见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护)。
 
 `verify-signatures` 另有专用退出码：
 

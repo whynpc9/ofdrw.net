@@ -5,7 +5,7 @@ sidebar:
   order: 20
 ---
 
-下面提供两条路径：**转换现有 DOCX**或**用代码生成 OFD**。示例使用 `0.4.0`，C# 代码适用于控制台项目的顶层语句。
+下面提供两条路径：**转换现有 DOCX**或**用代码生成 OFD**。示例使用 `0.5.0`，C# 代码适用于控制台项目的顶层语句。普通 SDK 面向 `netstandard2.0` / `netstandard2.1`，请按项目目标框架选择兼容的 .NET 运行时。
 
 ## 路径一：DOCX → OFD → PDF
 
@@ -14,7 +14,7 @@ sidebar:
 ```sh
 dotnet new console -n OfdrwQuickstart
 cd OfdrwQuickstart
-dotnet add package Ofdrw.Net.Converter --version 0.4.0
+dotnet add package Ofdrw.Net.Converter --version 0.5.0
 ```
 
 将 `input.docx` 放到项目目录，再把 `Program.cs` 替换为：
@@ -57,7 +57,7 @@ dotnet run
 
 成功后会得到：
 
-- `output.ofd`：默认 **Native** 模式生成的 OFD，文字直接来自 OpenXML，不经过 PDF。
+- `output.ofd`：默认 **Native** 模式生成的普通 OFD（`DocType="OFD"`），文字直接来自 OpenXML，不经过 PDF。需要 OFD-H 时应显式使用 Medical profile，不能依赖 0.4.0 及更早版本的默认声明。
 - `preview.pdf`：由本次生成的 OFD 导出的预览 PDF。
 - 终端输出：按页提取的 OFD 文本；它用于核对原文，不证明页面排版完全保真。
 
@@ -68,8 +68,8 @@ dotnet run
 安装排版和写包：
 
 ```sh
-dotnet add package Ofdrw.Net.Layout --version 0.4.0
-dotnet add package Ofdrw.Net.Packaging --version 0.4.0
+dotnet add package Ofdrw.Net.Layout --version 0.5.0
+dotnet add package Ofdrw.Net.Packaging --version 0.5.0
 ```
 
 请将项目中的所有 `Ofdrw.Net.*` 包一起升级到同一版本；自 0.4.0 起，同系列包依赖采用精确版本范围，混用版本会在 NuGet 还原时触发错误或警告（例如直接引用较高版本时的 `NU1608`）。

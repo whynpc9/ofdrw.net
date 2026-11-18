@@ -2,6 +2,8 @@
 
 本文件描述可重复执行的检查及其边界。
 
+**0.5.0 已发布。** 标签 `v0.5.0` 指向 `94b55b7d68e7f00fa2f3b6e2a52f22a80c4fb344`。[Q05 记录](../validation/releases/0.5.0-acceptance.json)绑定固定物理字体 DOCX 的显式 Native 与默认模式各两页。独立评审还检查了 OFD-H 四页、Native RequireEmbedded 两页和对应十张 PNG。14 个公开包的签名与独立消费见[0.5.0 发布记录](../validation/0.5.0-publication-2026-11-18.md)。
+
 **0.4.0 已发布。** [本版 Q05 记录](../validation/releases/0.4.0-acceptance.json)绑定 `v0.4.0` 的物理字体 DOCX 验收树。公开包、签名和独立消费见[发布记录](../validation/0.4.0-publication-2026-11-16.md)。
 
 **0.3.1 已发布。** [本版 Q05 记录](../validation/releases/0.3.1-acceptance.json)绑定标签 `v0.3.1` 的固定 DOCX 验收树。公开包签名及独立消费结果见[0.3.1 发布记录](../validation/0.3.1-publication-2026-11-10.md)。

@@ -19,7 +19,7 @@ Ofdrw.Net 用强类型模型表示页面、图层、文字游程、路径、图�
 安装 `Ofdrw.Net.Reader`：
 
 ```sh
-dotnet add package Ofdrw.Net.Reader --version 0.4.0
+dotnet add package Ofdrw.Net.Reader --version 0.5.0
 ```
 
 读取包并按页提取文字：
@@ -70,7 +70,7 @@ OFD 是 ZIP 容器：`OFD.xml` 指向一个或多个 `DocBody`，文档再引用
 
 `OfdDocumentPackage.CustomTags` 是字符串键值字典，DOCX 转换写入的 `source-text-origin`、`docx-ofd-mode` 等来源信息以及命名区域索引都存放在这里。调用方式不变；以下为包内写出形态。
 
-**main（0.4.0 之后，尚未发布）**：新生成的文档（Layout、DOCX Native/默认/DualLayer、纯文本等）经中性通道写出，不再使用 EMR 标记：
+**自 0.5.0 起**：新生成的文档（Layout、DOCX Native/默认/DualLayer、纯文本等）经中性通道写出，不再使用 EMR 标记：
 
 | 层级 | 位置 | 内容 |
 | --- | --- | --- |

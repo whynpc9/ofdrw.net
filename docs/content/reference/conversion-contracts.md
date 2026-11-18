@@ -6,9 +6,9 @@ sidebar:
   label: "转换与资源约定"
 ---
 
-本页描述 `0.4.0` 的转换、编辑与资源行为。固定样例的发布验收范围见[0.4.0 发布说明](/releases/040/)；0.2.0 的历史结论仍见[原发布说明](/releases/020/)。
+本页描述 `0.5.0` 的转换、编辑与资源行为。本版变更和固定样例的验收范围见[0.5.0 发布说明](/releases/050/)；0.4.0 与 0.2.0 的历史结论仍见各自发布说明。
 
-当前开发版本的通用 OFD 生成、DOCX → OFD（Native 和 DualLayer）及 PDF → OFD 都写入 `DocType="OFD"`。读取已有文件时保留显式声明的 `DocType`，包括 `OFD-H`，缺少该属性时按 `OFD` 读取。
+自 0.5.0 起，通用 OFD 生成、DOCX → OFD（Native 和 DualLayer）及 PDF → OFD 默认写入 `DocType="OFD"`；0.4.0 及更早版本的默认声明为 `OFD-H`。读取已有文件时保留显式声明的 `DocType`，包括 `OFD-H`，缺少该属性时按 `OFD` 读取。需要生成 OFD-H 时，应显式使用 `Ofdrw.Net.Medical` 的 `MedicalDocumentProfile`，不能依赖旧默认值。
 
 ## 原始 DOCX 文本与分页
 
@@ -61,7 +61,7 @@ BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中�
 
 宋体/黑体等系统中文族保留名称字体兼容路径：OFD 只声明 `SimSun` / `SimHei`，不嵌入替代字体，由阅读器解析本机字体；这一路径的中日韩全宽字符仍使用 1em，拉丁字符保留原兼容度量。名称字体不能保证不同机器显示一致。
 
-字体自包含策略（main，0.4.0 之后，尚未发布）：上述两条名称字体路径是默认的 `NativeFontSelfContainment = DocxNativeFontSelfContainment.Compatibility`，输出与此前相同。设置为 `RequireEmbedded`（CLI `--native-font-self-containment require-embedded`）后，Native 写出的每个字体资源都必须带有所声明字体族自身的字节：字体来自 `FontDirectories`（未配置时为平台字体目录中按现有规则发现的文件），字体自己的 name 表须记录该族名或同族别名；文件名对应、跨族替代或宿主解析器按名称找到的字节都不接受。系统中文族因此改为嵌入，拉丁字符改用同一嵌入字体面度量，资源按请求样式分别声明（如 `SimSun|regular`、`SimSun|bold`）。字体自身 OS/2 `fsType` 为限制许可嵌入（0x0002）、仅位图嵌入（0x0200）或缺少 OS/2 表时失败；禁止子集化（0x0100）时保留完整字体，与 `NativeParagraphLayoutEngine` 的字形子集同时使用则失败。失败抛出 `InvalidDataException`，消息以 `DOCX_FONT_NOT_SELF_CONTAINED` 开头并指出字体族与原因，不写出输出。成功时返回 `DOCX_FONT_LICENSE_NOT_VERIFIED`：许可位允许嵌入不等于取得授权，字体许可仍由调用方负责。未指定字体的文字按 fallback 选择实际有字节的族，不再落到只有替代字节的系统族名。DualLayer 和 DOCX→PDF 遇到 `RequireEmbedded` 抛出 `NotSupportedException`。写出时子集字体按现有规则使用包内唯一的内部名称，`Font` 元素的 `FontName`/`FamilyName` 才是声明的字体族。
+字体自包含策略（自 0.5.0 起）：上述两条名称字体路径是默认的 `NativeFontSelfContainment = DocxNativeFontSelfContainment.Compatibility`，输出与此前相同。设置为 `RequireEmbedded`（CLI `--native-font-self-containment require-embedded`）后，Native 写出的每个字体资源都必须带有所声明字体族自身的字节：字体来自 `FontDirectories`（未配置时为平台字体目录中按现有规则发现的文件），字体自己的 name 表须记录该族名或同族别名；文件名对应、跨族替代或宿主解析器按名称找到的字节都不接受。系统中文族因此改为嵌入，拉丁字符改用同一嵌入字体面度量，资源按请求样式分别声明（如 `SimSun|regular`、`SimSun|bold`）。字体自身 OS/2 `fsType` 为限制许可嵌入（0x0002）、仅位图嵌入（0x0200）或缺少 OS/2 表时失败；禁止子集化（0x0100）时保留完整字体，与 `NativeParagraphLayoutEngine` 的字形子集同时使用则失败。失败抛出 `InvalidDataException`，消息以 `DOCX_FONT_NOT_SELF_CONTAINED` 开头并指出字体族与原因，不写出输出。成功时返回 `DOCX_FONT_LICENSE_NOT_VERIFIED`：许可位允许嵌入不等于取得授权，字体许可仍由调用方负责。未指定字体的文字按 fallback 选择实际有字节的族，不再落到只有替代字节的系统族名。DualLayer 和 DOCX→PDF 遇到 `RequireEmbedded` 抛出 `NotSupportedException`。写出时子集字体按现有规则使用包内唯一的内部名称，`Font` 元素的 `FontName`/`FamilyName` 才是声明的字体族。
 
 LibreOffice Portable 默认关闭独立 UserInstallation；仍会将配置的 CJK 字体复制到便携版用户字体目录。
 
@@ -94,6 +94,8 @@ OFD 保留原始字体字节。供 PDFsharp 使用的副本具有内容唯一的
 长期运行的转换服务：实测每个文档嵌入一个不同子集字体时，单进程约在第 261 个 CJK 文档（每个子集约 1 MB）或第 1,603 个拉丁文档（约 167 KB）达到字节上限，此时托管内存已达 1–2 GiB，因为 PDFsharp 自身也缓存字体且无法清除。建议在 `PdfFontRegistry.RegisteredFontBytes` 超过上限一半或处理数百个含不同嵌入字体的文档后回收工作进程，并按每进程数 GiB 规划内存。测量方法与选项评估见[PDF 字体注册表生命周期](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/pdf-font-registry-lifetime.md)。
 
 ## 页面编辑与合并
+
+自 0.5.0 起，页面重排、删除、裁剪、拆分、合并、叠加、文字替换、命名区域填充、水印、附件移除、签名清理和口令加密等改变内容的通用入口，会在写出前拒绝原始 `OFD.xml` 精确声明 `DocType="OFD-A"` 的输入。CLI 对应命令返回退出码 `5` 且不写输出。需要修改时，先用 `OfdOrdinaryDerivation.CreateAsync` 或 `ofdrw derive-ofd` 创建新的普通 OFD；派生只更改新文件的根 `DocType`，拒绝已签名或已加密输入，副本不继承归档结论或签名效力。只读操作、直接底层模型修改和 `OfdPackageWriter` 原样写出的边界见[归档原件编辑保护](https://whynpc9.github.io/ofdrw.net/guides/document-tools/#归档原件ofd-a编辑保护)。
 
 读取后保存会保留未知扩展及资源。删除页面后保存会清理被删除页面的原始条目、页批注以及可确认只被其使用的字体/图片载荷。其他页面、模板、附件或扩展引用的共享内容会保留；无法检查的扩展 XML 会触发资源保留诊断。
 

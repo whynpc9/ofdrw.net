@@ -6,7 +6,7 @@ sidebar:
   label: "归档评估"
 ---
 
-`Ofdrw.Net.Archival` 是 main 分支上新增的可选包（0.4.0 之后的 main，**尚未发布**到 NuGet；本页所述 A1a–A1c 行为均属此开发版本）。它组合现有的[本地归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)和 AR/AC 条款检查，对一个 OFD 快照给出分维度的只读报告。
+`Ofdrw.Net.Archival` 是自 0.5.0 起提供的可选包。它组合现有的[本地归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)和 AR/AC 条款检查，对一个 OFD 快照给出分维度的只读报告。
 
 先说清三件事：
 
@@ -16,10 +16,10 @@ sidebar:
 
 ## 引用与调用
 
-普通转换包不会带入本包，需要显式引用。在发布到 NuGet 之前，从源码以项目引用使用（路径按实际位置调整）：
+普通转换包不会带入本包，需要显式安装：
 
-```xml
-<ProjectReference Include="src/Ofdrw.Net.Archival/Ofdrw.Net.Archival.csproj" />
+```sh
+dotnet add package Ofdrw.Net.Archival --version 0.5.0
 ```
 
 ```csharp

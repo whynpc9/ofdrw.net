@@ -6,7 +6,7 @@ sidebar:
   label: "电子病历 OFD-H"
 ---
 
-`Ofdrw.Net.Medical` 是 main 分支上新增的可选包（**尚未发布**到 NuGet）。它面向 GB/T 48666—2026《电子病历版式文档技术要求》（2027-04-01 实施）定义的电子病历版式文档，即根节点 `DocType="OFD-H"` 的 OFD，提供两部分能力：
+`Ofdrw.Net.Medical` 是自 0.5.0 起提供的可选包。它面向 GB/T 48666—2026《电子病历版式文档技术要求》（2027-04-01 实施）定义的电子病历版式文档，即根节点 `DocType="OFD-H"` 的 OFD，提供两部分能力：
 
 - **写出 profile**：把 `OfdDocumentOptions` 配成 OFD-H 所需的声明、目录、命名空间、压缩、线性化顺序和元数据。
 - **只读评估**：对一个 OFD 快照逐条款给出 Pass / Fail / Unknown / NotApplicable，并在同一字节上运行 [GB/T 42133 归档评估](https://whynpc9.github.io/ofdrw.net/guides/archival-assessment/)，按继承账本解释其结果。
@@ -17,9 +17,11 @@ sidebar:
 
 普通包和 Converter 元包都不会带入它，需要显式引用：
 
-```bash
-dotnet add package Ofdrw.Net.Medical
+```sh
+dotnet add package Ofdrw.Net.Medical --version 0.5.0
 ```
+
+该包以精确的同批版本依赖带入 Archival、Packaging 和 Core；项目中的其他 `Ofdrw.Net.*` 直接引用也应一起升级到 0.5.0。
 
 依赖方向为 `Medical → Archival → Packaging → Core`。
 

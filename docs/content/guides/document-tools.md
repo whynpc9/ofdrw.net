@@ -67,9 +67,9 @@ ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1,3
 - 类型化元数据、权限、版本和动作见[标准对象编辑](https://whynpc9.github.io/ofdrw.net/guides/standard-object-editing/)。
 - 声明 `DocType="OFD-A"` 的输入不能直接编辑，见下节。
 
-## 归档原件（OFD-A）编辑保护（main，尚未发布）
+## 归档原件（OFD-A）编辑保护
 
-本节描述 0.4.0 之后 `main` 上的行为变化，尚未随任何 NuGet 版本或 CLI 工具发布；0.4.0 及更早版本会把源文档的 `DocType` 带到编辑、拆分和合并的输出中。
+自 0.5.0 起，通用改变内容入口保护归档原件；0.4.0 及更早版本会把源文档的 `DocType` 带到编辑、拆分和合并的输出中。
 
 根节点 `OFD.xml` 声明 `DocType="OFD-A"` 的输入称为归档原件。改变内容的入口在产生任何输出之前拒绝归档原件，抛出 `Ofdrw.Net.Core.Models.OfdArchivalOriginalException`（继承 `InvalidOperationException`，`Operation` 为被拒绝的入口名）。错误消息写明操作名、输入声明 OFD-A，并指向下面的派生路径。CLI 写入命令遇到归档原件时在标准错误输出同一消息，不写输出文件，退出码为 **`5`**。
 
