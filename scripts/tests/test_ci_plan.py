@@ -66,7 +66,7 @@ class ClassifierTests(unittest.TestCase):
 
     def test_consumed_and_code_paths_need_ci(self):
         for path in ('README.md', 'THIRD-PARTY-NOTICES.md', 'docs/licenses/MUSL-COPYRIGHT.txt',
-                     'docs/content/releases/0.4.0.md', 'docs/engineering/baselines/public-api-cs1591.json',
+                     'docs/content/releases/0.5.0.md', 'docs/engineering/baselines/public-api-cs1591.json',
                      'docs/validation/public-tables-evidence/acceptance.json', 'docs/content/reference/feature-parity.md',
                      'src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj', 'scripts/ci-plan.py', '.github/workflows/ci.yml',
                      'Directory.Build.props', '.gitattributes', 'global.json', 'LICENSE', 'src/README.md',
