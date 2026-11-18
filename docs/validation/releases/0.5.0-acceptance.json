@@ -1,0 +1,69 @@
+{
+  "status": "accepted",
+  "package_version": "0.5.0",
+  "source_fingerprint": "2021fb39af0127e51174f62356d451e78d230b1a8737e2ff3dba02221c7fc771",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "b739553cae5fb5e904f1e18a74af8316d17ed265827898c2816e22d4073898b5",
+  "preview_pdf_sha256": "84549caf9ec0e5065d2c79bbb866639a5c38d2c525b13971f9cebed15bc21428",
+  "default_ofd_sha256": "bbb430b9d1f6f7b65ac1028b789726df2aaf3c2e9254da05990153fad024b1d7",
+  "default_preview_pdf_sha256": "d14a377c84ee7c272951e9c4d21edd6a6efa55b381ad1fe4ed6860233216f1b6",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI visual reviewer)",
+  "reviewed_at": "2026-11-18T09:44:35+08:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Fixed generated-layout.docx with physical Regular/Bold, explicit Native and default Native, two pages per mode.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "artifacts/release-0.5.0-prep/fonts/"
+      ]
+    },
+    "outputs": {
+      "native_ofd": "profile-output/font-native.ofd",
+      "native_pdf": "profile-output/font-native.pdf",
+      "default_ofd": "profile-output/font-default.ofd",
+      "default_pdf": "profile-output/font-default.pdf"
+    },
+    "visual_environment": "macOS 26.6.2 (25G83), Preview 11.0, Poppler 26.09.0 at 144 DPI.",
+    "functional_result": "Both modes preserve all 189 non-whitespace source characters in OFD and PDF. Checked Regular/Bold subset outlines match the pinned faces. Nine SDK DLLs used by the probe match the local packages."
+  },
+  "additional_visual_review": "The same reviewer viewed all four OFD-H pages and two Native RequireEmbedded pages in Preview. Separately viewed the ten page PNGs.",
+  "known_limitations": [
+    "The fixed sample uses pinned physical Regular/Bold. Preview Find, raw Unicode Copy and PDF text-selection geometry were outside the review.",
+    "Preview observations were captured in the review report. The desktop tool did not export Preview screenshots."
+  ],
+  "producer_source_sha": "124f959266c64271dae6ab54a3844d962ae57fe0",
+  "evidence_root": "artifacts/release-0.5.0-prep/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "bc6728a1bf85df596606275cae572c6d32a20b86efe27f4e4e122aed42de1302",
+    "visual-sha256.txt": "2556a99cb553bd957931f71e009f186903e7fc33b2133f924386de54c3105f29",
+    "fonts-sha256.txt": "e22f3dfe41d8bffe1ffc5fe0ce410fb9e33c9212e011c363f7b4805a39431118",
+    "preview-review.md": "254b6a4ade73d4815dbec0112ee4f9a0c4c2c9d02a2131e8199d39e87716fe28",
+    "profile-check.json": "770155d1180df1846580243eafb174619f9da8a9bf08674e98220fc4f3d69665",
+    "extra-visual-check.json": "c3c00c0457020d489b2fe9358b4dac1c00f39487b66fe4f184696902eedc9985",
+    "consumer-identities.json": "835fdaf0a2b838214096c4502ebf5f2ed91731fd6bfb5e4478da544d274a3ae5"
+  }
+}
