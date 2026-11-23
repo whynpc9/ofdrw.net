@@ -122,7 +122,7 @@ public sealed class OfdToSvgConverter
 
         var imageIndex = 0;
         var objectIndex = 0;
-        var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
+        var elements = OfdPageDrawOrder.Placed(page, package.Options.Namespace, material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
         var renderTexts = new Dictionary<OfdTextElement, OfdTextElement>();
         var previewReserved = new HashSet<OfdElement>();
@@ -572,24 +572,6 @@ public sealed class OfdToSvgConverter
                 return match.Value == "c" ? "z" : match.Value;
             });
         return string.Join(" ", tokens);
-    }
-
-    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, OfdModelMaterialization material, CancellationToken token, string documentNamespace)
-    {
-        return page.Templates
-            .Where(template => string.Equals(
-                template.ZOrder,
-                "Background",
-                StringComparison.OrdinalIgnoreCase))
-            .SelectMany(template => template.Elements)
-            .Concat(page.Elements)
-            .Concat(page.Templates
-                .Where(template => !string.Equals(
-                    template.ZOrder,
-                    "Background",
-                    StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => template.Elements))
-            .Concat(OfdAnnotationProjection.Resolve(page, material, token, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement));
     }
 
     private static string BuildTransform(

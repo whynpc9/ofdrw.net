@@ -118,7 +118,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         // one embedded face can serve distinct TextObjects using that face.
         var aliasMaterial = new OfdModelMaterialization(new OfdModelLimits());
         fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
-            selected.Select(index => orderedPages[index]), aliasMaterial, cancellationToken));
+            selected.Select(index => orderedPages[index]), package.Options.Namespace, aliasMaterial, cancellationToken));
         var preparedAppearanceFonts = new HashSet<DocumentFontContext>();
         foreach (var appearance in signatureAppearances)
         {
@@ -127,7 +127,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     StringComparison.OrdinalIgnoreCase)) ||
                 !preparedAppearanceFonts.Add(appearance.Fonts)) continue;
             appearance.Fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
-                new[] { appearance.OfdPage }, aliasMaterial, cancellationToken));
+                new[] { appearance.OfdPage }, appearance.DocumentNamespace, aliasMaterial, cancellationToken));
         }
 
         using var document = new PdfDocument();
@@ -145,7 +145,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             pdfPage.Height = MillimetersToPoints(pageModel.HeightMillimeters);
 
             using var graphics = XGraphics.FromPdfPage(pdfPage);
-            DrawPage(graphics, pageModel, fonts, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
+            DrawPage(graphics, pageModel, package.Options.Namespace, fonts, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
 
             DrawSignatureAppearances(
                 document,
@@ -451,7 +451,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         try
         {
             using var graphics = XGraphics.FromForm(form);
-            DrawPage(graphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, annotationMaterial, token, sourceClip);
+            DrawPage(graphics, appearance.OfdPage, appearance.DocumentNamespace, appearance.Fonts!, maximumPixels, annotationMaterial, token, sourceClip);
             return form;
         }
         catch { form.Dispose(); throw; }
@@ -466,14 +466,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             data[3] == 0x04;
     }
 
-    private static void DrawPage(XGraphics graphics, OfdPage page, DocumentFontContext fonts,
+    private static void DrawPage(XGraphics graphics, OfdPage page, string? documentNamespace, DocumentFontContext fonts,
         long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken,
         XRect? appearanceClip = null)
     {
         try
         {
             var outlineFonts = fonts.OutlineFonts;
-            var elements = OfdCompositeProjection.Expand(EnumerateRenderableElements(page, annotationMaterial, cancellationToken), annotationMaterial, cancellationToken);
+            var elements = OfdPageDrawOrder.Placed(page, documentNamespace, annotationMaterial, cancellationToken);
             OfdRenderPreflight.Validate(elements);
             elements = PdfRtlPaintOrder.Arrange(elements, fonts, cancellationToken);
             foreach (var element in elements)
@@ -591,14 +591,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
     }
 
-    private static IEnumerable<OfdTextElement> ExplicitGlyphTexts(IEnumerable<OfdPage> pages,
+    private static IEnumerable<OfdTextElement> ExplicitGlyphTexts(IEnumerable<OfdPage> pages, string? documentNamespace,
         OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         foreach (var page in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var elements = OfdCompositeProjection.Expand(
-                EnumerateRenderableElements(page, material, cancellationToken), material, cancellationToken);
+            var elements = OfdPageDrawOrder.Placed(page, documentNamespace, material, cancellationToken);
             foreach (var element in elements)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1096,33 +1095,6 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         finally { graphics.Restore(state); }
     }
 
-    private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page, OfdModelMaterialization annotationMaterial, CancellationToken token)
-    {
-        foreach (var template in page.Templates.Where(x =>
-            string.Equals(x.ZOrder, "Background", StringComparison.OrdinalIgnoreCase)))
-        {
-            foreach (var element in template.Elements)
-            {
-                yield return element;
-            }
-        }
-
-        foreach (var element in page.Elements)
-        {
-            yield return element;
-        }
-
-        foreach (var template in page.Templates.Where(x =>
-            !string.Equals(x.ZOrder, "Background", StringComparison.OrdinalIgnoreCase)))
-        {
-            foreach (var element in template.Elements)
-            {
-                yield return element;
-            }
-        }
-        foreach (var occurrence in OfdAnnotationProjection.Resolve(page, annotationMaterial, token)) yield return occurrence.RenderElement;
-    }
-
     private sealed class PreparedSignatureAppearance
     {
         public PreparedSignatureAppearance(
@@ -1138,6 +1110,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             SignatureId = source.SignatureId;
             Data = Array.Empty<byte>();
             OfdPage = package.Pages.OrderBy(page => page.Index).First();
+            DocumentNamespace = package.Options.Namespace;
             Fonts = fonts;
         }
 
@@ -1170,6 +1143,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         public byte[] Data { get; }
 
         public OfdPage? OfdPage { get; }
+
+        /// <summary>Namespace of the appearance package; qualifies its typed annotation appearances.</summary>
+        public string? DocumentNamespace { get; }
         internal DocumentFontContext? Fonts { get; }
         public string? SignatureId { get; }
     }
