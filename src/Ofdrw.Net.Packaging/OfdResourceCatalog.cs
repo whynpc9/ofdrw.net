@@ -43,7 +43,7 @@ internal sealed class OfdResourceCatalog
                 .Concat(common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>()))
             {
                 var location = page.Attribute("BaseLoc")?.Value;
-                if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(material.ResolvePath(documentPath, location!, operationToken)) + "/PageRes.xml");
+                if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdReferenceCatalog.ImplicitPageResPath(material.ResolvePath(documentPath, location!, operationToken)));
             }
         }
         foreach (var pair in entries.Where(pair => owned.Contains(pair.Key)))

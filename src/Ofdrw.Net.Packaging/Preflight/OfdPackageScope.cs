@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Core.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
@@ -244,7 +245,7 @@ internal sealed class OfdPackageScope
         Pages.Add(new OfdScopePage(declaration, template, path, content));
         var ns = content.Name.Namespace;
         // Readers treat {pageDirectory}/PageRes.xml as a fixed page resource even without a PageRes link.
-        var sibling = path.Substring(0, path.LastIndexOf('/') + 1) + "PageRes.xml";
+        var sibling = OfdReferenceCatalog.ImplicitPageResPath(path);
         var declared = content.Elements(ns + "PageRes").Select(x => x.Value).ToList();
         if (xml.Exists(sibling) && !declared.Any(x => OfdPackageReference.TryResolve(path, x, out var target) &&
                 string.Equals(target, sibling, StringComparison.OrdinalIgnoreCase)))

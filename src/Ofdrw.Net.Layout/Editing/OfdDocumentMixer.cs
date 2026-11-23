@@ -197,7 +197,7 @@ public static class OfdDocumentMixer
 
     private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization material)
     {
-        var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        var documentPath = OfdReferenceCatalog.DocumentPath(package);
         var detailPaths = new List<(string Path, OfdCustomTagChannel Channel)>();
         var inspected = new Dictionary<string, string>(StringComparer.Ordinal);
         XDocument Read(string path)

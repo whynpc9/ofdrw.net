@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Core.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -245,7 +246,7 @@ public sealed class ArchivalPreflightChecker
             var shapes = new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
                 ["OFD"] = new[] { "DocBody" }, ["DocBody"] = new[] { "DocInfo", "DocRoot", "Versions", "Signatures" },
-                ["Document"] = new[] { "CommonData", "Pages", "Outlines", "Permissions", "Actions", "VPreferences", "Bookmarks", "Annotations", "CustomTags", "Attachments", "Extensions" },
+                ["Document"] = OfdReferenceCatalog.DocumentChildren.ToArray(),
                 ["CommonData"] = new[] { "MaxUnitID", "PageArea", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS" },
                 ["Pages"] = new[] { "Page" },
                 ["Res"] = new[] { "Fonts", "MultiMedias", "ColorSpaces", "DrawParams", "CompositeGraphicUnits" },

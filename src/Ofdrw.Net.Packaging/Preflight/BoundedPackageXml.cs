@@ -6,6 +6,7 @@ using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 
 namespace Ofdrw.Net.Packaging.Preflight;
@@ -182,6 +183,9 @@ internal static class OfdPackageReference
 {
     internal const string ShortNamespace = "http://www.ofdspec.org";
     internal const string Namespace2016 = "http://www.ofdspec.org/2016";
+
+    /// <summary>Children of <c>Document</c> in schema order (<see cref="OfdReferenceCatalog"/>).</summary>
+    internal static IReadOnlyList<string> DocumentChildren => OfdReferenceCatalog.DocumentChildren;
 
     /// <summary>True for the two OFD namespaces read-only assessment understands.</summary>
     internal static bool SupportedNamespace(XNamespace ns) =>

@@ -494,7 +494,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     private void ReadOptionalFixedResource(string pagePath)
     {
         budget.Copy(4L * pagePath.Length + 128); budget.Work(2L * pagePath.Length);
-        var split = pagePath.LastIndexOf('/'); var path = (split < 0 ? "" : pagePath.Substring(0, split + 1)) + "PageRes.xml";
+        var path = OfdReferenceCatalog.ImplicitPageResPath(pagePath);
         if (snapshot.HasExactEntry(path)) ReadResource(path, pagePath, "FixedPageRes", "PageRes.xml");
     }
     private void ReadResource(string path, string originEntry, string declarationKind, string declarationValue)

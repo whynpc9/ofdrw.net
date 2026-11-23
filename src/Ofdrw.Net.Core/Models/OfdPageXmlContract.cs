@@ -54,7 +54,7 @@ internal static class OfdPageXmlContract
     internal static void ValidateDocumentArea(OfdDocumentPackage package, CancellationToken token, OfdModelMaterialization? material = null)
     {
         token.ThrowIfCancellationRequested();
-        var path = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        var path = OfdReferenceCatalog.DocumentPath(package);
         if (!package.PreservedEntries.TryGetValue(path, out var data)) return;
         material ??= new OfdModelMaterialization(new OfdModelLimits());
         var xml = material.ReadXml(path, data, token); var ns = xml.Root!.Name.Namespace;

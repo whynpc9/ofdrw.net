@@ -35,8 +35,7 @@ internal sealed class ArchivalScopeInspector
 {
     private static readonly HashSet<string> DocBodyChildren = new HashSet<string>(StringComparer.Ordinal)
     { "DocInfo", "DocRoot", "Versions", "Signatures" };
-    private static readonly HashSet<string> DocumentChildren = new HashSet<string>(StringComparer.Ordinal)
-    { "CommonData", "Pages", "Outlines", "Permissions", "Actions", "VPreferences", "Bookmarks", "Annotations", "CustomTags", "Attachments", "Extensions" };
+    private static readonly HashSet<string> DocumentChildren = new HashSet<string>(OfdPackageReference.DocumentChildren, StringComparer.Ordinal);
     private static readonly HashSet<string> PageChildren = new HashSet<string>(StringComparer.Ordinal)
     { "Area", "Template", "PageRes", "Content", "Actions" };
     private static readonly HashSet<string> LayerObjects = new HashSet<string>(StringComparer.Ordinal)
