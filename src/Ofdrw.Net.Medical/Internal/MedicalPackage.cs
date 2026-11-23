@@ -35,23 +35,23 @@ internal sealed class MedicalZipEntry
 /// Bounded read-only view of an OFD snapshot: its own central-directory parse (compression method and physical order,
 /// which System.IO.Compression does not expose), entry bytes and DTD-free XML.
 /// </summary>
-internal sealed class MedicalPackage : IDisposable
+internal sealed class MedicalPackage : IDisposable, IBoundedEntrySource
 {
-    internal const string Namespace2016 = "http://www.ofdspec.org/2016";
-    internal const string ShortNamespace = "http://www.ofdspec.org";
+    internal const string Namespace2016 = OfdPackageReference.Namespace2016;
+    internal const string ShortNamespace = OfdPackageReference.ShortNamespace;
 
     private readonly ZipArchive zip;
     private readonly Dictionary<string, ZipArchiveEntry> byName;
-    private readonly ArchivalPreflightOptions budgets;
     private readonly CancellationToken token;
-    private readonly Dictionary<string, XDocument?> cache = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
-    private long xmlBytes;
-    private readonly HashSet<string> charged = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // same identity as byName
-    private int xmlNodes, references;
+    private readonly BoundedPackageXml xml;
+
+    /// <summary>The bounded XML reader charged by this package's own inspection.</summary>
+    internal BoundedPackageXml Reader => xml;
 
     internal MedicalPackage(byte[] bytes, ArchivalPreflightOptions budgets, CancellationToken token)
     {
-        this.budgets = budgets; this.token = token;
+        this.token = token;
+        xml = new BoundedPackageXml(this, budgets, token);
         Directory = ReadCentralDirectory(bytes, budgets.LoadOptions.MaxEntryCount);
         // The same ZIP loading limits the embedded archival assessment applies, enforced before any entry is opened.
         var load = budgets.LoadOptions; long total = 0;
@@ -88,11 +88,7 @@ internal sealed class MedicalPackage : IDisposable
 
     internal long Length(string name) => byName.TryGetValue(name, out var entry) ? entry.Length : -1;
 
-    internal void Visit()
-    {
-        token.ThrowIfCancellationRequested();
-        if (++references > budgets.MaxReferences) throw new MedicalBudgetExceededException("Reference");
-    }
+    internal void Visit() => xml.Visit();
 
     /// <summary>Reads at most <paramref name="max"/> leading bytes of an entry; null when absent.</summary>
     internal byte[]? Head(string name, int max)
@@ -111,48 +107,20 @@ internal sealed class MedicalPackage : IDisposable
         return read == buffer.Length ? buffer : buffer.Take(read).ToArray();
     }
 
-    /// <summary>Reads a whole entry within the single-XML budget; null when absent.</summary>
-    internal byte[]? Bytes(string name)
-    {
-        if (!byName.TryGetValue(name, out var entry)) return null;
-        if (entry.Length > budgets.MaxSingleXmlBytes) throw new MedicalBudgetExceededException("XmlBytes");
-        // MaxXmlBytes bounds the distinct XML read; re-reading an entry (e.g. the MH-003 lexical pass) is not charged again.
-        if (!charged.Contains(name))
-        {
-            if (entry.Length > budgets.MaxXmlBytes - xmlBytes) throw new MedicalBudgetExceededException("XmlBytes");
-            xmlBytes += entry.Length;
-            charged.Add(name);
-        }
-        var bytes = Head(name, (int)entry.Length) ?? Array.Empty<byte>();
-        if (bytes.Length != entry.Length) throw new MedicalInputRejectedException("TruncatedEntry");
-        return bytes;
-    }
+    /// <summary>Reads a whole entry within the shared XML byte budget; null when absent.</summary>
+    internal byte[]? Bytes(string name) => xml.Bytes(name);
 
     /// <summary>Returns the parsed XML, or null when the entry is absent or not well-formed (DTD prohibited).</summary>
-    internal XDocument? Xml(string name)
+    internal XDocument? Xml(string name) => xml.Read(name);
+
+    long IBoundedEntrySource.Length(string entry) => Length(entry);
+
+    byte[] IBoundedEntrySource.ReadAll(string entry)
     {
-        if (cache.TryGetValue(name, out var cached)) return cached;
-        var data = Bytes(name);
-        XDocument? document = null;
-        if (data != null)
-        {
-            var settings = Settings();
-            try
-            {
-                using (var reader = XmlReader.Create(new MemoryStream(data, false), settings))
-                    while (reader.Read())
-                    {
-                        token.ThrowIfCancellationRequested();
-                        if (++xmlNodes > budgets.MaxXmlNodes || reader.Depth > budgets.MaxXmlDepth)
-                            throw new MedicalBudgetExceededException("XmlNodes");
-                    }
-                using (var reader = XmlReader.Create(new MemoryStream(data, false), settings))
-                    document = XDocument.Load(reader);
-            }
-            catch (XmlException) { document = null; }
-        }
-        cache[name] = document;
-        return document;
+        var length = Length(entry);
+        var bytes = Head(entry, (int)length) ?? Array.Empty<byte>();
+        if (bytes.Length != length) throw new MedicalInputRejectedException("TruncatedEntry");
+        return bytes;
     }
 
     /// <summary>Lexical XML facts XLinq does not keep: OFD-namespace elements not written with the <c>ofd</c> prefix, and qualified attributes.</summary>
@@ -163,7 +131,7 @@ internal sealed class MedicalPackage : IDisposable
         int unprefixed = 0, qualified = 0;
         try
         {
-            using var reader = XmlReader.Create(new MemoryStream(data, false), Settings());
+            using var reader = XmlReader.Create(new MemoryStream(data, false), xml.Settings());
             while (reader.Read())
             {
                 token.ThrowIfCancellationRequested();
@@ -182,41 +150,15 @@ internal sealed class MedicalPackage : IDisposable
         catch (XmlException) { return (false, 0, 0); }
     }
 
-    private XmlReaderSettings Settings() => new XmlReaderSettings
-    {
-        DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
-        MaxCharactersInDocument = budgets.MaxSingleXmlBytes, MaxCharactersFromEntities = 1
-    };
-
     public void Dispose() => zip.Dispose();
 
     /// <summary>Resolves an OFD location against the entry that contains it; a leading slash is the package root.</summary>
     internal static bool TryResolve(string containingEntry, string? location, out string resolved) =>
-        Normalize(containingEntry, location, false, out resolved);
+        OfdPackageReference.TryResolve(containingEntry, location, out resolved);
 
     /// <summary>Resolves a directory location such as a resource BaseLoc; the package root is the empty string.</summary>
     internal static bool TryResolveDirectory(string containingEntry, string? location, out string directory) =>
-        Normalize(containingEntry, location, true, out directory);
-
-    private static bool Normalize(string containingEntry, string? location, bool allowRoot, out string resolved)
-    {
-        resolved = string.Empty;
-        if (string.IsNullOrWhiteSpace(location)) return false;
-        var value = location!.Trim();
-        if (value.Contains(":") || value.Contains("\\") || value.Contains("?") || value.Contains("#") || value.Any(char.IsControl)) return false;
-        var slash = containingEntry.LastIndexOf('/');
-        var directory = slash < 0 ? string.Empty : containingEntry.Substring(0, slash);
-        var combined = value.StartsWith("/", StringComparison.Ordinal) ? value : directory + "/" + value;
-        var parts = new List<string>();
-        foreach (var part in combined.Split('/'))
-        {
-            if (part.Length == 0 || part == ".") continue;
-            if (part == "..") { if (parts.Count == 0) return false; parts.RemoveAt(parts.Count - 1); }
-            else parts.Add(part);
-        }
-        resolved = string.Join("/", parts);
-        return allowRoot || resolved.Length > 0;
-    }
+        OfdPackageReference.TryResolveDirectory(containingEntry, location, out directory);
 
     private static IReadOnlyList<MedicalZipEntry> ReadCentralDirectory(byte[] data, int maxEntries)
     {

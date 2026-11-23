@@ -82,7 +82,7 @@ internal sealed class OfdPackagePruner
             .ToList();
         if (deleted.Count > 0)
         {
-            var currentDocumentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml";
+            var currentDocumentPath = OfdReferenceCatalog.DocumentPath(package);
             var currentDocumentXml = Parse(entries[currentDocumentPath]); var currentNamespace = currentDocumentXml.Root!.Name.Namespace;
             var writtenPagePaths = new HashSet<string>((currentDocumentXml.Root.Element(currentNamespace + "Pages")?.Elements(currentNamespace + "Page") ?? Enumerable.Empty<XElement>())
                 .Select(node => material.ResolvePath(currentDocumentPath, node.Attribute("BaseLoc")?.Value ?? string.Empty, operationToken)),
@@ -104,7 +104,7 @@ internal sealed class OfdPackagePruner
             PruneUnusedTemplates(entries, currentDocumentPath, writtenPagePaths, candidateIds, privateResourcePaths, result, scan);
             foreach (var page in deleted)
             {
-                var pageResources = OfdPackagePath.GetDirectory(page.Path) + "/PageRes.xml";
+                var pageResources = OfdReferenceCatalog.ImplicitPageResPath(page.Path);
                 if (entries.ContainsKey(page.Path) || writtenPagePaths.Any(path => OfdPackagePath.GetDirectory(path) == OfdPackagePath.GetDirectory(page.Path)) ||
                     ReferencesFile(entries, pageResources, scan)) continue;
                 privateResourcePaths.Add(pageResources);
@@ -192,7 +192,7 @@ internal sealed class OfdPackagePruner
             if (pagePaths.Contains(path) || ReferencesFile(entries, path, scan)) continue;
             if (entries.TryGetValue(path, out var bytes) && TryParse(bytes, out var xmlPage)) AddReferences(xmlPage, candidateIds);
             Remove(entries, path, result, OfdOwnedPruneReason.UnusedTemplate);
-            var resourcePath = OfdPackagePath.GetDirectory(path) + "/PageRes.xml";
+            var resourcePath = OfdReferenceCatalog.ImplicitPageResPath(path);
             if (pagePaths.Any(pagePath => OfdPackagePath.GetDirectory(pagePath) == OfdPackagePath.GetDirectory(path)) ||
                 ReferencesFile(entries, resourcePath, scan)) continue;
             if (entries.TryGetValue(resourcePath, out var resourceBytes) && TryParse(resourceBytes, out var resources))
@@ -249,7 +249,7 @@ internal sealed class OfdPackagePruner
         foreach (var page in pageLocations)
         {
             var location = page.Attribute("BaseLoc")?.Value;
-            if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(material.ResolvePath(documentPath, location!, operationToken)) + "/PageRes.xml");
+            if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdReferenceCatalog.ImplicitPageResPath(material.ResolvePath(documentPath, location!, operationToken)));
         }
         var documents = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
         var references = new HashSet<string>(StringComparer.Ordinal);

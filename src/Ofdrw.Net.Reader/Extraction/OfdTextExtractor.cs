@@ -38,28 +38,8 @@ public sealed class OfdTextExtractor
 
     private static string ExtractPage(OfdPage page, bool includeTemplates, OfdModelMaterialization material, string documentNamespace)
     {
-        IEnumerable<OfdTextElement> textElements =
-            OfdCompositeProjection.Expand(page.Elements, material, default).OfType<OfdTextElement>();
-        if (includeTemplates)
-        {
-            textElements = page.Templates
-                .Where(template => string.Equals(
-                    template.ZOrder,
-                    "Background",
-                    StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => OfdCompositeProjection.Expand(template.Elements, material, default))
-                .OfType<OfdTextElement>()
-                .Concat(textElements)
-                .Concat(page.Templates
-                    .Where(template => !string.Equals(
-                        template.ZOrder,
-                        "Background",
-                        StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(template => OfdCompositeProjection.Expand(template.Elements, material, default))
-                    .OfType<OfdTextElement>());
-        }
-
-        textElements = textElements.Concat(OfdAnnotationProjection.Resolve(page, material, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement).OfType<OfdTextElement>());
+        // Annotation appearances are expanded like page content, so composite text inside them is extracted too.
+        var textElements = OfdPageDrawOrder.Placed(page, documentNamespace, material, default, includeTemplates).OfType<OfdTextElement>();
         var lines = textElements
             .Where(OfdGraphicXmlContract.IsVisible)
             .OrderBy(element => element.YMillimeters)

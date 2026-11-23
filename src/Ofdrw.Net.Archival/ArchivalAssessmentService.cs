@@ -82,9 +82,9 @@ public sealed class ArchivalAssessmentService
         var undecided = new HashSet<string>(StringComparer.Ordinal);
         if (archive != null)
         {
-            var xml = new ArchivalXmlReader(archive, preflight, cancellationToken);
-            scope = new ArchivalScopeInspector(xml).Inspect();
-            var context = new ArchivalCheckContext(xml, preflight, scope, cancellationToken, fonts);
+            var xml = new BoundedPackageXml(archive, preflight, cancellationToken);
+            scope = new ArchivalScopeInspector(archive, xml).Inspect();
+            var context = new ArchivalCheckContext(archive, xml, preflight, scope, cancellationToken, fonts);
             foreach (var check in checks)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -96,7 +96,7 @@ public sealed class ArchivalAssessmentService
                     owned.AddRange(produced);
                     if (check.GapCode != null) (check.Decided(produced.AsReadOnly()) ? decided : undecided).Add(check.GapCode);
                 }
-                catch (ArchivalBudgetExceededException ex)
+                catch (PackageBudgetExceededException ex)
                 {
                     scope.BudgetExceeded ??= ex.Budget;
                     if (check.GapCode != null) undecided.Add(check.GapCode);

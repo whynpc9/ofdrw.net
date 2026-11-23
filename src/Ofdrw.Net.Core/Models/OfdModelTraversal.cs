@@ -147,7 +147,7 @@ internal static class OfdModelTraversal
         if (package.Options is null) throw new InvalidDataException("OFD model has no document options.");
         if (package.DocumentEntryPath is not null) GuardPath(package.DocumentEntryPath);
         else { GuardPath(package.Options.DocumentId); GuardPath("/"); GuardPath("Document.xml"); }
-        state.DocumentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        state.DocumentPath = OfdReferenceCatalog.DocumentPath(package);
         for (var p = 0; p < package.Pages.Count; p++)
         {
             token.ThrowIfCancellationRequested();

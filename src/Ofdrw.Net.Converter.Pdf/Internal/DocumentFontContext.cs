@@ -380,12 +380,12 @@ internal sealed class DocumentFontContext
             !_families.ContainsKey(resource))
         {
             OfdNameOnlyFontBindings.ValidateBmpText(text);
-            var bound = _nameOnlyBindings.Resolve(resource, _parseBudget);
+            var bound = OfdRenderFace.Load(resource, _nameOnlyBindings, _parseBudget);
             _families[resource] = PdfFontRegistry.RegisterFontFace(bound.Data);
             StorePhysical(resource, bound.Data);
             var identity = BinaryIdentity.Hash(bound.Data);
             _nameOnlyFaceIdentities[resource] = identity;
-            _coverage[resource] = bound.Coverage;
+            _coverage[resource] = bound.Coverage!;
         }
         if (resource is not null && resource.Data.Length == 0 && hasText &&
             !_families.ContainsKey(resource) && !_unsupportedCoverage.ContainsKey(resource))
@@ -421,7 +421,7 @@ internal sealed class DocumentFontContext
         if (resource is not null && _symbolFonts.TryGetValue(resource, out var symbolBytes))
         {
             var symbolCoverage = _coverage[resource];
-            SymbolCmapProfile.ValidateText(text, symbolCoverage, _parseBudget, _cancellationToken);
+            OfdRenderFace.ValidateText(text, symbolCoverage, false, resource.FontName, _parseBudget, _cancellationToken);
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             if (!_symbolAliases.TryGetValue(key, out var symbolFamily))
             {
@@ -437,7 +437,7 @@ internal sealed class DocumentFontContext
         {
             try
             {
-                EmbeddedFontCoverage.Validate(text, coverage, resource.FontName, _cancellationToken);
+                OfdRenderFace.ValidateText(text, coverage, false, resource.FontName, _parseBudget, _cancellationToken);
             }
             catch (System.IO.InvalidDataException) when (resource.Data.Length == 0 && _nameOnlyBindings is null && !_parseBudget.IsExhausted)
             {

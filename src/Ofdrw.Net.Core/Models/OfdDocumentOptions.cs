@@ -27,4 +27,30 @@ public sealed class OfdDocumentOptions
     public double DefaultPageHeightMillimeters { get; set; } = 297d;
 
     public OfdMetadata Metadata { get; set; } = new OfdMetadata();
+
+    /// <summary>
+    /// Copies every option, the font-embedding budgets and the scalar metadata. This is the one place a package-level
+    /// option is copied: a new option added here is carried by controlled edits, merge/split and converters alike.
+    /// <see cref="OfdMetadata.CustomDatas"/> is not copied; it is owned XML whose clone needs the caller's budget.
+    /// </summary>
+    internal OfdDocumentOptions Copy() => new OfdDocumentOptions
+    {
+        DocType = DocType, Namespace = Namespace, DocumentId = DocumentId,
+        EnableDeflateCompression = EnableDeflateCompression, LinearizedEntryOrder = LinearizedEntryOrder,
+        FontEmbedding = FontEmbedding.Copy(),
+        DefaultPageWidthMillimeters = DefaultPageWidthMillimeters, DefaultPageHeightMillimeters = DefaultPageHeightMillimeters,
+        Metadata = Metadata.CopyScalars()
+    };
+
+    /// <summary>
+    /// <see cref="Copy"/> for a document assembled from others (merge and split): the source document's identity is
+    /// not carried. <see cref="DocumentId"/> returns to the default and the GB/T 33190 <c>DocID</c> is not copied.
+    /// </summary>
+    internal OfdDocumentOptions CopyForNewDocument()
+    {
+        var copy = Copy();
+        copy.DocumentId = OfdConstants.DefaultDocId;
+        copy.Metadata.DocId = null;
+        return copy;
+    }
 }

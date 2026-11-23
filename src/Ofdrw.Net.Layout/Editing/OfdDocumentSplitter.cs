@@ -56,7 +56,7 @@ public static class OfdDocumentSplitter
             if (OfdAnnotationContract.HasTyped(source))
             {
                 if (selected.Pages.Any(page => page.Templates.Count != 0)) throw new NotSupportedException("Fresh typed annotation split with templates requires persisted source ownership.");
-                selected.Options = OfdDocumentMerger.CloneOptions(source.Options);
+                selected.Options = source.Options.CopyForNewDocument();
                 CloneStandardObjects(source, selected, material, cancellationToken);
                 selected.Fonts.Clear();
                 foreach (var font in source.Fonts)
@@ -94,7 +94,8 @@ public static class OfdDocumentSplitter
         }
         var result = new OfdDocumentPackage
         {
-            Options = OfdDocumentMerger.CloneOptions(source.Options), DocumentEntryPath = source.DocumentEntryPath,
+            // A split keeps its source's document folder; only the DocID identity is not carried.
+            Options = source.Options.CopyForNewDocument(), DocumentEntryPath = source.DocumentEntryPath,
             PublicResourceLocation = source.PublicResourceLocation, DocumentResourceLocation = source.DocumentResourceLocation
         };
         result.Options.DocumentId = source.Options.DocumentId;

@@ -22,10 +22,6 @@ namespace Ofdrw.Net.Converter.Svg.Converters;
 /// </summary>
 public sealed class OfdToSvgConverter
 {
-    private static readonly Regex PathTokenPattern = new(
-        @"[A-Za-z]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     private readonly OfdPackageLoadOptions _loadOptions;
     private readonly OfdGlyphMappingStrategy _glyphMappingStrategy;
     private readonly long _maximumFontParseWork;
@@ -122,7 +118,7 @@ public sealed class OfdToSvgConverter
 
         var imageIndex = 0;
         var objectIndex = 0;
-        var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
+        var elements = OfdPageDrawOrder.Placed(page, package.Options.Namespace, material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
         var renderTexts = new Dictionary<OfdTextElement, OfdTextElement>();
         var previewReserved = new HashSet<OfdElement>();
@@ -257,22 +253,14 @@ public sealed class OfdToSvgConverter
             parseBudget.Spend(0);
             var cached = font.Data.Length > 0 ? preview?.Font(font, parseBudget) : null;
             byte[] data;
-            OpenTypeCmap? coverage = null;
-            if (font.Data.Length == 0)
-            {
-                var bound = nameOnlyBindings!.Resolve(font, parseBudget);
-                data = bound.Data;
-                coverage = bound.Coverage;
-            }
-            else data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            OpenTypeCmap? coverage;
             (bool Bold, bool Italic) style;
-            if (font.Data.Length == 0) style = (false, false);
-            else if (cached.HasValue) { style = (cached.Value.Bold, cached.Value.Italic); coverage = cached.Value.Coverage; }
+            if (cached.HasValue) { data = cached.Value.Data; coverage = cached.Value.Coverage; style = (cached.Value.Bold, cached.Value.Italic); }
             else
             {
-                var face = new OpenTypeFace(data); style = face.Style;
-                try { coverage = new OpenTypeCmap(face, parseBudget); }
-                catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+                var face = OfdRenderFace.Load(font, nameOnlyBindings, parseBudget);
+                data = face.Data; coverage = face.Coverage;
+                style = face.NameOnlyBinding ? (false, false) : new OpenTypeFace(data).Style;
             }
             if (selectedTexts.TryGetValue(font, out var cffUses) &&
                 data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O')
@@ -367,15 +355,12 @@ public sealed class OfdToSvgConverter
             (text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))) &&
             (resource is null || resource.Data.Length == 0 && !families.ContainsKey(resource)))
             throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no explicit face binding.");
-        if (nameOnlyBindings is not null && resource?.Data.Length == 0)
-            OfdNameOnlyFontBindings.ValidateBmpText(text);
         var family = !string.IsNullOrWhiteSpace(resource?.FamilyName) ? resource!.FamilyName! : text.FontName;
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
-            if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, parseBudget, cancellationToken);
-            else EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
+            OfdRenderFace.ValidateText(text, embedded.Coverage, nameOnlyBindings is not null && resource.Data.Length == 0,
+                resource.FontName, parseBudget, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
@@ -485,111 +470,63 @@ public sealed class OfdToSvgConverter
             new XAttribute("role", "img"), new XAttribute("aria-label", run.LogicalText),
             new XAttribute("data-ofd-text", run.LogicalText),
             new XElement(ns + "title", run.LogicalText));
-        var pathOrigins = run.PathGlyphSourceSpan is null ? null : run.PathGlyphOrigins(token);
-        var globalIndex = 0;
-        foreach (var textRun in run.Runs)
+        foreach (var glyph in OfdPlacedGlyphOutlines.Place(text, run, font, drawing.Factor, paint.HScale, token))
         {
-            var glyphCount = run.SingleGlyphSourceSpan is not null ? 1 :
-                pathOrigins is not null ? pathOrigins.Count : textRun.Text.Length;
-            var hasX = !string.IsNullOrWhiteSpace(textRun.DeltaX);
-            var hasY = !string.IsNullOrWhiteSpace(textRun.DeltaY);
-            var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(textRun.DeltaX, glyphCount - 1, token) : [];
-            var deltaY = hasY ? OfdTextGeometry.ExpandDeltas(textRun.DeltaY, glyphCount - 1, token) : [];
-            var x = textRun.XMillimeters; var y = textRun.YMillimeters;
-            for (var index = 0; index < glyphCount; index++, globalIndex++)
+            preview?.BeforeExplicitGlyphOutline(glyph.Outline);
+            var path = new StringBuilder();
+            foreach (var command in glyph.Commands)
             {
-                token.ThrowIfCancellationRequested();
-                if (pathOrigins is not null)
+                switch (command.Verb)
                 {
-                    x = pathOrigins[index].X;
-                    y = pathOrigins[index].Y;
+                    case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' '); break;
+                    case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' '); break;
+                    case TrueTypePathVerb.Quadratic:
+                        path.Append("Q ").Append(Invariant(command.ControlX)).Append(' ').Append(Invariant(command.ControlY)).Append(' ')
+                            .Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' ');
+                        break;
+                    case TrueTypePathVerb.Cubic:
+                        path.Append("C ").Append(Invariant(command.ControlX)).Append(' ').Append(Invariant(command.ControlY)).Append(' ')
+                            .Append(Invariant(command.Control2X)).Append(' ').Append(Invariant(command.Control2Y)).Append(' ')
+                            .Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' ');
+                        break;
+                    case TrueTypePathVerb.Close: path.Append("Z "); break;
                 }
-                var outline = font.Outlines[globalIndex];
-                preview?.BeforeExplicitGlyphOutline(outline);
-                var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-                var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
-                var path = new StringBuilder();
-                foreach (var command in outline.ToPathCommands())
-                {
-                    double px = anchor.X / paint.HScale + command.X * scale;
-                    double py = anchor.Y - command.Y * scale;
-                    switch (command.Verb)
-                    {
-                        case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                        case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                        case TrueTypePathVerb.Quadratic:
-                            path.Append("Q ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
-                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
-                            break;
-                        case TrueTypePathVerb.Cubic:
-                            path.Append("C ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
-                                .Append(Invariant(anchor.X / paint.HScale + command.Control2X * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.Control2Y * scale)).Append(' ')
-                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
-                            break;
-                        case TrueTypePathVerb.Close: path.Append("Z "); break;
-                    }
-                }
-                var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
-                    new XAttribute("data-original-gid", run.GlyphIds[globalIndex]),
-                    new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
-                    new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
-                if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
-                if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
-                if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
-                group.Add(node);
-                if (index + 1 == glyphCount || pathOrigins is not null) continue;
-                if (hasX) x += deltaX[index];
-                if (hasY) y += deltaY[index];
             }
+            var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
+                new XAttribute("data-original-gid", glyph.GlyphId),
+                new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
+                new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
+            if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
+            if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
+            if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
+            group.Add(node);
         }
         root.Add(group);
     }
 
     private static string NormalizePathData(string data)
     {
-        var tokens = PathTokenPattern.Matches(data)
-            .Cast<Match>()
-            .Select(match =>
+        var tokens = OfdPathDataSyntax.Tokenize(data)
+            .Select(value =>
             {
-                if (match.Value == "B")
+                if (value == "B")
                 {
                     return "C";
                 }
 
-                if (match.Value == "b")
+                if (value == "b")
                 {
                     return "c";
                 }
 
-                if (match.Value == "C")
+                if (value == "C")
                 {
                     return "Z";
                 }
 
-                return match.Value == "c" ? "z" : match.Value;
+                return value == "c" ? "z" : value;
             });
         return string.Join(" ", tokens);
-    }
-
-    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, OfdModelMaterialization material, CancellationToken token, string documentNamespace)
-    {
-        return page.Templates
-            .Where(template => string.Equals(
-                template.ZOrder,
-                "Background",
-                StringComparison.OrdinalIgnoreCase))
-            .SelectMany(template => template.Elements)
-            .Concat(page.Elements)
-            .Concat(page.Templates
-                .Where(template => !string.Equals(
-                    template.ZOrder,
-                    "Background",
-                    StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => template.Elements))
-            .Concat(OfdAnnotationProjection.Resolve(page, material, token, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement));
     }
 
     private static string BuildTransform(

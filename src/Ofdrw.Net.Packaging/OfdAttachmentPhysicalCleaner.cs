@@ -31,8 +31,7 @@ internal static class OfdAttachmentPhysicalCleaner
     {
         "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "Printable", "Copies", "StartDate", "EndDate", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "Base", "Target", "AttachID", "NewWindow", "Volume", "Repeat", "Synchronous", "Operator", "Point1", "Point2", "Point3", "SweepDirection", "LargeArc", "RotationAngle", "EllipseSize", "EndPoint", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
-    private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
-    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "File", "BaseLoc", "Cover" };
+    private static IReadOnlyCollection<string> ScalarPathElements => OfdReferenceCatalog.ScalarPathElements;
 
     internal static void Prune(OfdDocumentPackage package, IDictionary<string, byte[]> entries, OfdPackageWriteResult result,
         OfdModelMaterialization material, CancellationToken token, OfdOwnedPruneDispositions? dispositions)
@@ -302,7 +301,7 @@ internal static class OfdAttachmentPhysicalCleaner
     }
 
     private static bool IsPathBearingAttribute(XElement element, string name, ISet<XElement> externalAttachments) =>
-        name is "BaseLoc" or "FileRef" or "MediaFile" ||
+        OfdReferenceCatalog.PathAttributes.Contains(name) ||
         name == "FileLoc" && !IsExternalAttachment(element, externalAttachments) ||
         name == "URI" && !(element.Name.LocalName == "URI" && element.Parent?.Name.LocalName == "Action");
 
@@ -311,7 +310,7 @@ internal static class OfdAttachmentPhysicalCleaner
         !(element.Name.LocalName == "FileLoc" && IsExternalAttachment(element.Parent, externalAttachments)) ||
         (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
         (element.Document?.Root?.Name.LocalName == "Document" &&
-            element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags" or "Extensions"));
+            OfdReferenceCatalog.DocumentIndexDeclarations.Contains(element.Name.LocalName));
 
     private static bool IsExternalAttachment(XElement? element, ISet<XElement> externalAttachments) =>
         element?.Name.LocalName == "Attachment" &&
@@ -319,13 +318,11 @@ internal static class OfdAttachmentPhysicalCleaner
          bool.TryParse(element.Attribute("External")?.Value, out var external) && external);
 
     private static bool IsControlReference(XElement element, string? attributeName) =>
-        attributeName == "BaseLoc" && element.Name.LocalName is ("Page" or "TemplatePage" or "Version" or "Signature") ||
+        attributeName == "BaseLoc" && OfdReferenceCatalog.ControlBaseLocOwners.Contains(element.Name.LocalName) ||
         attributeName == "FileLoc" && element.Name.LocalName == "PageAnnot" ||
         attributeName == "FileLoc" && element.Name == element.Name.Namespace + "CustomTag" &&
             element.Parent?.Name == element.Name.Namespace + "CustomTags" && element.Document?.Root == element.Parent ||
-        attributeName is null && element.Name.LocalName is
-            ("DocRoot" or "PublicRes" or "DocumentRes" or "PageRes" or "Signatures" or
-             "Attachments" or "Annotations" or "CustomTags" or "Extensions") ||
+        attributeName is null && OfdReferenceCatalog.ControlLocationElements.Contains(element.Name.LocalName) ||
         attributeName is null && element.Name.LocalName == "FileLoc" &&
             element.Parent?.Name == element.Name.Namespace + "Page" &&
             element.Parent.Parent?.Name == element.Name.Namespace + "Annotations" &&
@@ -416,7 +413,7 @@ internal static class OfdAttachmentPhysicalCleaner
             if (string.IsNullOrWhiteSpace(value)) continue;
             if (ContainsAmbiguousPathSyntax(value!)) throw new NotSupportedException("Page location is ambiguous.");
             var pagePath = material.ResolvePath(documentPath, value!, token);
-            paths.Add(pagePath.Substring(0, pagePath.LastIndexOf('/') + 1) + "PageRes.xml");
+            paths.Add(OfdReferenceCatalog.ImplicitPageResPath(pagePath));
         }
         return paths;
     }

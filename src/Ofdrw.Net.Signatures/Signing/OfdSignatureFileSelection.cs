@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Core.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -118,7 +119,8 @@ internal static class OfdSignatureFileSelection
             if (documentPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
             {
                 foreach (var descriptor in document.Root.Elements().Where(node =>
-                             node.Name.LocalName is "Attachments" or "CustomTags" or "Extensions"))
+                             // Annotation indexes stay mutable after signing; they are handled below.
+                             OfdReferenceCatalog.DocumentIndexDeclarations.Contains(node.Name.LocalName) && node.Name.LocalName != "Annotations"))
                 {
                     if (string.IsNullOrWhiteSpace(descriptor.Value) && !descriptor.HasElements) continue;
                     var location = Resolve(path, descriptor.Value.Trim());
@@ -173,8 +175,7 @@ internal static class OfdSignatureFileSelection
                     throw new InvalidDataException("Cannot prove page dependency: /" + path + " -> " + baseLoc);
                 required.Add(pagePath);
                 if (xmlPaths.Add(pagePath)) pending.Enqueue(pagePath);
-                var slash = pagePath.LastIndexOf('/');
-                var pageResPath = (slash < 0 ? string.Empty : pagePath.Substring(0, slash + 1)) + "PageRes.xml";
+                var pageResPath = OfdReferenceCatalog.ImplicitPageResPath(pagePath);
                 if (entries.ContainsKey(pageResPath))
                 {
                     required.Add(pageResPath);

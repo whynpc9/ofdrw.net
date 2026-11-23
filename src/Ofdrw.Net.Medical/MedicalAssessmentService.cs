@@ -79,7 +79,7 @@ public sealed class MedicalAssessmentService
         try
         {
             using var package = new MedicalPackage(bytes, budgets, cancellationToken);
-            var structure = MedicalStructure.Walk(package);
+            var structure = OfdPackageScope.Walk(package.Reader);
             rootDocType = (string?)structure.Root?.Root?.Attribute("DocType");
             var context = new MedicalRuleContext(package, structure, options, mapping, archival);
             foreach (var rule in MedicalRules.All)
@@ -92,6 +92,7 @@ public sealed class MedicalAssessmentService
             }
         }
         catch (MedicalBudgetExceededException ex) { state = MedicalExecutionState.BudgetExhausted; reason = ex.Budget + "BudgetExceeded"; }
+        catch (PackageBudgetExceededException ex) { state = MedicalExecutionState.BudgetExhausted; reason = ex.Budget + "BudgetExceeded"; }
         catch (MedicalInputRejectedException ex) { state = MedicalExecutionState.Error; reason = ex.Message; }
         catch (InvalidDataException) { state = MedicalExecutionState.Error; reason = "MalformedZip"; }
         return Build(state, reason, identity, observations, archival, rootDocType);

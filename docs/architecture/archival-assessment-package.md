@@ -19,7 +19,7 @@ Packaging 的 csproj 对 `Ofdrw.Net.Archival` 声明了 `InternalsVisibleTo`。�
 
 - 输入须可读、可定位且位于零点；只读不写，保持打开，任何出口都恢复到零。参数错误抛 `ArgumentException`。
 - 在 `LoadOptions.MaxInputBytes` 内一次读入快照并计算 SHA-256 和长度，此后所有检查都基于这份字节，报告的 `Input` 与被检查字节一致。超出字节预算时不计算摘要，`Input` 为 null。
-- 预算沿用 `ArchivalPreflightOptions`（选项先复制再读输入）。本包自己的范围检查另按同一组 XML 字节、节点、深度和引用预算计数，不与 Preflight 服务共享计数。
+- 预算沿用 `ArchivalPreflightOptions`（选项先复制再读输入）。本包自己的范围检查另按同一组 XML 字节、节点、深度和引用预算计数，不与 Preflight 服务共享计数。有界读取与文档/页面解析使用 Packaging 内部的 `BoundedPackageXml` 与 `OfdPackageScope`（与 Medical、Preflight 共用实现）；每个使用方各自创建实例，计数仍互不共享。
 - **取消抛出 `OperationCanceledException`，不返回部分报告**，与现有 Preflight 服务一致，因此执行状态没有 Cancelled。预算耗尽和输入被拒以报告返回：`ExecutionState` 为 `BudgetExhausted` 或 `Error`，并带稳定原因（`InputBudgetExceeded`、`InspectionBudgetExceeded`、`ScopeInspectionBudgetExceeded`、`InputRejected`）。普通 I/O 错误继续抛出。
 - 公开加载器对 ZIP 限额和格式错误抛同一种 `InvalidDataException`，本包以消息中的 “limit” 区分预算耗尽与输入被拒；这是已知的弱区分。
 - 非 `Complete` 的运行中，条款结果除确定的 Fail 外一律为 Unknown，输入支持维度追加 `AssessmentIncomplete`，不会呈现为可交付。

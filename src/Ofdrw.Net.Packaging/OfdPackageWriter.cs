@@ -399,7 +399,7 @@ public sealed partial class OfdPackageWriter
         {
             Entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase),
             Namespace = XNamespace.Get(package.Options.Namespace),
-            DocumentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml",
+            DocumentPath = OfdReferenceCatalog.DocumentPath(package),
             Pages = package.Pages.OrderBy(page => page.Index).ToList(), Compression = package.Options.EnableDeflateCompression,
             Linearized = package.Options.LinearizedEntryOrder,
             OutputReservation = material.OutputUpperBoundBytes - before

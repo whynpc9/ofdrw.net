@@ -16,7 +16,7 @@ internal static class OfdDocumentEnvelopeWriter
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var bytes)) return fresh;
         var original = material.ReadXml("OFD.xml", bytes, token); var root = original.Root!; var ns = fresh.Root!.Name.Namespace;
         if (root.Name != fresh.Root.Name) throw new NotSupportedException("Cannot migrate OFD source namespace.");
-        var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        var documentPath = OfdReferenceCatalog.DocumentPath(package);
         if (package.SourceEnvelope is { } source && source.DocumentPath != documentPath) throw new NotSupportedException("Cannot remap imported document source path.");
         var body = root.Elements(ns + "DocBody").FirstOrDefault(node => node.Element(ns + "DocRoot") is XElement path && material.ResolvePath("OFD.xml", path.Value, token) == documentPath);
         if (body is null) throw new InvalidDataException("Selected source DocBody is missing.");

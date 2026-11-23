@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Core.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -106,9 +107,9 @@ public sealed class ArchivalPreflightChecker
         private readonly Dictionary<string, XElement> deferredCustomTags = new Dictionary<string, XElement>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, XDocument?> tagXml = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         private OfdPackageArchive package = null!;
+        private BoundedPackageXml reader = null!;
         private PreflightRunState state;
-        private long xmlBytes;
-        private int nodes, references, entryCount, documentCount;
+        private int references, entryCount, documentCount;
         private bool scopeUnknown;
 
         internal Inspection(ArchivalPreflightOptions options, CancellationToken token)
@@ -209,24 +210,16 @@ public sealed class ArchivalPreflightChecker
         // Budgeted parse shared by control XML and opted-in custom-tag entries; malformed XML throws XmlException.
         private XDocument LoadCounted(string entry)
         {
-            var bytes = package.GetBytes(entry);
-            if (bytes.Length > options.MaxSingleXmlBytes || bytes.Length > options.MaxXmlBytes - xmlBytes) throw new BudgetExceededException();
-            xmlBytes += bytes.Length;
-            var settings = new XmlReaderSettings
+            if (!package.Contains(entry)) package.GetBytes(entry); // absent control XML keeps its KeyNotFoundException
+            try
             {
-                DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
-                MaxCharactersInDocument = options.MaxSingleXmlBytes, MaxCharactersFromEntities = 1
-            };
-            // Count before building the tree: limits apply to allocation, not merely to traversal afterwards.
-            using (var source = new MemoryStream(bytes, false))
-            using (var reader = XmlReader.Create(source, settings))
-                while (reader.Read())
-                {
-                    Check();
-                    if (++nodes > options.MaxXmlNodes || reader.Depth > options.MaxXmlDepth) throw new BudgetExceededException();
-                }
-            using (var source = new MemoryStream(bytes, false))
-            using (var reader = XmlReader.Create(source, settings)) return XDocument.Load(reader);
+                var read = reader.Load(entry);
+                if (read.Status == BoundedXmlStatus.Parsed) return read.Document!;
+                throw read.Status == BoundedXmlStatus.UnsupportedEncoding
+                    ? new XmlException("Unsupported XML encoding.", new NotSupportedException())
+                    : new XmlException("Invalid or prohibited XML.");
+            }
+            catch (PackageBudgetExceededException) { throw new BudgetExceededException(); }
         }
         private XDocument? ReadTagXml(string entry)
         {
@@ -253,7 +246,7 @@ public sealed class ArchivalPreflightChecker
             var shapes = new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
                 ["OFD"] = new[] { "DocBody" }, ["DocBody"] = new[] { "DocInfo", "DocRoot", "Versions", "Signatures" },
-                ["Document"] = new[] { "CommonData", "Pages", "Outlines", "Permissions", "Actions", "VPreferences", "Bookmarks", "Annotations", "CustomTags", "Attachments", "Extensions" },
+                ["Document"] = OfdReferenceCatalog.DocumentChildren.ToArray(),
                 ["CommonData"] = new[] { "MaxUnitID", "PageArea", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS" },
                 ["Pages"] = new[] { "Page" },
                 ["Res"] = new[] { "Fonts", "MultiMedias", "ColorSpaces", "DrawParams", "CompositeGraphicUnits" },
@@ -309,7 +302,7 @@ public sealed class ArchivalPreflightChecker
         }
         internal void Inspect(OfdPackageArchive archive)
         {
-            package = archive; entryCount = archive.EntryNames.Count;
+            package = archive; reader = new BoundedPackageXml(archive, options, token); entryCount = archive.EntryNames.Count;
             var encrypted = archive.Contains("Encryptions.xml");
             var orphanCrypto = archive.EntryNames.Any(x => x.StartsWith("PasswordCrypto/", StringComparison.OrdinalIgnoreCase));
             Add(4, !options.RequireNoEncryption ? PreflightOutcome.NotApplicable : encrypted ? PreflightOutcome.Fail :

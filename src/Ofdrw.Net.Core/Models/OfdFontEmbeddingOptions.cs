@@ -20,6 +20,13 @@ public sealed class OfdFontEmbeddingOptions
 
     /// <summary>Maximum total GSUB/composite closure operations per face, including repeated passes.</summary>
     public long MaximumGlyphClosureOperations { get; set; } = 2_000_000;
+
+    internal OfdFontEmbeddingOptions Copy() => new OfdFontEmbeddingOptions
+    {
+        Mode = Mode, MaximumFontBytes = MaximumFontBytes, MaximumCollectionBytes = MaximumCollectionBytes,
+        MaximumUsedScalars = MaximumUsedScalars, MaximumCmapParseWork = MaximumCmapParseWork,
+        MaximumGlyphClosureOperations = MaximumGlyphClosureOperations
+    };
 }
 
 /// <summary>Font payload policy. Neither mode grants permission to embed a font.</summary>
