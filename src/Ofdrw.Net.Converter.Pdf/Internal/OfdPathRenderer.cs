@@ -22,10 +22,6 @@ internal static class OfdPathRenderer
         return path;
     }
 
-    private static readonly Regex TokenPattern = new(
-        @"[A-Za-z]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     public static bool TryDraw(
         XGraphics graphics,
         OfdPathElement element,
@@ -120,17 +116,7 @@ internal static class OfdPathRenderer
         }
     }
 
-    private static IReadOnlyList<string> Tokenize(string data)
-    {
-        var matches = TokenPattern.Matches(data);
-        var tokens = new List<string>(matches.Count);
-        foreach (Match match in matches)
-        {
-            tokens.Add(match.Value);
-        }
-
-        return tokens;
-    }
+    private static IReadOnlyList<string> Tokenize(string data) => OfdPathDataSyntax.Tokenize(data);
 
     private static XColor ToXColor(OfdColor color, double objectAlpha)
     {

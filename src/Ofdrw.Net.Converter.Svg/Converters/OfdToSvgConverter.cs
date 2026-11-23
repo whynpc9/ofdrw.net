@@ -22,10 +22,6 @@ namespace Ofdrw.Net.Converter.Svg.Converters;
 /// </summary>
 public sealed class OfdToSvgConverter
 {
-    private static readonly Regex PathTokenPattern = new(
-        @"[A-Za-z]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     private readonly OfdPackageLoadOptions _loadOptions;
     private readonly OfdGlyphMappingStrategy _glyphMappingStrategy;
     private readonly long _maximumFontParseWork;
@@ -474,91 +470,61 @@ public sealed class OfdToSvgConverter
             new XAttribute("role", "img"), new XAttribute("aria-label", run.LogicalText),
             new XAttribute("data-ofd-text", run.LogicalText),
             new XElement(ns + "title", run.LogicalText));
-        var pathOrigins = run.PathGlyphSourceSpan is null ? null : run.PathGlyphOrigins(token);
-        var globalIndex = 0;
-        foreach (var textRun in run.Runs)
+        foreach (var glyph in OfdPlacedGlyphOutlines.Place(text, run, font, drawing.Factor, paint.HScale, token))
         {
-            var glyphCount = run.SingleGlyphSourceSpan is not null ? 1 :
-                pathOrigins is not null ? pathOrigins.Count : textRun.Text.Length;
-            var hasX = !string.IsNullOrWhiteSpace(textRun.DeltaX);
-            var hasY = !string.IsNullOrWhiteSpace(textRun.DeltaY);
-            var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(textRun.DeltaX, glyphCount - 1, token) : [];
-            var deltaY = hasY ? OfdTextGeometry.ExpandDeltas(textRun.DeltaY, glyphCount - 1, token) : [];
-            var x = textRun.XMillimeters; var y = textRun.YMillimeters;
-            for (var index = 0; index < glyphCount; index++, globalIndex++)
+            preview?.BeforeExplicitGlyphOutline(glyph.Outline);
+            var path = new StringBuilder();
+            foreach (var command in glyph.Commands)
             {
-                token.ThrowIfCancellationRequested();
-                if (pathOrigins is not null)
+                switch (command.Verb)
                 {
-                    x = pathOrigins[index].X;
-                    y = pathOrigins[index].Y;
+                    case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' '); break;
+                    case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' '); break;
+                    case TrueTypePathVerb.Quadratic:
+                        path.Append("Q ").Append(Invariant(command.ControlX)).Append(' ').Append(Invariant(command.ControlY)).Append(' ')
+                            .Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' ');
+                        break;
+                    case TrueTypePathVerb.Cubic:
+                        path.Append("C ").Append(Invariant(command.ControlX)).Append(' ').Append(Invariant(command.ControlY)).Append(' ')
+                            .Append(Invariant(command.Control2X)).Append(' ').Append(Invariant(command.Control2Y)).Append(' ')
+                            .Append(Invariant(command.X)).Append(' ').Append(Invariant(command.Y)).Append(' ');
+                        break;
+                    case TrueTypePathVerb.Close: path.Append("Z "); break;
                 }
-                var outline = font.Outlines[globalIndex];
-                preview?.BeforeExplicitGlyphOutline(outline);
-                var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-                var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
-                var path = new StringBuilder();
-                foreach (var command in outline.ToPathCommands())
-                {
-                    double px = anchor.X / paint.HScale + command.X * scale;
-                    double py = anchor.Y - command.Y * scale;
-                    switch (command.Verb)
-                    {
-                        case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                        case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                        case TrueTypePathVerb.Quadratic:
-                            path.Append("Q ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
-                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
-                            break;
-                        case TrueTypePathVerb.Cubic:
-                            path.Append("C ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
-                                .Append(Invariant(anchor.X / paint.HScale + command.Control2X * scale)).Append(' ')
-                                .Append(Invariant(anchor.Y - command.Control2Y * scale)).Append(' ')
-                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
-                            break;
-                        case TrueTypePathVerb.Close: path.Append("Z "); break;
-                    }
-                }
-                var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
-                    new XAttribute("data-original-gid", run.GlyphIds[globalIndex]),
-                    new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
-                    new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
-                if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
-                if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
-                if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
-                group.Add(node);
-                if (index + 1 == glyphCount || pathOrigins is not null) continue;
-                if (hasX) x += deltaX[index];
-                if (hasY) y += deltaY[index];
             }
+            var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
+                new XAttribute("data-original-gid", glyph.GlyphId),
+                new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
+                new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
+            if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
+            if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
+            if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
+            group.Add(node);
         }
         root.Add(group);
     }
 
     private static string NormalizePathData(string data)
     {
-        var tokens = PathTokenPattern.Matches(data)
-            .Cast<Match>()
-            .Select(match =>
+        var tokens = OfdPathDataSyntax.Tokenize(data)
+            .Select(value =>
             {
-                if (match.Value == "B")
+                if (value == "B")
                 {
                     return "C";
                 }
 
-                if (match.Value == "b")
+                if (value == "b")
                 {
                     return "c";
                 }
 
-                if (match.Value == "C")
+                if (value == "C")
                 {
                     return "Z";
                 }
 
-                return match.Value == "c" ? "z" : match.Value;
+                return value == "c" ? "z" : value;
             });
         return string.Join(" ", tokens);
     }

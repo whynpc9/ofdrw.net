@@ -980,21 +980,15 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         OfdTextPaint paint, CancellationToken token, OfdExplicitGlyphFont? plannedFont = null)
     {
         var font = plannedFont ?? OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
-        var origins = run.PathGlyphOrigins(token);
         // A fill-colored stroke of exactly the Han synthetic-bold width (final layout output for Han without
         // a bold face) gets the same horizontal-only emphasis as ordinary Han bold text (Issue #107),
         // so dense counters stay open instead of closing under an isotropic stroke.
         var emPoints = MillimetersToPoints(text.FontSizeMillimeters);
         var hanBold = IsProducerHanBold(paint, text.FontSizeMillimeters);
-        for (var index = 0; index < font.Outlines.Count; index++)
+        foreach (var glyph in OfdPlacedGlyphOutlines.Place(text, run, font, factor, paint.HScale, token))
         {
-            token.ThrowIfCancellationRequested();
-            var outline = font.Outlines[index];
-            var origin = origins[index];
-            var anchor = OfdTextEmphasis.Anchor(origin.X, origin.Y, factor);
             // Every source GID uses its explicit OFD draw point. Absent
             // deltas in the previously accepted 1:2 profile share one origin.
-            var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
             var path = new XGraphicsPath { FillMode = XFillMode.Winding };
             var contours = hanBold ? new List<IReadOnlyList<(double X, double Y)>>() : null;
             List<(double X, double Y)>? contour = null;
@@ -1009,10 +1003,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
             }
             double x = 0, y = 0;
-            foreach (var command in outline.ToPathCommands())
+            foreach (var command in glyph.Commands)
             {
-                var nextX = MillimetersToPoints(anchor.X / paint.HScale + command.X * scale);
-                var nextY = MillimetersToPoints(anchor.Y - command.Y * scale);
+                var nextX = MillimetersToPoints(command.X);
+                var nextY = MillimetersToPoints(command.Y);
                 switch (command.Verb)
                 {
                     case TrueTypePathVerb.Move:
@@ -1024,8 +1018,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         contour?.Add((x, y));
                         break;
                     case TrueTypePathVerb.Quadratic:
-                        var controlX = MillimetersToPoints(anchor.X / paint.HScale + command.ControlX * scale);
-                        var controlY = MillimetersToPoints(anchor.Y - command.ControlY * scale);
+                        var controlX = MillimetersToPoints(command.ControlX);
+                        var controlY = MillimetersToPoints(command.ControlY);
                         var cubic1X = x + (controlX - x) * 2d / 3d;
                         var cubic1Y = y + (controlY - y) * 2d / 3d;
                         var cubic2X = nextX + (controlX - nextX) * 2d / 3d;
@@ -1036,10 +1030,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         break;
                     case TrueTypePathVerb.Cubic:
                     {
-                        var c1x = MillimetersToPoints(anchor.X / paint.HScale + command.ControlX * scale);
-                        var c1y = MillimetersToPoints(anchor.Y - command.ControlY * scale);
-                        var c2x = MillimetersToPoints(anchor.X / paint.HScale + command.Control2X * scale);
-                        var c2y = MillimetersToPoints(anchor.Y - command.Control2Y * scale);
+                        var c1x = MillimetersToPoints(command.ControlX);
+                        var c1y = MillimetersToPoints(command.ControlY);
+                        var c2x = MillimetersToPoints(command.Control2X);
+                        var c2y = MillimetersToPoints(command.Control2Y);
                         path.AddBezier(x, y, c1x, c1y, c2x, c2y, nextX, nextY);
                         Flatten(x, y, c1x, c1y, c2x, c2y, nextX, nextY);
                         x = nextX; y = nextY;

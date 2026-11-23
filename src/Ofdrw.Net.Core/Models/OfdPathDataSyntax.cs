@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -9,6 +11,22 @@ namespace Ofdrw.Net.Core.Models;
 // Admit original path data before a renderer can silently skip or normalize it.
 internal static class OfdPathDataSyntax
 {
+    private static readonly Regex Token = new(
+        @"[A-Za-z]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Lenient AbbreviatedData tokens (command letters and numbers; separators dropped) for renderers that interpret
+    /// admitted data. Admission itself is <see cref="IsValidLiteral"/>.
+    /// </summary>
+    internal static IReadOnlyList<string> Tokenize(string data)
+    {
+        var matches = Token.Matches(data);
+        var tokens = new List<string>(matches.Count);
+        foreach (Match match in matches) tokens.Add(match.Value);
+        return tokens;
+    }
+
     internal static bool HasSingleValidDrawing(XElement path, CancellationToken token)
     {
         var data = path.Elements(path.Name.Namespace + "AbbreviatedData").ToArray();
