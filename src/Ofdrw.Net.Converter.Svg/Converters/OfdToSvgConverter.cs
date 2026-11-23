@@ -257,22 +257,14 @@ public sealed class OfdToSvgConverter
             parseBudget.Spend(0);
             var cached = font.Data.Length > 0 ? preview?.Font(font, parseBudget) : null;
             byte[] data;
-            OpenTypeCmap? coverage = null;
-            if (font.Data.Length == 0)
-            {
-                var bound = nameOnlyBindings!.Resolve(font, parseBudget);
-                data = bound.Data;
-                coverage = bound.Coverage;
-            }
-            else data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            OpenTypeCmap? coverage;
             (bool Bold, bool Italic) style;
-            if (font.Data.Length == 0) style = (false, false);
-            else if (cached.HasValue) { style = (cached.Value.Bold, cached.Value.Italic); coverage = cached.Value.Coverage; }
+            if (cached.HasValue) { data = cached.Value.Data; coverage = cached.Value.Coverage; style = (cached.Value.Bold, cached.Value.Italic); }
             else
             {
-                var face = new OpenTypeFace(data); style = face.Style;
-                try { coverage = new OpenTypeCmap(face, parseBudget); }
-                catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+                var face = OfdRenderFace.Load(font, nameOnlyBindings, parseBudget);
+                data = face.Data; coverage = face.Coverage;
+                style = face.NameOnlyBinding ? (false, false) : new OpenTypeFace(data).Style;
             }
             if (selectedTexts.TryGetValue(font, out var cffUses) &&
                 data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O')
@@ -367,15 +359,12 @@ public sealed class OfdToSvgConverter
             (text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))) &&
             (resource is null || resource.Data.Length == 0 && !families.ContainsKey(resource)))
             throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no explicit face binding.");
-        if (nameOnlyBindings is not null && resource?.Data.Length == 0)
-            OfdNameOnlyFontBindings.ValidateBmpText(text);
         var family = !string.IsNullOrWhiteSpace(resource?.FamilyName) ? resource!.FamilyName! : text.FontName;
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
-            if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, parseBudget, cancellationToken);
-            else EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
+            OfdRenderFace.ValidateText(text, embedded.Coverage, nameOnlyBindings is not null && resource.Data.Length == 0,
+                resource.FontName, parseBudget, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
