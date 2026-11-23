@@ -114,7 +114,7 @@ public static class OfdDocumentMerger
         var first = sourceList[0];
         var destination = new OfdDocumentPackage
         {
-            Options = CloneOptions(first.Options)
+            Options = first.Options.CopyForNewDocument()
         };
         destination.Options.DocumentId = "Doc_0";
         if (first.Options.Metadata.Cover is string cover)
@@ -343,41 +343,6 @@ public static class OfdDocumentMerger
                 destination.PhysicalAttachmentRemovals.Add(new OfdAttachmentPhysicalRemoval(removal.Ordinal, removal.PayloadPath));
             }
         }
-    }
-
-    internal static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
-    {
-        return new OfdDocumentOptions
-        {
-            DocType = source.DocType,
-            Namespace = source.Namespace,
-            EnableDeflateCompression = source.EnableDeflateCompression,
-            LinearizedEntryOrder = source.LinearizedEntryOrder,
-            FontEmbedding = new OfdFontEmbeddingOptions
-            {
-                Mode = source.FontEmbedding.Mode,
-                MaximumFontBytes = source.FontEmbedding.MaximumFontBytes,
-                MaximumCollectionBytes = source.FontEmbedding.MaximumCollectionBytes,
-                MaximumUsedScalars = source.FontEmbedding.MaximumUsedScalars,
-                MaximumCmapParseWork = source.FontEmbedding.MaximumCmapParseWork,
-                MaximumGlyphClosureOperations = source.FontEmbedding.MaximumGlyphClosureOperations
-            },
-            DefaultPageWidthMillimeters = source.DefaultPageWidthMillimeters,
-            DefaultPageHeightMillimeters = source.DefaultPageHeightMillimeters,
-            Metadata = new OfdMetadata
-            {
-                Title = source.Metadata.Title,
-                Author = source.Metadata.Author,
-                Subject = source.Metadata.Subject,
-                Keywords = source.Metadata.Keywords,
-                Creator = source.Metadata.Creator,
-                CreationDate = source.Metadata.CreationDate,
-                ModificationDate = source.Metadata.ModificationDate,
-                DocUsage = source.Metadata.DocUsage,
-                Cover = source.Metadata.Cover,
-                CreatorVersion = source.Metadata.CreatorVersion
-            }
-        };
     }
 
 }

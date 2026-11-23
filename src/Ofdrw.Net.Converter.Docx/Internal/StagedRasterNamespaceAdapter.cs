@@ -86,19 +86,13 @@ internal static class StagedRasterNamespaceAdapter
         if (used.Count != media.Count || source.PreservedEntries.Keys.Any(path => !allowedEntries.Contains(path))) throw Unsupported();
         // Rebuild fresh definitions using the same operation budget. Only the
         // two proven image ID fields are reconstructed; no ownership is forged.
-        var options = source.Options; var metadata = options.Metadata;
-        var rebuilt = new OfdDocumentPackage
-        {
-            Options = new OfdDocumentOptions
-            {
-                Namespace = targetNamespace ?? options.Namespace, DocType = options.DocType, DocumentId = options.DocumentId,
-                EnableDeflateCompression = options.EnableDeflateCompression,
-                LinearizedEntryOrder = options.LinearizedEntryOrder,
-                DefaultPageWidthMillimeters = options.DefaultPageWidthMillimeters, DefaultPageHeightMillimeters = options.DefaultPageHeightMillimeters,
-                Metadata = new OfdMetadata { Title = metadata.Title, Author = metadata.Author, Subject = metadata.Subject,
-                    Keywords = metadata.Keywords, Creator = metadata.Creator, CreationDate = creationDate, ModificationDate = modificationDate }
-            }
-        };
+        // A fresh document: every option carries over (namespace may change); only descriptive metadata is kept and
+        // the dates are restamped.
+        var options = source.Options.Copy(); var metadata = source.Options.Metadata;
+        options.Namespace = targetNamespace ?? options.Namespace;
+        options.Metadata = new OfdMetadata { Title = metadata.Title, Author = metadata.Author, Subject = metadata.Subject,
+            Keywords = metadata.Keywords, Creator = metadata.Creator, CreationDate = creationDate, ModificationDate = modificationDate };
+        var rebuilt = new OfdDocumentPackage { Options = options };
         foreach (var original in source.Pages)
         {
             token.ThrowIfCancellationRequested(); material.Structure.Node(1);

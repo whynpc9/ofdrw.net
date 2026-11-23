@@ -85,33 +85,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         {
             DocumentEntryPath = source.DocumentEntryPath, PublicResourceLocation = source.PublicResourceLocation,
             DocumentResourceLocation = source.DocumentResourceLocation,
-            Options = new OfdDocumentOptions
-            {
-                DocType = source.Options.DocType, Namespace = source.Options.Namespace, DocumentId = source.Options.DocumentId,
-                EnableDeflateCompression = source.Options.EnableDeflateCompression,
-                LinearizedEntryOrder = source.Options.LinearizedEntryOrder,
-                FontEmbedding = new OfdFontEmbeddingOptions
-                {
-                    Mode = source.Options.FontEmbedding.Mode,
-                    MaximumFontBytes = source.Options.FontEmbedding.MaximumFontBytes,
-                    MaximumCollectionBytes = source.Options.FontEmbedding.MaximumCollectionBytes,
-                    MaximumUsedScalars = source.Options.FontEmbedding.MaximumUsedScalars,
-                    MaximumCmapParseWork = source.Options.FontEmbedding.MaximumCmapParseWork,
-                    MaximumGlyphClosureOperations = source.Options.FontEmbedding.MaximumGlyphClosureOperations
-                },
-                DefaultPageWidthMillimeters = source.Options.DefaultPageWidthMillimeters,
-                DefaultPageHeightMillimeters = source.Options.DefaultPageHeightMillimeters,
-                Metadata = new OfdMetadata
-                {
-                    Title = source.Options.Metadata.Title, Author = source.Options.Metadata.Author,
-                    Subject = source.Options.Metadata.Subject, Keywords = source.Options.Metadata.Keywords,
-                    Creator = source.Options.Metadata.Creator, CreationDate = source.Options.Metadata.CreationDate,
-                    ModificationDate = source.Options.Metadata.ModificationDate,
-                    DocUsage = source.Options.Metadata.DocUsage, Cover = source.Options.Metadata.Cover,
-                    CreatorVersion = source.Options.Metadata.CreatorVersion,
-                    DocId = source.Options.Metadata.DocId
-                }
-            }
+            Options = source.Options.Copy()
         };
         Map(source.Options.FontEmbedding, copy.Options.FontEmbedding);
         Map(source, copy); Map(source.Options, copy.Options); Map(source.Options.Metadata, copy.Options.Metadata);

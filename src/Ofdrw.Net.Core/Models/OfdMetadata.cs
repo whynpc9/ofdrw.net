@@ -47,4 +47,12 @@ public sealed class OfdMetadata
             customDatas = value;
         }
     }
+
+    /// <summary>Every scalar field; <see cref="CustomDatas"/> is owned XML and is cloned by the caller.</summary>
+    internal OfdMetadata CopyScalars() => new OfdMetadata
+    {
+        DocId = DocId, Title = Title, Author = Author, Subject = Subject, Keywords = Keywords, Creator = Creator,
+        CreationDate = CreationDate, ModificationDate = ModificationDate, DocUsage = DocUsage, Cover = Cover,
+        CreatorVersion = CreatorVersion
+    };
 }
