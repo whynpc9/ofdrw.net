@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Packaging.Archive;
 using System.Collections.Generic;
 using System.Linq;
 using Ofdrw.Net.Packaging.Preflight;
@@ -38,7 +39,7 @@ internal sealed class KnownCustomTagClosureCheck : IArchivalClauseCheck
             // 6.11 depends on tags existing before archiving; the result alone cannot show that.
             context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, PreflightOutcome.Unknown, NoTagsReason, scope.DocumentEntry,
-                ArchivalPackagePath.Selector(scope.Document), "No CustomTags declaration; source tag presence not evidenced");
+                OfdPackageReference.Selector(scope.Document), "No CustomTags declaration; source tag presence not evidenced");
             yield break;
         }
         var reserved = new HashSet<string>(scope.Pages.Select(x => x.Key), StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
@@ -46,7 +47,7 @@ internal sealed class KnownCustomTagClosureCheck : IArchivalClauseCheck
             context.Xml.Read, context.Xml.Visit, reserved.Contains, context.CancellationToken);
         foreach (var finding in findings)
         {
-            var selector = finding.Node == null ? "<package>" : ArchivalPackagePath.Selector(finding.Node);
+            var selector = finding.Node == null ? "<package>" : OfdPackageReference.Selector(finding.Node);
             var observed = finding.Observed.Length == 0 ? finding.Reason : finding.Observed;
             context.SpendResult();
             yield return ArchivalOwnedRules.Observation(Rule, Retention, finding.Outcome, finding.Reason, finding.Entry, selector, observed);

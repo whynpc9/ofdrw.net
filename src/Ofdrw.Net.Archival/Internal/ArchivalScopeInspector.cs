@@ -1,4 +1,6 @@
 using System;
+using Ofdrw.Net.Packaging.Archive;
+using Ofdrw.Net.Packaging.Preflight;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
@@ -40,15 +42,16 @@ internal sealed class ArchivalScopeInspector
     private static readonly HashSet<string> LayerObjects = new HashSet<string>(StringComparer.Ordinal)
     { "TextObject", "PathObject", "ImageObject", "PageBlock", "CompositeObject" };
 
-    private readonly ArchivalXmlReader xml;
+    private readonly OfdPackageArchive archive;
+    private readonly BoundedPackageXml xml;
     private readonly ArchivalScopeResult result = new ArchivalScopeResult();
 
-    internal ArchivalScopeInspector(ArchivalXmlReader xml) { this.xml = xml; }
+    internal ArchivalScopeInspector(OfdPackageArchive archive, BoundedPackageXml xml) { this.archive = archive; this.xml = xml; }
 
     internal ArchivalScopeResult Inspect()
     {
         try { InspectPackage(); }
-        catch (ArchivalBudgetExceededException ex)
+        catch (PackageBudgetExceededException ex)
         {
             result.BudgetExceeded = ex.Budget;
             Add("ScopeInspectionBudgetExceeded", ArchivalInputSupport.Unknown, "<input>", "<package>", ex.Budget + " budget");
@@ -64,14 +67,13 @@ internal sealed class ArchivalScopeInspector
     }
 
     private void OutOfScope(string code, string entry, XElement node, string observed) =>
-        Add(code, ArchivalInputSupport.OutOfScope, entry, ArchivalPackagePath.Selector(node), observed);
+        Add(code, ArchivalInputSupport.OutOfScope, entry, OfdPackageReference.Selector(node), observed);
 
     private void Unknown(string code, string entry, XElement? node, string observed) =>
-        Add(code, ArchivalInputSupport.Unknown, entry, node == null ? "<package>" : ArchivalPackagePath.Selector(node), observed);
+        Add(code, ArchivalInputSupport.Unknown, entry, node == null ? "<package>" : OfdPackageReference.Selector(node), observed);
 
     private void InspectPackage()
     {
-        var archive = xml.Archive;
         if (archive.Contains("Encryptions.xml"))
             Add("EncryptionMarkerPresent", ArchivalInputSupport.OutOfScope, "Encryptions.xml", "<package>", "Root Encryptions.xml present");
         if (archive.EntryNames.Any(x => x.StartsWith("PasswordCrypto/", StringComparison.OrdinalIgnoreCase)))
@@ -80,7 +82,7 @@ internal sealed class ArchivalScopeInspector
         var attachmentDeclared = false;
         var root = xml.Read("OFD.xml")?.Root;
         if (root == null) { Unknown("RootScopeUnavailable", "OFD.xml", null, "OFD.xml missing or not well-formed"); return; }
-        if (root.Name.LocalName != "OFD" || !ArchivalPackagePath.Supported(root.Name.Namespace))
+        if (root.Name.LocalName != "OFD" || !OfdPackageReference.SupportedNamespace(root.Name.Namespace))
         { Unknown("RootScopeUnavailable", "OFD.xml", root, "Unsupported root element or namespace"); return; }
         result.OfdRoot = root;
         result.RawDocType = (string?)root.Attribute("DocType");
@@ -114,15 +116,16 @@ internal sealed class ArchivalScopeInspector
 
     private void InspectDocument(XElement body, XNamespace ns, ref bool attachmentDeclared)
     {
+        // Document and page resolution is the shared package-scope walk; this inspector only classifies what it found.
+        var walk = OfdPackageScope.Walk(xml);
         var roots = body.Elements(ns + "DocRoot").ToList();
-        if (roots.Count != 1 || roots[0].HasElements)
+        if (walk.DocRoot == null)
         { Unknown("DocumentScopeUnavailable", "OFD.xml", body, "DocRoot count=" + roots.Count); return; }
-        var path = roots[0].Value.Trim();
-        if (ArchivalPackagePath.Unsafe(path) || !ArchivalPackagePath.TryResolve("OFD.xml", path, out var entry))
-        { Unknown("DocumentScopeUnavailable", "OFD.xml", roots[0], "DocRoot unresolved"); return; }
-        xml.Visit();
-        var document = xml.Read(entry)?.Root;
-        if (document == null || document.Name.LocalName != "Document" || !ArchivalPackagePath.Supported(document.Name.Namespace))
+        if (walk.DocumentPath == null)
+        { Unknown("DocumentScopeUnavailable", "OFD.xml", walk.DocRoot, "DocRoot unresolved"); return; }
+        var entry = walk.DocumentPath;
+        var document = walk.Document?.Root;
+        if (document == null || !OfdPackageReference.SupportedNamespace(document.Name.Namespace))
         { Unknown("DocumentScopeUnavailable", entry, null, "Document missing, malformed or unsupported"); return; }
         result.DocumentEntry = entry;
         result.Document = document;
@@ -143,19 +146,16 @@ internal sealed class ArchivalScopeInspector
                     break;
             }
         }
-        var pages = document.Elements(dns + "Pages").SelectMany(x => x.Elements(dns + "Page"))
-            .Concat(document.Elements(dns + "CommonData").SelectMany(x => x.Elements(dns + "TemplatePage"))).ToList();
-        foreach (var page in pages) InspectPage(entry, page);
+        foreach (var page in walk.Pages) InspectPage(entry, page);
     }
 
-    private void InspectPage(string documentEntry, XElement declaration)
+    private void InspectPage(string documentEntry, OfdScopePage declared)
     {
-        xml.Visit();
-        var baseLoc = (string?)declaration.Attribute("BaseLoc");
-        if (ArchivalPackagePath.Unsafe(baseLoc) || !ArchivalPackagePath.TryResolve(documentEntry, baseLoc!, out var entry))
-        { Unknown("PageContentUnavailable", documentEntry, declaration, "Page BaseLoc unresolved"); return; }
-        var page = xml.Read(entry)?.Root;
-        if (page == null || page.Name.LocalName != "Page" || !ArchivalPackagePath.Supported(page.Name.Namespace))
+        if (declared.Path == null)
+        { Unknown("PageContentUnavailable", documentEntry, declared.Declaration, "Page BaseLoc unresolved"); return; }
+        var entry = declared.Path;
+        var page = declared.Root;
+        if (page == null || !OfdPackageReference.SupportedNamespace(page.Name.Namespace))
         { Unknown("PageContentUnavailable", entry, null, "Page missing, malformed or unsupported"); return; }
         result.Pages.Add(new KeyValuePair<string, XElement>(entry, page));
         var ns = page.Name.Namespace;

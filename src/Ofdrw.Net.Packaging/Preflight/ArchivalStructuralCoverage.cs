@@ -34,9 +34,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly HashSet<long> ambiguousTemplateIds = new();
     private readonly Dictionary<XElement, string> pageTreeEntries = new();
     private readonly Dictionary<XElement, bool> graphicPositions = new();
-    private long xmlBytes;
-    private int xmlNodes;
-    private int references;
+    private readonly BoundedPackageXml reader;
     private bool pageInventoryUnknown;
     private bool bookmarkInventoryUnknown;
     private string documentEntry = "<document>";
@@ -44,7 +42,11 @@ internal sealed class ArchivalStructuralCoverage
 
     internal ArchivalStructuralCoverage(OfdPackageArchive archive, XElement root, ArchivalPreflightOptions options,
         CancellationToken token)
-    { this.archive = archive; this.root = root; this.options = options; this.token = token; }
+    {
+        this.archive = archive; this.root = root; this.options = options; this.token = token;
+        // Attributes count as nodes and whitespace is preserved; a budget overrun leaves the entry unreadable.
+        reader = new BoundedPackageXml(archive, options, token, XmlNodeCharging.NodesAndAttributes, LoadOptions.PreserveWhitespace);
+    }
 
     internal IReadOnlyList<ArchivalCoverageRuleResult> Check()
     {
@@ -970,31 +972,14 @@ internal sealed class ArchivalStructuralCoverage
         token.ThrowIfCancellationRequested();
         if (xml.TryGetValue(entry, out var cached))
             return cached?.Name.LocalName == rootName && Supported(cached.Name.NamespaceName) ? cached : null;
-        if (!archive.TryGetBytes(entry, out var bytes) || bytes.Length > options.MaxSingleXmlBytes ||
-            xmlBytes > options.MaxXmlBytes - bytes.Length) return null;
-        xmlBytes += bytes.Length;
         XElement? value;
-        var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
-            MaxCharactersInDocument = options.MaxSingleXmlBytes, MaxCharactersFromEntities = 1 };
-        try
+        try { value = reader.Read(entry)?.Root; }
+        catch (PackageBudgetExceededException ex)
         {
-            // Charge nodes and depth while streaming, before an untrusted tree is allocated.
-            using (var source = new MemoryStream(bytes, false))
-            using (var reader = XmlReader.Create(source, settings))
-                while (reader.Read())
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (xmlNodes >= options.MaxXmlNodes ||
-                        reader.AttributeCount > options.MaxXmlNodes - xmlNodes - 1 ||
-                        reader.Depth > options.MaxXmlDepth)
-                    { xml[entry] = null; return null; }
-                    xmlNodes += 1 + reader.AttributeCount;
-                }
-            using var materialization = new MemoryStream(bytes, false);
-            using var treeReader = XmlReader.Create(materialization, settings);
-            value = XDocument.Load(treeReader, LoadOptions.PreserveWhitespace).Root;
+            // An oversize entry is not cached: like an absent one, it never charged the byte budget.
+            if (ex.Budget != "XmlBytes") xml[entry] = null;
+            return null;
         }
-        catch (XmlException) { xml[entry] = null; return null; }
         if (value?.Name.LocalName != rootName || !Supported(value.Name.NamespaceName))
         { xml[entry] = null; return null; }
         IndexOrdinals(value);
@@ -1024,13 +1009,8 @@ internal sealed class ArchivalStructuralCoverage
     private bool TryEntry(string containing, string? path, out string entry)
     {
         entry = string.Empty;
-        if (++references > options.MaxReferences) return false;
-        path = path?.Trim();
-        if (path is null || path.Length == 0 || path.Contains(":") || path.Contains("?") || path.Contains("#") ||
-            path.Contains("%") || path.Contains("\\") || path.StartsWith("//", StringComparison.Ordinal) ||
-            path.Any(char.IsControl)) return false;
-        try { entry = OfdPackagePath.Resolve(containing, path); return true; }
-        catch (InvalidDataException) { return false; }
+        if (!reader.TryVisit()) return false;
+        return OfdPackageReference.TryResolve(containing, path, out entry);
     }
 
     private void UnknownAll(string reason, string entry) { foreach (var item in observations) item.Unknown(reason, entry); }

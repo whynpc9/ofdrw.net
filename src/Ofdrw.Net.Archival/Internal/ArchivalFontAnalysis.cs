@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Packaging.Archive;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -72,7 +73,7 @@ internal sealed class ArchivalFontAnalysis
     {
         context.SpendResult();
         observations[rule.RuleId].Add(ArchivalOwnedRules.Observation(rule, outcome, reason, entry,
-            node == null ? "<package>" : ArchivalPackagePath.Selector(node), observed));
+            node == null ? "<package>" : OfdPackageReference.Selector(node), observed));
     }
 
     private void Analyse()
@@ -161,7 +162,7 @@ internal sealed class ArchivalFontAnalysis
     {
         context.Xml.Visit();
         var location = reference.Value.Trim();
-        if (reference.HasElements || ArchivalPackagePath.Unsafe(location) || !ArchivalPackagePath.TryResolve(containing, location, out var entry))
+        if (reference.HasElements || OfdPackageReference.Unsafe(location) || !OfdPackageReference.TryResolve(containing, location, out var entry))
         { UnknownResources("ResourceTableUnavailable", containing, reference, "Reference=" + location); return; }
         ReadTable(containing, entry, reference, fonts);
     }
@@ -172,7 +173,7 @@ internal sealed class ArchivalFontAnalysis
         {
             tables[entry] = declared = new List<FontDeclaration>();
             var root = context.Xml.Read(entry)?.Root;
-            if (root == null || root.Name.LocalName != "Res" || !ArchivalPackagePath.Supported(root.Name.Namespace))
+            if (root == null || root.Name.LocalName != "Res" || !OfdPackageReference.SupportedNamespace(root.Name.Namespace))
             { UnknownResources("ResourceTableUnavailable", containing, reference, "Target=" + entry); return; }
             ReadFonts(entry, root, declared);
         }
@@ -186,7 +187,7 @@ internal sealed class ArchivalFontAnalysis
         var ns = root.Name.Namespace;
         var baseLoc = (string?)root.Attribute("BaseLoc");
         var baseUsable = !root.Attributes().Any(x => x.Name.LocalName == "BaseLoc" && x.Name.Namespace != XNamespace.None) &&
-            (string.IsNullOrEmpty(baseLoc) || !ArchivalPackagePath.Unsafe(baseLoc));
+            (string.IsNullOrEmpty(baseLoc) || !OfdPackageReference.Unsafe(baseLoc));
         if (root.Elements().Any(x => x.Name.LocalName == "Fonts" && x.Name.Namespace != ns) ||
             root.Elements(ns + "Fonts").SelectMany(x => x.Elements()).Any(x => x.Name != ns + "Font"))
             UnknownResources("UnrecognizedFontDeclaration", entry, root, "Foreign or unknown font declaration");
@@ -235,7 +236,7 @@ internal sealed class ArchivalFontAnalysis
         var target = rule == UsedTextRule ? usage.Painted : usage.Clipping;
         target.Scalars.UnionWith(scalars); target.Glyphs.UnionWith(glyphs);
         target.Objects++;
-        target.First ??= pageEntry + " " + ArchivalPackagePath.Selector(text);
+        target.First ??= pageEntry + " " + OfdPackageReference.Selector(text);
     }
 
     // TextCode content through the font's cmap, except code ranges that CGTransform maps to explicit glyph IDs.
@@ -334,12 +335,12 @@ internal sealed class ArchivalFontAnalysis
         var location = file.Value.Trim();
         if (location.Length == 0 || location.Contains(":") || location.StartsWith("//", StringComparison.Ordinal) ||
             location.StartsWith("\\\\", StringComparison.Ordinal) ||
-            !ArchivalPackagePath.Unsafe(location) && !OfdResourceBase.TryResolve(declaration.Entry, declaration.BaseLoc, location, out _))
+            !OfdPackageReference.Unsafe(location) && !OfdResourceBase.TryResolve(declaration.Entry, declaration.BaseLoc, location, out _))
         {
             Used(PreflightOutcome.Fail, "FontFileOutsidePackage", file, "FontFile is empty, external or escapes the package root");
             return false;
         }
-        if (ArchivalPackagePath.Unsafe(location))
+        if (OfdPackageReference.Unsafe(location))
         {
             Used(PreflightOutcome.Unknown, "AmbiguousFontFileReference", file, "Ambiguous FontFile reference (redacted)");
             Embedded(PreflightOutcome.Unknown, "AmbiguousFontFileReference", file, "Ambiguous FontFile reference (redacted)");
@@ -351,7 +352,7 @@ internal sealed class ArchivalFontAnalysis
             Used(PreflightOutcome.Fail, "FontFileMissing", file, "FontFile=" + target + " is not in the package");
             return false;
         }
-        if (bytes.Length > context.Fonts.MaxTotalBytes - fontBytes) throw new ArchivalBudgetExceededException("FontBytes");
+        if (bytes.Length > context.Fonts.MaxTotalBytes - fontBytes) throw new PackageBudgetExceededException("FontBytes");
         fontBytes += bytes.Length;
 
         var report = Inspect(bytes, usage == null ? Array.Empty<Codes>() : new[] { usage.Painted, usage.Clipping });

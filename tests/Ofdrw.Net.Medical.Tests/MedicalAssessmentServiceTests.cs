@@ -544,4 +544,27 @@ public class MedicalAssessmentServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => new MedicalAssessmentService().AssessAsync(new NonSeekableInput(package)));
         await Assert.ThrowsAsync<ArgumentException>(() => new MedicalAssessmentService().AssessAsync(new MemoryStream(package), new MedicalAssessmentOptions { MaxEmbeddedObjectBytes = 0 }));
     }
+
+    [Fact]
+    public async Task ImplicitSiblingPageResIsAPageResourceLikeTheReaderAndArchivalChecksTreatIt()
+    {
+        // Readers and archival preflight treat {page}/PageRes.xml as the page's resource table without a PageRes link;
+        // the shared scope walk now does too, so a font defined there is in PageRes for 6.2(b).
+        var package = Mutate(await LayoutOfd(true), e => e.Set("Doc_0/Pages/Page_0/PageRes.xml",
+            "<ofd:Res xmlns:ofd=\"http://www.ofdspec.org/2016\"><ofd:Fonts><ofd:Font ID=\"900\" FontName=\"X\"/></ofd:Fonts></ofd:Res>"));
+        var observation = (await Assess(package)).Single("6.2(b)", "MH-007");
+        Assert.Equal(PreflightOutcome.Fail, observation.Outcome);
+        Assert.Equal("DefinedInPageRes", observation.ReasonCode);
+    }
+
+    [Fact]
+    public async Task PercentEscapedLocationIsUnresolvableUnderTheSharedReferencePolicy()
+    {
+        // Medical once accepted %-escapes that Archival and Preflight reject; one policy now decides for all of them.
+        var package = Mutate(await LayoutOfd(true), e => e.Set("Doc_0/Document.xml",
+            e.Text("Doc_0/Document.xml").Replace("Pages/Page_1/Content.xml", "Pages/Page%5F1/Content.xml")));
+        var observation = (await Assess(package)).Single("6.2(a)", "MH-006");
+        Assert.Equal(PreflightOutcome.Unknown, observation.Outcome);
+        Assert.Equal("UnresolvableLocation", observation.ReasonCode);
+    }
 }

@@ -35,10 +35,10 @@ internal sealed class ArchivalCheckContext
 {
     private readonly Dictionary<Type, object> shared = new Dictionary<Type, object>();
 
-    internal ArchivalCheckContext(ArchivalXmlReader xml, ArchivalPreflightOptions options, ArchivalScopeResult scope,
+    internal ArchivalCheckContext(OfdPackageArchive archive, BoundedPackageXml xml, ArchivalPreflightOptions options, ArchivalScopeResult scope,
         CancellationToken token, ArchivalFontPolicy? fonts = null)
     {
-        Xml = xml; Options = options; Scope = scope; CancellationToken = token;
+        Archive = archive; Archive = archive; Xml = xml; Options = options; Scope = scope; CancellationToken = token;
         Fonts = fonts ?? new ArchivalAssessmentOptions().SnapshotFonts();
     }
     internal ArchivalFontPolicy Fonts { get; }
@@ -50,9 +50,9 @@ internal sealed class ArchivalCheckContext
             shared[typeof(T)] = value = new Lazy<T>(create, LazyThreadSafetyMode.None);
         return ((Lazy<T>)value).Value;
     }
-    /// <summary>Bounded XML access; budget overruns throw ArchivalBudgetExceededException.</summary>
-    internal ArchivalXmlReader Xml { get; }
-    internal OfdPackageArchive Archive => Xml.Archive;
+    /// <summary>Bounded XML access; budget overruns throw PackageBudgetExceededException.</summary>
+    internal BoundedPackageXml Xml { get; }
+    internal OfdPackageArchive Archive { get; }
     internal ArchivalPreflightOptions Options { get; }
     /// <summary>Root, document and page entries established by the scope inspection; any may be null/empty.</summary>
     internal ArchivalScopeResult Scope { get; }
@@ -61,11 +61,11 @@ internal sealed class ArchivalCheckContext
     private int results;
     /// <summary>
     /// Counts one package-owned observation against <see cref="ArchivalPreflightOptions.MaxResults"/>; exceeding it
-    /// throws ArchivalBudgetExceededException so the run is reported BudgetExhausted instead of growing without bound.
+    /// throws PackageBudgetExceededException so the run is reported BudgetExhausted instead of growing without bound.
     /// </summary>
     internal void SpendResult()
     {
-        if (++results > Options.MaxResults) throw new ArchivalBudgetExceededException("Result");
+        if (++results > Options.MaxResults) throw new PackageBudgetExceededException("Result");
     }
 }
 
@@ -135,7 +135,7 @@ internal static class ArchivalOwnedRules
 
     internal static ArchivalClauseObservation Observation(ArchivalOwnedRuleDefinition rule, PreflightOutcome outcome,
         string reason, string entry, XElement node, string observed) =>
-        Observation(rule, outcome, reason, entry, ArchivalPackagePath.Selector(node), observed);
+        Observation(rule, outcome, reason, entry, OfdPackageReference.Selector(node), observed);
 }
 
 /// <summary>Clause-level aggregation, including the strength policy.</summary>
