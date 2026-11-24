@@ -1,0 +1,72 @@
+{
+  "status": "accepted",
+  "package_version": "0.5.1",
+  "source_fingerprint": "122168a2cbce74fcdf251238d22d61de0cc879fc607a978e0b0e30291b245cba",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "66af84dbb73989eacac4aea8b6a61358a25e42a34664eb6ccb8a7ff70ae1f396",
+  "preview_pdf_sha256": "5cf5222bd411503bbe9dad31ac749efdf0a2792b92e969a35158792dbbb9eb3a",
+  "default_ofd_sha256": "797c610fdfe34e4da3af4cf13bc4b3007e3c7ecabfbd0b6624f60ac21a315ff4",
+  "default_preview_pdf_sha256": "e9af0a6cc02c71d8183d90bc86c5f9908a9cc2006a53b3e93ce5d3fd0d0a7a4a",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI visual reviewer)",
+  "reviewed_at": "2026-11-24T10:49:50+08:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Fixed generated-layout.docx with physical Regular/Bold, explicit Native and default Native, two pages per mode.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "artifacts/release-0.5.1/fonts/"
+      ]
+    },
+    "outputs": {
+      "native_ofd": "profile-output/font-native.ofd",
+      "native_pdf": "profile-output/font-native.pdf",
+      "default_ofd": "profile-output/font-default.ofd",
+      "default_pdf": "profile-output/font-default.pdf"
+    },
+    "visual_environment": "macOS 26.6.2 (25G83), Preview 11.0, Poppler 26.09.0 at 144 DPI.",
+    "functional_result": "Each mode preserved all 189 non-whitespace source characters in the OFD and PDF. Checked Regular and Bold subset outlines match the pinned faces. The probe consumed nine assemblies from the 0.5.1 local feed."
+  },
+  "additional_visual_review": "Preview and PNG inspections covered ten fixed-profile pages (two Native, two default Native, four OFD-H, two RequireEmbedded) and all five upstream 999 render-only pages. Upstream 999 showed the pre-existing tax-rate border overlap recorded under known limitations. Preview window captures were viewed but not saved.",
+  "known_limitations": [
+    "The visual review covers only the fixed inputs and pages recorded in the report.",
+    "Preview Find, raw Unicode Copy and PDF text-selection geometry were outside the review.",
+    "On the upstream 999 render-only sample, the percent sign in the tax-rate column touches the right border. All five page PNGs match 0.5.0 byte for byte."
+  ],
+  "producer_source_sha": "fa59729f986e81e9c3f4f1297b6d5e51f9dcd611",
+  "evidence_root": "artifacts/release-0.5.1/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "04923f3b2ede585b92e07c5a93c753359b386d5b7e7acbb84609be077d03293e",
+    "visual-sha256.txt": "c6ed12299f40c02701ecbe430ccb8ebea21a0b89e8d34e4ed7cd45f2a1141558",
+    "fonts-sha256.txt": "e22f3dfe41d8bffe1ffc5fe0ce410fb9e33c9212e011c363f7b4805a39431118",
+    "regression-sha256.txt": "32dfc711e8e368718d8075406d6b36a8f717592f7d822c58e56d247b0d318856",
+    "preview-review.md": "b55c6d43e002e9355a014e99742f48c65f6cb01abdce75236936fc0a10d19d92",
+    "profile-check.json": "1c422f2bd05c79175acc20205f32923b1b4eede85b0310d283f9636f9bb91276",
+    "extra-visual-check.json": "c3c00c0457020d489b2fe9358b4dac1c00f39487b66fe4f184696902eedc9985",
+    "consumer-identities.json": "c8c5bfa35f08d81ef823b3f3c2149e9c7af750c47207d5fc9f6fdd8ea5812381",
+    "visual-comparison.log": "f7dba0c3910456855c9cb18c86b27306b9e1954bdafab275c538444019dce159"
+  }
+}

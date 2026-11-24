@@ -6,20 +6,20 @@ Ofdrw.Net 是 .NET OFD SDK 与 CLI，提供文档生成、读取、编辑、转�
 
 ## 安装
 
-当前版本为 **0.5.0**。
+本包版本为 **0.5.1**。
 
 ```sh
-dotnet add package Ofdrw.Net.Converter --version 0.5.0
-dotnet tool install --global Ofdrw.Net.Cli --version 0.5.0
+dotnet add package Ofdrw.Net.Converter --version 0.5.1
+dotnet tool install --global Ofdrw.Net.Cli --version 0.5.1
 
 # 可选：只读归档评估、电子病历 OFD-H 写出 profile 与只读评估
-dotnet add package Ofdrw.Net.Archival --version 0.5.0
-dotnet add package Ofdrw.Net.Medical --version 0.5.0
+dotnet add package Ofdrw.Net.Archival --version 0.5.1
+dotnet add package Ofdrw.Net.Medical --version 0.5.1
 ```
 
 普通 SDK（含 Archival、Medical）为 netstandard2.0 / netstandard2.1；CLI 需要 .NET 10。同系列包使用精确的同批版本依赖，请一起升级。DOCX 默认 Native，直接保留 OpenXML 原文；PDF 导入默认双层；新生成文档默认声明普通 OFD。0.5.0 起支持 Native DOCX 严格字体嵌入、OFD-A 原件保护与显式派生普通 OFD。Archival 和 Medical 需显式安装；Skia、PDF Vector、SES 和 Password 仍为独立源码扩展。
 
-0.5.0 的变更与限制见[发布说明](https://whynpc9.github.io/ofdrw.net/releases/050/)。历史版本见[版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)。
+0.5.1 的变更与限制见[发布说明](https://whynpc9.github.io/ofdrw.net/releases/051/)。历史版本见[版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)。
 
 ## 开发与证据
 
