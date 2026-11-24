@@ -51,7 +51,7 @@ CONSUMED_DOCS = (
     'docs/licenses/',
     'docs/content/reference/conversion-contracts.md',
     'docs/content/reference/feature-parity.md',
-    'docs/content/releases/0.5.0.md',
+    'docs/content/releases/0.5.1.md',
     # Packed by individual projects.
     'docs/content/reference/password-crypto.md',
     'docs/content/guides/pdf-vector.md',
