@@ -18,6 +18,8 @@ sidebar:
 
 0.5.0 对同一配置重新生成并验收了显式 Native 和默认模式各两页。另检查 OFD-H 四页和 Native RequireEmbedded 两页。公开包独立消费重新生成的十张 PNG 与候选页图逐字节一致。见[0.5.0 验收记录](https://github.com/whynpc9/ofdrw.net/blob/v0.5.0/docs/validation/releases/0.5.0-acceptance.json)和[发布说明](/releases/050/)。
 
+0.5.1 重新生成该固定配置并检查显式 Native 与默认模式各两页，另看了 OFD-H 四页和 Native RequireEmbedded 两页。公开包重建的十张页图与候选一致。[0.5.1 验收记录](https://github.com/whynpc9/ofdrw.net/blob/v0.5.1/docs/validation/releases/0.5.1-acceptance.json) · [发布说明](/releases/051/)。
+
 ## 固定字体配置
 
 固定输入为未修改的 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。独立运行显式 `OfdMode=Native` 与不设置 `OfdMode` 的默认 Native，两模式各两页；查看链路为 DOCX → OFD → PDF → macOS Preview。

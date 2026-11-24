@@ -19,7 +19,7 @@ sidebar:
 普通转换包不会带入本包，需要显式安装：
 
 ```sh
-dotnet add package Ofdrw.Net.Archival --version 0.5.0
+dotnet add package Ofdrw.Net.Archival --version 0.5.1
 ```
 
 ```csharp

@@ -6,7 +6,7 @@ sidebar:
   label: "功能对照"
 ---
 
-维护基线为 `0.5.0` 产品标签源码。本版变更见[0.5.0 发布说明](/releases/050/)；[0.4.0 发布说明](/releases/040/)保留上一版的交付范围。骑缝章修复及其验收范围见[0.3.1 发布说明](/releases/031/)，先前交付能力见[0.3.0 发布说明](/releases/030/)和[0.2.0 发布说明](/releases/020/)。Preview Find 和原始 Unicode Copy 的限制仍适用。
+维护基线为 `0.5.1` 产品标签源码。本版变更见[0.5.1 发布说明](/releases/051/)；[0.5.0 发布说明](/releases/050/)保留 0.5.0 版的交付范围。骑缝章修复及其验收范围见[0.3.1 发布说明](/releases/031/)，先前交付能力见[0.3.0 发布说明](/releases/030/)和[0.2.0 发布说明](/releases/020/)。Preview Find 和原始 Unicode Copy 的限制仍适用。
 
 本表描述有限实现；逐入口/出口、输入语义与失败策略见[能力契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/)。功能已实现、实际视觉通过、互操作和公开发布是不同结论；不构成 GB/T 33190 或密码应用规范认证。状态中的“已支持”仅限所列 API/输入，“部分支持”保留明确拒绝和未验证范围，“扩展点”需要调用方提供实现。
 
@@ -41,7 +41,7 @@ sidebar:
 | GM/T 0099 密码应用 / 可选加密扩展 | `ofdrw-crypto` | 核心能力标志仍 false；独立 `Crypto.Password` 保留私有 password v2，新增显式 Java 2.4.0 兼容的口令/SM2 证书同类多接收人及签名 `OFDEntries` 有限子集 | **核心未支持 / 可选有限扩展**；v2 有 scrypt/HMAC；标准子集的 Java 原生清单只证明路径，逐文件内容仅在本包的签名摘要扩展存在时可验；非通用 GM/T/厂商互认或生产 PKI，见[契约](https://whynpc9.github.io/ofdrw.net/reference/password-crypto/)及[R14 证据](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/evidence/r14-standard-encryption/README.md) |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、PNG/JPEG 图片进出、文本提取/定位、归档预检、页面与附件管理、合并、签名验证的 .NET tool | **已支持** |
 | Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject/ImageObject；R09 新增图片裁切和可配置线型、显式栅格矩形渐变/图片 tile | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；R09 的源与出口边界见[设计](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/r09-graphics-design.md)，外来原生渐变/图案仍不支持；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 已有有限 TrueType 子集实现，其他字体格式继续遵循[契约](https://whynpc9.github.io/ofdrw.net/reference/font-subset-and-reuse/) |
-| 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK（含 Archival、Medical）+ `net10.0` CLI，0.5.0 默认打包 14 包并使用精确同批依赖，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
+| 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK（含 Archival、Medical）+ `net10.0` CLI，0.5.1 默认打包 14 包并使用精确同批依赖，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
 ## 后续范围与验证
 

@@ -18,12 +18,14 @@ sidebar:
 普通包和 Converter 元包都不会带入它，需要显式引用：
 
 ```sh
-dotnet add package Ofdrw.Net.Medical --version 0.5.0
+dotnet add package Ofdrw.Net.Medical --version 0.5.1
 ```
 
-该包以精确的同批版本依赖带入 Archival、Packaging 和 Core；项目中的其他 `Ofdrw.Net.*` 直接引用也应一起升级到 0.5.0。
+该包以精确的同批版本依赖带入 Archival、Packaging 和 Core；项目中的其他 `Ofdrw.Net.*` 直接引用也应一起升级到 0.5.1。
 
 依赖方向为 `Medical → Archival → Packaging → Core`。
+
+自 0.5.1 起，评估纳入页面同目录的隐式 `PageRes.xml`。含百分号转义的位置无法解析，无法解析的 DocRoot 会作为范围缺口报告。
 
 ## 写出 OFD-H
 
