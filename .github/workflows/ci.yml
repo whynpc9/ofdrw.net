@@ -151,10 +151,14 @@ jobs:
       - name: Test package artifact validation
         run: python3 -m unittest discover -s scripts/tests -v
 
+      # Cached like the fixtures so a full run does not re-download this evidence
+      # from LFS. Pruning other sets' objects is safe: fixtures are already materialized.
+      - name: Fetch retained public table acceptance evidence
+        uses: ./.github/actions/lfs-fixtures
+        with:
+          include: docs/validation/public-tables-evidence/**
       - name: Verify retained public table acceptance evidence
-        run: |
-          git lfs pull --include="docs/validation/public-tables-evidence/**" --exclude=""
-          python3 scripts/verify-public-table-evidence.py
+        run: python3 scripts/verify-public-table-evidence.py
 
       - name: Build and reject new undocumented public API
         run: python3 scripts/check-public-api-docs.py --package-version ${{ env.OFDRW_CI_PACKAGE_VERSION }}
